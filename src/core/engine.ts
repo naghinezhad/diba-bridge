@@ -8,7 +8,7 @@ import { Inbox } from "./inbox.js";
 import { CallLogger } from "./logger.js";
 import { summarizeForLog } from "./media.js";
 import { ConfigStore, envKey } from "./store.js";
-import { ProviderError, type ProviderContext, type ProviderDef, type ToolDef } from "./types.js";
+import { ProviderError, type AuthStep, type ProviderContext, type ProviderDef, type ToolDef } from "./types.js";
 
 // پیام‌های خطای اعتبارسنجی به فارسی
 z.config(z.locales.fa());
@@ -163,9 +163,11 @@ export class DibaMcpEngine {
   private recordSent(provider: ProviderDef, toolName: string, args: Record<string, unknown>, result: unknown, source: "mcp" | "dashboard") {
     if (!/_send_/.test(toolName)) return;
     try {
-      const chatId = String(args.chat_id || this.store.resolve(provider).values.defaultChatId || "");
-      if (!chatId) return;
       const r: any = result;
+      // بعضی سرویس‌ها (مثل بله با حساب کاربری) نام کاربری را به شناسه‌ی چت تبدیل می‌کنند
+      const resolvedChat = r?.chat_id ?? r?.result?.chat_id;
+      const chatId = String(resolvedChat || args.chat_id || this.store.resolve(provider).values.defaultChatId || "");
+      if (!chatId) return;
       const messageId = r?.message_id ?? r?.result?.message_id ?? r?.data?.message_id;
       const kind = /_send_photo$/.test(toolName)
         ? "photo"
@@ -211,6 +213,44 @@ export class DibaMcpEngine {
   }
 
   /**
+   * یک قدم از ورود با حساب کاربری (کلاینت غیررسمی) را اجرا می‌کند.
+   * start ← شماره، code ← کد پیامک/بله، password ← رمز دومرحله‌ای، logout ← خروج.
+   */
+  async authStep(
+    id: string,
+    step: "start" | "code" | "password" | "logout",
+    input: Record<string, unknown> = {},
+  ): Promise<CallResult> {
+    const p = this.provider(id);
+    const started = performance.now();
+    const ms = () => Math.round(performance.now() - started);
+    if (!p?.auth) return { ok: false, ms: 0, error: "این سرویس ورود با حساب کاربری ندارد" };
+    const resolved = this.store.resolve(p);
+    if (step === "logout" && resolved.fromEnv[p.auth.sessionField]) {
+      return { ok: false, ms: 0, error: `نشست از env خوانده می‌شود (${envKey(p.id, p.auth.sessionField)})؛ برای خروج آن را از env بردارید.` };
+    }
+
+    const ctx = this.contextOf(p);
+    const save = (values: Record<string, string>) => this.store.update(p.id, { values });
+    try {
+      let result: AuthStep;
+      if (step === "start") result = await p.auth.start(ctx, String(input.phone ?? ""), save);
+      else if (step === "code")
+        result = await p.auth.verifyCode(ctx, String(input.transactionHash ?? ""), String(input.code ?? ""), save);
+      else if (step === "password")
+        result = await p.auth.verifyPassword(ctx, String(input.transactionHash ?? ""), String(input.password ?? ""), save);
+      else result = await p.auth.logout(ctx, save);
+
+      if (result.step === "done" && step !== "logout") this.store.update(p.id, { enabled: true });
+      this.inbox.sync();
+      return { ok: true, ms: ms(), result };
+    } catch (err: any) {
+      const secrets = Object.values(ctx.config).filter((v) => v && v.length > 8);
+      return { ok: false, ms: ms(), error: redact(err?.message ?? String(err), secrets) };
+    }
+  }
+
+  /**
    * یک McpServer تازه با ابزارهای فعال می‌سازد.
    * در حالت HTTP بدون‌نشست، برای هر درخواست یک نمونه ساخته می‌شود تا تغییر
    * تنظیمات در داشبورد بلافاصله اعمال شود.
@@ -220,7 +260,7 @@ export class DibaMcpEngine {
       { name: SERVER_NAME, version: SERVER_VERSION },
       {
         instructions:
-          "Tools for Iranian services (messengers: Bale, Eitaa, Rubika, Soroush Plus). Tool names are prefixed with the service id. Call list_services first if unsure what is configured.",
+          "Tools for Iranian services (messengers: Bale bot, Bale user account, Eitaa, Rubika, Soroush Plus). Tool names are prefixed with the service id. Call list_services first if unsure what is configured.",
       },
     );
 
@@ -308,6 +348,15 @@ export class DibaMcpEngine {
           fromEnv: this.store.receiveFromEnv(p),
         },
         actions: Object.entries(p.actions ?? {}).map(([name, a]) => ({ name, title: a.title })),
+        auth: p.auth
+          ? {
+              title: p.auth.title,
+              description: p.auth.description,
+              phoneField: p.auth.phoneField,
+              sessionField: p.auth.sessionField,
+              loggedIn: Boolean(values[p.auth.sessionField]),
+            }
+          : undefined,
         fields: p.fields.map((f) => ({
           ...f,
           envName: envKey(p.id, f.key),

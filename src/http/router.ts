@@ -177,8 +177,8 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
       const v = values?.[f.key];
       if (typeof v !== "string") continue;
       if (f.type === "secret" && v === "") continue; // خالی = بدون تغییر
-      if (f.type === "url" && v && !/^https?:\/\//i.test(v))
-        return void res.status(400).json({ error: `«${f.label}» باید با http یا https شروع شود` });
+      if (f.type === "url" && v && !/^(https?|wss?):\/\//i.test(v))
+        return void res.status(400).json({ error: `«${f.label}» باید با http، https، ws یا wss شروع شود` });
       clean[f.key] = v;
     }
     if (values?.__clear && Array.isArray(values.__clear)) {
@@ -215,6 +215,15 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
 
   api.post("/providers/:id/actions/:name", async (req, res) => {
     res.json(await engine.runAction(String(req.params.id), String(req.params.name)));
+  });
+
+  // ---------------- ورود با حساب کاربری (کلاینت غیررسمی) ----------------
+  api.post("/providers/:id/auth/:step", async (req, res) => {
+    const id = String(req.params.id);
+    const step = String(req.params.step);
+    if (!["start", "code", "password", "logout"].includes(step)) return void res.status(404).json({ error: "قدم ورود ناشناخته است" });
+    if (!engine.provider(id)?.auth) return void res.status(404).json({ error: "این سرویس ورود با حساب کاربری ندارد" });
+    res.json(await engine.authStep(id, step as "start" | "code" | "password" | "logout", req.body ?? {}));
   });
 
   // ---------------- صندوق پیام‌ها ----------------

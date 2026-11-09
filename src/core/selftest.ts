@@ -35,6 +35,8 @@ export interface SelfTestReport {
 /** راهنمایی بر اساس متن خطا */
 export function hintFor(error: string, step: string): string | undefined {
   const e = error.toLowerCase();
+  if (/نشست|session expired|login/.test(e))
+    return "نشست حساب کاربری معتبر نیست. در «پیام‌رسان‌ها» کارت همان سرویس را باز کنید و «ورود با حساب بله» را دوباره بزنید.";
   if (/webhook/.test(e)) return "روی این ربات وبهوک تنظیم شده و تا وقتی هست، دریافت پیام کار نمی‌کند. از صفحه‌ی «پیام‌ها» دکمه‌ی «حذف وبهوک» را بزنید.";
   if (/conflict|terminated by other getupdates/.test(e)) return "برنامه‌ی دیگری هم همزمان پیام‌های این ربات را می‌خواند. فقط یکی از آن‌ها باید روشن باشد.";
   if (/پراکسی/.test(error)) return "تنظیمات SOCKS_PROXY یا HTTPS_PROXY را بررسی کنید.";
@@ -112,7 +114,7 @@ export async function runSelfTest(
     return { detail: `HTTP ${r.status}` };
   });
 
-  await step("auth", "توکن و اطلاعات ربات", async () => {
+  await step("auth", p.auth ? "ورود و اطلاعات حساب" : "توکن و اطلاعات ربات", async () => {
     const r = await engine.testProvider(p.id);
     if (!r.ok) throw new Error(r.error);
     return { detail: summarize(r.result), result: r.result };

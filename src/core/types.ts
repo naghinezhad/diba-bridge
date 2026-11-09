@@ -37,8 +37,8 @@ export interface IncomingMessage {
   date: string;
   /** in = از کاربر به ربات (پیش‌فرض)، out = پیامی که خود ربات فرستاده */
   direction?: "in" | "out";
-  /** برای پیام‌های out: از داشبورد یا از طرف مدل */
-  source?: "mcp" | "dashboard";
+  /** برای پیام‌های out: از داشبورد، از طرف مدل، یا از خود حساب کاربری (موبایل/وب) */
+  source?: "mcp" | "dashboard" | "account";
   /** برای عکس/فایل ارسالی از لینک: آدرس لینک (برای پیش‌نمایش) */
   mediaUrl?: string;
 }
@@ -83,6 +83,39 @@ export interface ToolDef<S extends z.ZodRawShape = z.ZodRawShape> {
   handler: (args: z.infer<z.ZodObject<S>>, ctx: ProviderContext) => Promise<unknown>;
 }
 
+export interface AuthUser {
+  id: number;
+  name?: string;
+  username?: string;
+}
+
+/**
+ * نتیجه‌ی یک قدم از ورود با حساب کاربری.
+ * step=code یعنی کد پیامک/بله فرستاده شد؛ password یعنی حساب رمز دومرحله‌ای دارد؛
+ * done یعنی نشست ساخته شد و در فیلد sessionField ذخیره می‌شود.
+ */
+export interface AuthStep {
+  step: "code" | "password" | "done";
+  transactionHash?: string;
+  user?: AuthUser;
+  hint?: string;
+  warning?: string;
+}
+
+/** ورود به حساب کاربری (برای پیام‌رسان‌هایی که API رسمی کلاینت ندارند) */
+export interface ProviderAuthDef {
+  title: string;
+  description: string;
+  /** فیلد ذخیره‌ی شماره‌ی تلفن */
+  phoneField: string;
+  /** فیلد ذخیره‌ی نشست (userId:jwt) */
+  sessionField: string;
+  start: (ctx: ProviderContext, phone: string, save: (values: Record<string, string>) => void) => Promise<AuthStep>;
+  verifyCode: (ctx: ProviderContext, transactionHash: string, code: string, save: (values: Record<string, string>) => void) => Promise<AuthStep>;
+  verifyPassword: (ctx: ProviderContext, transactionHash: string, password: string, save: (values: Record<string, string>) => void) => Promise<AuthStep>;
+  logout: (ctx: ProviderContext, save: (values: Record<string, string>) => void) => Promise<AuthStep>;
+}
+
 export type Category = "messenger" | "payment" | "sms" | "map" | "utility";
 
 export interface ProviderDef {
@@ -100,6 +133,8 @@ export interface ProviderDef {
   tools: ToolDef<any>[];
   /** تست اتصال (معمولاً getMe) */
   test?: (ctx: ProviderContext) => Promise<unknown>;
+  /** ورود با حساب کاربری (کلاینت غیررسمی) */
+  auth?: ProviderAuthDef;
   /** دریافت پیام‌های ورودی (اگر پیام‌رسان پشتیبانی کند) */
   receive?: ReceiveDef;
   /** کارهای مدیریتی که فقط از داشبورد اجرا می‌شوند (به مدل داده نمی‌شوند) */

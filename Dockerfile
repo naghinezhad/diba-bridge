@@ -5,6 +5,7 @@ COPY package*.json ./
 RUN npm ci --ignore-scripts
 COPY tsconfig.json ./
 COPY src ./src
+COPY vendor ./vendor
 RUN npm run build && npm prune --omit=dev
 
 # ---------- run ----------
@@ -16,6 +17,7 @@ ENV NODE_ENV=production \
     DATA_DIR=/app/data
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
+COPY --from=build --chown=node:node /app/vendor ./vendor
 COPY --chown=node:node package.json ./
 COPY --chown=node:node public ./public
 # پوشه‌ی داده با مالکیت کاربر node (volume همین مالکیت را می‌گیرد)

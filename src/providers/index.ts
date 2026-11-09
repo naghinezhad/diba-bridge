@@ -1,5 +1,6 @@
 import type { ProviderDef } from "../core/types.js";
 import { bale } from "./bale.js";
+import { baleClient } from "./bale-client.js";
 import { eitaa } from "./eitaa.js";
 import { rubika } from "./rubika.js";
 import { soroush } from "./soroush.js";
@@ -10,6 +11,7 @@ import { soroush } from "./soroush.js";
  *   ۱. یک فایل در همین پوشه بسازید که ProviderDef برگرداند
  *   ۲. اینجا به آرایه اضافه‌اش کنید
  */
-export const builtinProviders: ProviderDef[] = [bale, eitaa, rubika, soroush];
+export const builtinProviders: ProviderDef[] = [bale, baleClient, eitaa, rubika, soroush];
 
-export { bale, eitaa, rubika, soroush };
+export { bale, baleClient, eitaa, rubika, soroush };
+

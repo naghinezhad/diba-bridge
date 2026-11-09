@@ -1,6 +1,6 @@
 // dibaMCP — داشبورد (بدون فریم‌ورک)
 const $app = document.getElementById("app");
-const state = { providers: [], overview: null, logs: [], logFilter: { ok: "all", provider: "" }, openProv: null, timer: null };
+const state = { providers: [], overview: null, logs: [], logFilter: { ok: "all", provider: "" }, openProv: null, timer: null, authTx: {} };
 
 // ---------------------------------------------------------------- utils
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -293,8 +293,46 @@ function fieldHtml(p, f) {
   return `<div class="field">${label}<input id="${id}" name="${f.key}" class="input ${f.type === "url" || /id$/i.test(f.key) ? "ltr-input" : ""}" value="${esc(f.value)}" placeholder="${esc(f.placeholder || f.default || "")}" ${locked ? "disabled" : ""}>${hint}${pick}</div>`;
 }
 
+function authHtml(p) {
+  const a = p.auth;
+  const phone = p.fields.find((f) => f.key === a.phoneField)?.value || "";
+  const logged = a.loggedIn;
+  return `<div class="client-auth" data-auth>
+    <div class="client-auth-head">
+      <b>${esc(a.title)}</b>
+      <span class="pill ${logged ? "pill-ok" : "pill-off"}">${logged ? "وارد شده" : "وارد نشده"}</span>
+    </div>
+    <p class="hint">${esc(a.description)}</p>
+    <div class="auth-step" data-auth-step="phone" ${logged ? "hidden" : ""}>
+      <div class="auth-row">
+        <input class="input ltr-input" data-auth-phone placeholder="09121234567" value="${esc(phone)}" inputmode="tel" aria-label="شماره تلفن">
+        <button class="btn btn-primary" type="button" data-auth-start>ارسال کد ورود</button>
+      </div>
+      <span class="hint">شماره را با ۰۹ یا +۹۸ وارد کنید. کد از پیامک یا خود بله می‌آید.</span>
+    </div>
+    <div class="auth-step" data-auth-step="code" hidden>
+      <div class="auth-row">
+        <input class="input ltr-input" data-auth-code placeholder="کد ورود" inputmode="numeric" autocomplete="one-time-code" aria-label="کد ورود">
+        <button class="btn btn-primary" type="button" data-auth-verify-code>تأیید کد</button>
+        <button class="btn btn-quiet" type="button" data-auth-back>شماره را عوض می‌کنم</button>
+      </div>
+      <span class="hint" data-auth-code-hint>کد فرستاده شد.</span>
+    </div>
+    <div class="auth-step" data-auth-step="password" hidden>
+      <div class="auth-row">
+        <input class="input ltr-input" type="password" data-auth-password placeholder="رمز دومرحله‌ای" autocomplete="current-password" aria-label="رمز دومرحله‌ای">
+        <button class="btn btn-primary" type="button" data-auth-verify-password>تأیید رمز</button>
+      </div>
+      <span class="hint">این حساب رمز دومرحله‌ای دارد.</span>
+    </div>
+    ${logged ? `<div class="prov-actions"><button class="btn btn-quiet btn-danger" type="button" data-auth-logout>خروج از حساب بله</button></div>` : ""}
+    <div class="test-out" data-auth-out></div>
+  </div>`;
+}
+
 function provHtml(p) {
   const open = state.openProv === p.id;
+  const fields = p.auth ? p.fields.filter((f) => f.key !== p.auth.sessionField) : p.fields;
   return `<article class="prov${open ? " open" : ""}${p.ready ? " is-ready" : ""}" data-id="${p.id}">
     <div class="prov-head">
       <div class="disc" style="background:${p.color}">${esc(p.glyph)}</div>
@@ -305,15 +343,16 @@ function provHtml(p) {
     </div>
     <div class="prov-body"><div><div class="prov-inner">
       <form class="prov-form" data-form>
-        ${p.fields.map((f) => fieldHtml(p, f)).join("")}
+        ${fields.map((f) => fieldHtml(p, f)).join("")}
         <div class="prov-actions">
           <button class="btn btn-primary" type="submit">ذخیره تنظیمات</button>
           ${p.hasTest ? `<button class="btn" type="button" data-test>تست اتصال</button>` : ""}
           ${p.hasTest ? `<button class="btn" type="button" data-selftest>تست کامل</button>` : ""}
-          ${p.fields.some((f) => f.type === "secret" && f.hasValue && !f.fromEnv) ? `<button class="btn btn-quiet btn-danger" type="button" data-clear>حذف توکن</button>` : ""}
+          ${!p.auth && p.fields.some((f) => f.type === "secret" && f.hasValue && !f.fromEnv) ? `<button class="btn btn-quiet btn-danger" type="button" data-clear>حذف توکن</button>` : ""}
         </div>
         <div class="test-out" data-out></div>
       </form>
+      ${p.auth ? authHtml(p) : ""}
       <div class="prov-tools">
         <h3>${fa(p.tools.length)} ابزار در اختیار مدل</h3>
         ${p.tools.map((t) => `<div class="tool-line"><a href="#/playground?tool=${t.name}">${esc(t.title)}</a><code>${esc(t.name)}</code></div>`).join("")}
@@ -347,7 +386,7 @@ function selfTestHtml(r) {
 async function pageProviders(main, q) {
   state.providers = await api("providers");
   if (q.get("open")) state.openProv = q.get("open");
-  main.innerHTML = `${head("پیام‌رسان‌ها", "توکن ربات هر پیام‌رسان را ثبت و روشنش کنید. توکن‌ها فقط روی همین سرور می‌مانند و کامل به مرورگر برنمی‌گردند.")}
+  main.innerHTML = `${head("پیام‌رسان‌ها", "توکن ربات یا حساب کاربری هر پیام‌رسان را وصل کنید. توکن‌ها و نشست‌ها فقط روی همین سرور می‌مانند و کامل به مرورگر برنمی‌گردند.")}
     <div class="providers" id="provs">${state.providers.map(provHtml).join("")}</div>`;
   const list = document.getElementById("provs");
 
@@ -415,6 +454,94 @@ async function pageProviders(main, q) {
       const keys = p.fields.filter((f) => f.type === "secret").map((f) => f.key);
       replace(await api(`providers/${id}`, { method: "PUT", body: { values: { __clear: keys } } }));
       toast("توکن حذف شد");
+    }
+
+    // ---- ورود با حساب کاربری (کلاینت غیررسمی) ----
+    const authBox = card.querySelector("[data-auth]");
+    if (!authBox) return;
+    const authOut = authBox.querySelector("[data-auth-out]");
+    const showStep = (step) => {
+      authBox.querySelectorAll("[data-auth-step]").forEach((el) => (el.hidden = el.dataset.authStep !== step));
+    };
+    const authFail = (msg) => {
+      authOut.innerHTML = `<div class="err-box">${esc(msg)}</div>`;
+    };
+    const refreshAuthCard = async () => {
+      state.providers = await api("providers");
+      const updated = state.providers.find((x) => x.id === id);
+      if (!updated) return;
+      state.openProv = id;
+      const el = list.querySelector(`[data-id="${id}"]`);
+      if (el) el.outerHTML = provHtml(updated);
+    };
+
+    if (e.target.closest("[data-auth-start]")) {
+      const phone = authBox.querySelector("[data-auth-phone]").value.trim();
+      authOut.innerHTML = "";
+      try {
+        const r = await busy(e.target.closest("[data-auth-start]"), () => api(`providers/${id}/auth/start`, { body: { phone } }));
+        if (!r.ok) return authFail(r.error);
+        state.authTx[id] = r.result.transactionHash;
+        showStep("code");
+        authBox.querySelector("[data-auth-code-hint]").textContent = r.result.hint || "کد فرستاده شد.";
+        authBox.querySelector("[data-auth-code]").focus();
+      } catch (ex) {
+        authFail(ex.message);
+      }
+    }
+
+    if (e.target.closest("[data-auth-back]")) {
+      delete state.authTx[id];
+      authOut.innerHTML = "";
+      showStep("phone");
+    }
+
+    if (e.target.closest("[data-auth-verify-code]")) {
+      const code = authBox.querySelector("[data-auth-code]").value.trim();
+      authOut.innerHTML = "";
+      try {
+        const r = await busy(e.target.closest("[data-auth-verify-code]"), () =>
+          api(`providers/${id}/auth/code`, { body: { transactionHash: state.authTx[id], code } }),
+        );
+        if (!r.ok) return authFail(r.error);
+        if (r.result.step === "password") {
+          showStep("password");
+          authBox.querySelector("[data-auth-password]").focus();
+          return;
+        }
+        delete state.authTx[id];
+        await refreshAuthCard();
+        toast(`ورود به ${p.nameFa} انجام شد`);
+      } catch (ex) {
+        authFail(ex.message);
+      }
+    }
+
+    if (e.target.closest("[data-auth-verify-password]")) {
+      const password = authBox.querySelector("[data-auth-password]").value;
+      authOut.innerHTML = "";
+      try {
+        const r = await busy(e.target.closest("[data-auth-verify-password]"), () =>
+          api(`providers/${id}/auth/password`, { body: { transactionHash: state.authTx[id], password } }),
+        );
+        if (!r.ok) return authFail(r.error);
+        delete state.authTx[id];
+        await refreshAuthCard();
+        toast(`ورود به ${p.nameFa} انجام شد`);
+      } catch (ex) {
+        authFail(ex.message);
+      }
+    }
+
+    if (e.target.closest("[data-auth-logout]") && confirm("از حساب بله خارج شوید؟ ابزارهای این سرویس تا ورود بعدی کار نمی‌کنند.")) {
+      try {
+        const r = await api(`providers/${id}/auth/logout`, { body: {} });
+        if (!r.ok) return authFail(r.error);
+        await refreshAuthCard();
+        toast("از حساب بله خارج شدید");
+      } catch (ex) {
+        authFail(ex.message);
+      }
     }
   });
 
@@ -681,7 +808,7 @@ function receiverHtml(p, st) {
     return `<div class="rcv off"><div class="disc sm" style="background:${p.color}">${esc(p.glyph)}</div><div class="rcv-body"><b>${esc(p.nameFa)}</b><span class="hint">ایتایار دریافت پیام ندارد؛ فقط ارسال به کانال و گروه.</span></div></div>`;
   const ready = p.ready;
   let pill, info = "";
-  if (!ready) { pill = '<span class="pill pill-off">توکن ثبت نشده</span>'; info = `<a href="#/providers?open=${p.id}">ثبت توکن</a>`; }
+  if (!ready) { pill = `<span class="pill pill-off">${p.auth ? "وارد نشده" : "توکن ثبت نشده"}</span>`; info = `<a href="#/providers?open=${p.id}">${p.auth ? "ورود به حساب" : "ثبت توکن"}</a>`; }
   else if (st.lastError) { pill = '<span class="pill pill-err">خطا</span>'; info = `<span class="err" title="${esc(st.lastError)}">${esc(st.lastError)}</span>`; }
   else if (st.running) { pill = '<span class="pill pill-ok">در حال دریافت</span>'; info = st.lastPollAt ? `آخرین بررسی ${ago(st.lastPollAt)}` : "در حال اتصال…"; }
   else pill = '<span class="pill pill-off">خاموش</span>';
@@ -707,9 +834,9 @@ async function pageInbox(main, q) {
   let data = { statuses: [], chats: [], messages: [] };
   let lastSig = "";
 
-  main.innerHTML = `${head("پیام‌های دریافتی", "گفتگوهای ربات‌ها: پیام‌هایی که کاربران می‌دهند و پیام‌هایی که ربات فرستاده. از اینجا شناسه‌ی چت‌ها را پیدا کنید، چت پیش‌فرض را تعیین کنید و جواب بدهید.")}
+  main.innerHTML = `${head("پیام‌های دریافتی", "گفتگوهای ربات‌ها و حساب‌های کاربری: پیام‌هایی که طرف مقابل می‌دهد و پیام‌هایی که خودتان می‌فرستید. از اینجا شناسه‌ی چت‌ها را پیدا کنید، چت پیش‌فرض را تعیین کنید و جواب بدهید.")}
     <section class="receivers" id="rcv"></section>
-    <p class="note rcv-note">«دریافت خودکار» پیام‌های ربات را مرتب می‌خواند و ابزار get_updates مدل هم از همین صندوق جواب می‌دهد. اگر برنامه‌ی دیگری (وبهوک یا ربات دیگر) هم پیام‌های همین ربات را می‌خواند، روشنش نکنید؛ «بررسی الان» هم پیام‌ها را برمی‌دارد.</p>
+    <p class="note rcv-note">«دریافت خودکار» پیام‌های هر سرویس را مرتب می‌خواند و ابزار get_updates مدل هم از همین صندوق جواب می‌دهد. اگر برنامه‌ی دیگری (وبهوک یا نسخه‌ی دیگر) هم پیام‌های همان ربات/حساب را می‌خواند، روشنش نکنید؛ «بررسی الان» هم پیام‌ها را برمی‌دارد.</p>
     <section class="inbox">
       <nav class="chat-list" id="chats" aria-label="چت‌ها"></nav>
       <div class="convo" id="convo"></div>
@@ -725,7 +852,7 @@ async function pageInbox(main, q) {
   const drawChats = () => {
     const el = document.getElementById("chats");
     if (!data.chats.length) {
-      el.innerHTML = `<div class="empty"><b>هنوز پیامی نیامده</b>دریافت خودکار را روشن کنید یا «بررسی الان» را بزنید، بعد از گوشی یک پیام به ربات بدهید.</div>`;
+      el.innerHTML = `<div class="empty"><b>هنوز پیامی نیامده</b>دریافت خودکار را روشن کنید یا «بررسی الان» را بزنید، بعد از گوشی یک پیام به ربات یا حساب بدهید.</div>`;
       return;
     }
     el.innerHTML = data.chats.map((c) => {
@@ -766,7 +893,9 @@ async function pageInbox(main, q) {
           const out = m.direction === "out";
           const time = new Date(m.date).toLocaleString("fa-IR", { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" });
           const who = out
-            ? `<b>ربات</b><span>${m.source === "mcp" ? "از طرف هوش مصنوعی" : "از داشبورد"}</span>`
+            ? m.source === "account"
+              ? `<b>شما</b><span>از حساب بله</span>`
+              : `<b>ربات</b><span>${m.source === "mcp" ? "از طرف هوش مصنوعی" : "از داشبورد"}</span>`
             : `${m.from?.name ? `<b dir="auto">${esc(m.from.name)}</b>` : ""}${m.from?.username ? `<span class="ltr">@${esc(m.from.username)}</span>` : ""}`;
           const img = out && m.kind === "photo" && m.mediaUrl ? `<img class="msg-img" src="${esc(m.mediaUrl)}" alt="" loading="lazy" onerror="this.remove()">` : "";
           return `<li class="msg${out ? " out" : ""}">
