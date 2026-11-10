@@ -1,329 +1,306 @@
-# dibaMCP
+<p align="center">
+  <a href="https://dibachain.ir" target="_blank" rel="noopener noreferrer">
+    <img src="public/assets/logo-sm.png" alt="دیباچین | Dibachain" width="100" height="100" />
+  </a>
+</p>
 
-سرور MCP برای وصل کردن سرویس‌های ایرانی به مدل‌های هوش مصنوعی (Claude، Cursor و هر کلاینت MCP دیگر)، همراه با داشبورد فارسی برای مدیریت.
+<h1 align="center">dibaMCP</h1>
 
-**مرحله‌ی ۱ (همین نسخه):** پیام‌رسان‌ها — بله، روبیکا و سروش‌پلاس (هم ربات و هم حساب کاربری)، ایتا (ربات + حساب کاربری با پل EitaaBun)
+<p align="center">
+  <b>دروازه هوشمند اتصال پیام‌رسان‌های ایرانی به هوش مصنوعی (پروتکل MCP)</b><br>
+  <i>Universal Model Context Protocol (MCP) Server & Dashboard for Iranian Messengers</i>
+</p>
 
-## نصب و اجرا
+<p align="center">
+  توسعه داده‌شده توسط <a href="https://dibachain.ir"><b>دیباچین (Dibachain)</b></a>
+</p>
 
-پیش‌نیاز: Node.js نسخه‌ی ۲۲.۱۹ یا جدیدتر (یا فقط Docker).
-> اگر با `bun dev` اجرا می‌کنید، Bun فقط اسکریپت را اجرا می‌کند و `tsx` از Node موجود در `PATH` استفاده می‌کند؛ اول Node 24 را فعال کنید (مثلاً `fnm use 24` یا `nvm use 24`).
+<p align="center">
+  <a href="#-فارسی">فارسی (پیش‌فرض)</a> •
+  <a href="#-english">English</a>
+</p>
 
-**با npx — بدون نصب:**
+<p align="center">
+  <img src="https://img.shields.io/badge/node-%3E%3D22.19-blue.svg" alt="Node version" />
+  <img src="https://img.shields.io/badge/protocol-MCP_1.32+-green.svg" alt="MCP Version" />
+  <img src="https://img.shields.io/badge/license-MIT-purple.svg" alt="License" />
+  <img src="https://img.shields.io/badge/docker-ready-2496ed.svg" alt="Docker" />
+  <img src="https://img.shields.io/badge/version-0.4.1-brand.svg" alt="Version 0.4.1" />
+</p>
 
+---
+
+<div id="-فارسی" dir="rtl">
+
+## 🇮🇷 فارسی
+
+**dibaMCP** یک سرور قدرتمند، امن و متن‌باز مبتنی بر پروتکل **Model Context Protocol (MCP)** است که امکان اتصال مستقیم و دوطرفه پیام‌رسان‌های محبوب ایرانی (**بله**، **ایتا**، **روبیکا** و **سروش‌پلاس**) را به مدل‌ها و دستیارهای هوش مصنوعی مانند **Claude Code**، **Cursor**، **Claude Desktop** و کلیه کلاینت‌های استاندارد هوش مصنوعی فراهم می‌کند.
+
+این پروژه همراه با یک **داشبورد فارسی مدرن** و طراحی‌شده بر اساس **سیستم طراحی رسمی دیباچین** ارائه می‌شود تا مدیریت حساب‌ها، ربات‌ها، مشاهده پیام‌های دریافتی، تست خطوط ارتباطی و آزمایش ابزارها در کمترین زمان ممکن انجام پذیرد.
+
+---
+
+### قابلیت‌های کلیدی
+
+- 🤖 **پشتیبانی دوگانه (ربات رسمی + حساب کاربری):**
+  - **بله (Bale):** ربات رسمی Bot API + کلاینت حساب کاربری (پروتکل وب/WebSocket)
+  - **ایتا (Eitaa):** ربات رسمی ایتایار + کلاینت حساب کاربری (پروتکل MTProto با پل EitaaBun)
+  - **روبیکا (Rubika):** ربات رسمی + کلاینت حساب کاربری (پروتکل کلاینت اختصاصی وب)
+  - **سروش‌پلاس (Soroush+):** ربات رسمی Bot API + کلاینت حساب کاربری (پروتکل MTProto)
+- 📬 **صندوق پیام‌های دریافتی یکپارچه (Shared Inbox):** دریافت پیام‌ها به همراه ارسال پاسخ مستقیم از داشبورد و از طریق ابزار `get_updates` مدل هوش مصنوعی.
+- 🎨 **داشبورد فارسی با سیستم طراحی دیباچین:** رابط کاربری واکنش‌گرا، پشتیبانی از حالت تیره (Dark Mode)، پالت رنگ استاندارد، آکاردئون یکپارچه پیام‌رسان‌ها با اولویت حساب کاربری.
+- ⚡ **آزمایشگاه زنده ابزارها (Playground):** فراخوانی آزمایشی ابزارها، ارسال تصویر و فایل با Drag & Drop یا Paste (Ctrl+V) و مشاهده پاسخ خام JSON.
+- 🔒 **امنیت در سطح سازمانی:** اعتبارسنجی با توکن‌های Bearer، حفاظت در برابر Brute-force، جداسازی دسترسی‌ها و ذخیره نشست‌ها به صورت رمزنگاری‌شده محلی.
+- 🌐 **تست هوشمند شبکه (NetCheck & SelfTest):** امکان بررسی اتصال از داخل یا خارج از ایران به همراه پشتیبانی از SOCKS5/HTTP Proxy.
+
+---
+
+### نصب و راه‌اندازی سریع
+
+پیش‌نیاز: **Node.js نسخه ۲۲.۱۹ یا بالاتر** (یا استفاده از **Docker**).
+
+#### روش ۱: اجرای فوری بدون نیاز به نصب (پیشنهادی)
 ```bash
 npx diba-mcp
 ```
 
-**نصب سراسری:**
-
+#### روش ۲: نصب سراسری با npm
 ```bash
 npm install -g diba-mcp
 diba-mcp
 ```
 
-> تا قبل از انتشار روی npm، از فایل آماده‌ی آخرین [Release](https://github.com/yunessfa/diba-MCP/releases) نصب کنید:
-> `npm i -g https://github.com/yunessfa/diba-MCP/releases/download/v0.4.1/diba-mcp-0.4.1.tgz`
-
-**با Docker:**
-
+#### روش ۳: اجرا با داکر (Docker)
 ```bash
 docker run -d --name diba-mcp -p 127.0.0.1:3790:3790 \
-  -e ADMIN_PASSWORD=your-password \
+  -e ADMIN_PASSWORD=your-secure-password \
   -v diba-mcp-data:/app/data \
   ghcr.io/yunessfa/diba-mcp:latest
 ```
 
-بعد مرورگر را باز کنید: **http://127.0.0.1:3790**
+پس از اجرا، داشبورد در آدرس زیر در دسترس خواهد بود:
+👉 **http://127.0.0.1:3790**
 
-بار اول (اگر `ADMIN_PASSWORD` نداده باشید) یک **کد راه‌اندازی** شش‌حرفی در ترمینال چاپ می‌شود. با آن در داشبورد رمز بسازید.
-بعد در «پیام‌رسان‌ها» توکن ربات‌ها را ثبت کنید و از «اتصال به هوش مصنوعی» آدرس و توکن MCP را بردارید.
+> **نکته راه‌اندازی اولیه:** در اولین اجرا در صورت مشخص نکردن `ADMIN_PASSWORD` در فایل محیطی، یک کد راه‌اندازی ۶ حرفی در ترمینال چاپ می‌شود. با وارد کردن آن کد در داشبورد، رمز عبور دلخواه مدیریت را تعیین کنید.
 
-### دستورهای CLI
+---
 
-| دستور | کار |
+### دستورات خط فرمان (CLI)
+
+| دستور | توضیحات |
 |---|---|
-| `diba-mcp` | داشبورد + اندپوینت MCP |
-| `diba-mcp stdio` | اجرا با stdio برای Claude Desktop |
-| `diba-mcp netcheck` | آیا این سیستم به API بله، ایتا، روبیکا و سروش می‌رسد؟ |
-| `diba-mcp selftest bale --send` | تست کامل یک پیام‌رسان (بدون نام: همه‌ی پیام‌رسان‌های آماده)؛ `--chat <id>` چت مقصد |
-| `diba-mcp token` | نمایش توکن اتصال MCP |
-| `diba-mcp reset-password` | حذف رمز داشبورد (اجرای بعدی کد راه‌اندازی می‌دهد) |
+| `diba-mcp` | اجرای سرور ترکیبی (داشبورد وب + اندپوینت MCP) |
+| `diba-mcp stdio` | اجرای سبک با ورودی/خروجی استاندارد برای Claude Desktop |
+| `diba-mcp netcheck` | بررسی سلامت دسترسی سرور به سرورهای بله، ایتا، روبیکا و سروش |
+| `diba-mcp selftest [provider] --send` | تست جامع گام‌به‌گام شبکه، توکن و ارسال پیام آزمایشی |
+| `diba-mcp token` | دریافت و چاپ توکن اتصال MCP |
+| `diba-mcp reset-password` | بازنشانی رمز عبور داشبورد |
 
-گزینه‌ها: `--port 8080`، `--host 0.0.0.0`، `--data /path` (پیش‌فرض `~/.diba-mcp`)، `--env file.env`، `--help`
+---
 
-**Claude Desktop** (`claude_desktop_config.json`):
+### اتصال به کلاینت‌های هوش مصنوعی
+
+#### ۱. Claude Desktop
+فایل پیکربندی Claude Desktop (`claude_desktop_config.json`) را باز کرده و خطوط زیر را اضافه کنید:
 
 ```json
-{ "mcpServers": { "diba-mcp": { "command": "npx", "args": ["-y", "diba-mcp", "stdio"] } } }
+{
+  "mcpServers": {
+    "diba-mcp": {
+      "command": "npx",
+      "args": ["-y", "diba-mcp", "stdio"]
+    }
+  }
+}
 ```
 
-### توسعه روی همین ریپو
+#### ۲. Claude Code (CLI)
+```bash
+claude mcp add --transport http diba-mcp http://127.0.0.1:3790/mcp --header "Authorization: Bearer <YOUR_TOKEN>"
+```
 
-| دستور | کار |
+#### ۳. Cursor و کلاینت‌های مبتنی بر HTTP
+```json
+{
+  "mcpServers": {
+    "diba-mcp": {
+      "url": "http://127.0.0.1:3790/mcp",
+      "headers": {
+        "Authorization": "Bearer <YOUR_TOKEN>"
+      }
+    }
+  }
+}
+```
+
+---
+
+### فهرست ابزارهای MCP (Tools)
+
+| پلتفرم | ابزارهای در اختیار مدل |
 |---|---|
-| `npm install` و `npm run dev` | اجرای توسعه با ری‌لود خودکار (داده در `./data`) |
-| `npm run cli -- <دستور>` | اجرای CLI از روی سورس |
-| `npm run build` و `npm start` | ساخت و اجرای نسخه‌ی production |
-| `npm test` | همه‌ی تست‌ها (واحد + سرتاسری) |
-| `npm run typecheck` | بررسی تایپ‌ها |
-| `npm run netcheck` | بررسی دسترسی به API پیام‌رسان‌ها |
+| **بله (ربات)** | `bale_get_me`, `bale_send_message`, `bale_send_photo`, `bale_send_document`, `bale_get_chat`, `bale_get_updates` |
+| **بله (حساب کاربری)** | `bale_client_get_me`, `bale_client_send_message`, `bale_client_get_chat`, `bale_client_get_dialogs`, `bale_client_get_history`, `bale_client_get_updates` |
+| **ایتا (ربات)** | `eitaa_get_me`, `eitaa_send_message`, `eitaa_send_photo`, `eitaa_send_file` |
+| **ایتا (حساب کاربری)** | `eitaa_client_get_me`, `eitaa_client_send_message`, `eitaa_client_get_chat`, `eitaa_client_get_chats`, `eitaa_client_get_history`, `eitaa_client_get_updates` |
+| **روبیکا (ربات)** | `rubika_get_me`, `rubika_send_message`, `rubika_send_photo`, `rubika_send_file`, `rubika_send_location`, `rubika_get_chat`, `rubika_get_updates` |
+| **روبیکا (حساب کاربری)** | `rubika_client_get_me`, `rubika_client_send_message`, `rubika_client_send_photo`, `rubika_client_send_file`, `rubika_client_get_chat`, `rubika_client_get_chats`, `rubika_client_get_history`, `rubika_client_get_updates` |
+| **سروش‌پلاس (ربات)** | `soroush_get_me`, `soroush_send_message`, `soroush_send_photo`, `soroush_send_document`, `soroush_get_chat`, `soroush_get_updates` |
+| **سروش‌پلاس (حساب کاربری)** | `soroush_client_get_me`, `soroush_client_send_message`, `soroush_client_send_photo`, `soroush_client_send_file`, `soroush_client_get_chat`, `soroush_client_get_chats`, `soroush_client_get_history`, `soroush_client_get_updates` |
+| **مدیریت عمومی** | `list_services`, `list_chats` |
 
-### انتشار نسخه‌ی جدید
+---
 
+### درباره دیباچین (Dibachain)
+
+<p align="center">
+  <img src="public/assets/logo-sm.png" alt="لوگوی دیباچین" width="80" />
+</p>
+
+**دیباچین (Dibachain)** یک شرکت پیشرو در حوزه **مهندسی نرم‌افزار، هوش مصنوعی (AI)، توسعه مدل‌های زبانی بومی (LLM)، سیستم‌های خودکارساز سازمانی و زیرساخت‌های مقیاس‌پذیر** است.
+
+فعالیت دیباچین از سال **۱۳۹۴** در مشهد آغاز شده و امروزه با گسترش بازارهای بین‌المللی و ثبت دفتر رسمی در **دبی (امارات متحده عربی)**، راهکارهای فنی در کلاس جهانی ارائه می‌دهد:
+- **خانواده مدل‌های دیبا (Diba Models):** مدل‌های زبانی متن‌باز و تخصصی برای زبان فارسی بر بستر Hugging Face.
+- **روتر هوشمند دیبا (DibaRouter):** زیرساخت هدایت بهینه، کم‌هزینه و پرسرعت درخواست‌های هوش مصنوعی.
+- **توسعه ایجنت‌ها و سیستم‌های اتوماسیون سازمانی:** چت‌بات‌های پاسخگوی ۲۴ ساعته، خطوط تحلیل داده و پردازش صوت و تصویر.
+
+#### راه‌های ارتباطی با دیباچین
+- 🌐 **وب‌سایت رسمی:** [dibachain.ir](https://dibachain.ir)
+- 📞 **شماره تماس پشتیبانی و مشاوره:** [۰۲۱-۹۱۰۳۵۸۷۴](tel:+982191035874)
+- ✉️ **ایمیل ارتباطی:** [info@dibachain.ir](mailto:info@dibachain.ir)
+- 🏢 **آدرس دفتر فنی:** مشهد، میدان جانباز، برج اداری تجاری پاژ، ساختمان اداری ۱، طبقه ۱۰، واحد ۱۰۰۲
+- 🕒 **ساعات کاری:** شنبه تا پنجشنبه، از ساعت ۹:۰۰ الی ۲۱:۰۰
+
+---
+
+</div>
+
+<div id="-english">
+
+## 🇬🇧 English
+
+**dibaMCP** is a modern, high-performance, and secure **Model Context Protocol (MCP)** server with an integrated Persian web management dashboard. It connects leading Iranian messaging networks (**Bale**, **Eitaa**, **Rubika**, and **Soroush Plus**) to cutting-edge AI coding agents, assistants, and LLM clients including **Claude Code**, **Cursor**, **Claude Desktop**, and custom autonomous workflows.
+
+Developed by **[Dibachain](https://dibachain.ir)**, the dashboard and API are built following Dibachain's production design system, ensuring an accessible, responsive, and robust developer experience.
+
+---
+
+### Highlights
+
+- ⚡ **Dual Provider Support (Official Bot API & User Client Accounts):**
+  - **Bale:** Official Bot API + User Web client protocol (gRPC-Web / WebSocket / Protobuf).
+  - **Eitaa:** Official Eitaayar API + User MTProto client via EitaaBun bridge.
+  - **Rubika:** Official Bot API + User Web client protocol (RSA/AES exchange).
+  - **Soroush Plus:** Official Bot API + User MTProto client protocol.
+- 💬 **Shared Live Inbox:** Real-time synchronization of inbound messages with direct reply capabilities from both the dashboard and the AI model (`get_updates`).
+- 🎨 **Dibachain Design System:** Clean, accessible UI with Dark/Light themes, logical RTL layout, and responsive accordions featuring default Client tabs.
+- 🧪 **Interactive Playground:** Direct invocation of tools with file/image drag & drop, clipboard paste support, and real-time response inspection.
+- 🛡️ **Enterprise-Grade Security:** Bearer token authentication, rate limiting, and encrypted local storage.
+- 🌍 **Connectivity Diagnostics:** Built-in `netcheck` and step-by-step `selftest` tools with SOCKS5/HTTP proxy support.
+
+---
+
+### Quick Start
+
+Requires **Node.js >= 22.19** or **Docker**.
+
+#### 1. Instant Run via npx (Zero Installation)
 ```bash
-npm version patch --no-git-tag-version   # یا minor / major
-git commit -am "v0.2.1" && git push
+npx diba-mcp
 ```
 
-بعد در گیت‌هاب: **Actions ← Release ← Run workflow**. (push یک تگ `vX.Y.Z` هم همین کار را می‌کند.)
-GitHub Actions این‌ها را می‌سازد: ایمیج Docker با شماره‌ی نسخه، یک GitHub Release با فایل نصب `.tgz`، و اگر secret به اسم `NPM_TOKEN` در ریپو تعریف شده باشد، انتشار روی npm.
-
-> نصب مستقیم از `github:yunessfa/diba-MCP` پشتیبانی نمی‌شود (npm هنگام نصب سراسری از git ابزار build را نصب نمی‌کند)؛ از فایل Release یا npm استفاده کنید.
-
-## ساختار
-
-```
-src/
-├─ core/
-│  ├─ types.ts        # ProviderDef و ToolDef — قرارداد هر سرویس
-│  ├─ engine.ts       # قلب پروژه: اجرای ابزار، اعتبارسنجی، لاگ، ساخت McpServer
-│  ├─ store.ts        # تنظیمات در data/config.json (env اولویت دارد)
-│  ├─ http.ts         # fetch با timeout و پیام خطای فارسی، پاک کردن توکن از خطاها
-│  ├─ auth.ts         # رمز ادمین (scrypt)، نشست امضاشده (HMAC)، محدودکننده‌ی نرخ
-│  ├─ net.ts          # همه‌ی درخواست‌های بیرونی + پراکسی SOCKS/HTTP
-│  ├─ netcheck.ts     # تست دسترسی سرور به API پیام‌رسان‌ها
-│  └─ logger.ts       # لاگ فراخوانی‌ها: حافظه + فایل روزانه در data/logs
-├─ providers/
-│  ├─ telegram-like.ts  # factory مشترک بله و سروش‌پلاس (Bot API شبیه تلگرام)
-│  ├─ bale.ts  bale-client.ts  soroush.ts  soroush-client.ts  eitaa.ts  eitaa-client.ts  rubika.ts  rubika-client.ts
-│  └─ index.ts          # فهرست سرویس‌ها
-├─ http/router.ts     # express.Router: /mcp + /api + داشبورد
-├─ index.ts           # API کتابخانه برای الحاق
-├─ cli.ts             # خط فرمان diba-mcp
-├─ server.ts          # راه‌اندازهای HTTP / stdio / netcheck
-├─ main.ts            # اجرای HTTP از روی env (Docker، npm run dev)
-└─ stdio.ts           # اجرای stdio
-public/               # داشبورد (HTML/CSS/JS ساده، بدون build)
-docs/                 # راهنمای تست curl (ورود روبیکا با حساب کاربری)
-vendor/balejs/        # کتابخانه‌ی کلاینت بله، وصله‌شده برای Node 24
-test/
-├─ unit/             # تست‌های واحد (auth، store، net، engine)
-└─ e2e.ts            # تست سرتاسری با کلاینت واقعی MCP
+#### 2. Global Installation via npm
+```bash
+npm install -g diba-mcp
+diba-mcp
 ```
 
-## ابزارها
+#### 3. Run with Docker
+```bash
+docker run -d --name diba-mcp -p 127.0.0.1:3790:3790 \
+  -e ADMIN_PASSWORD=your-secure-password \
+  -v diba-mcp-data:/app/data \
+  ghcr.io/yunessfa/diba-mcp:latest
+```
 
-| پیام‌رسان | ابزارها |
+Open your browser at:  
+👉 **http://127.0.0.1:3790**
+
+---
+
+### CLI Reference
+
+| Command | Description |
 |---|---|
-| بله (ربات) | `bale_get_me` `bale_send_message` `bale_send_photo` `bale_send_document` `bale_get_chat` `bale_get_updates` |
-| بله (حساب کاربری) | `bale_client_get_me` `bale_client_send_message` `bale_client_get_chat` `bale_client_get_dialogs` `bale_client_get_history` `bale_client_get_updates` |
-| سروش‌پلاس (ربات) | `soroush_get_me` `soroush_send_message` `soroush_send_photo` `soroush_send_document` `soroush_get_chat` `soroush_get_updates` |
-| سروش‌پلاس (حساب کاربری) | `soroush_client_get_me` `soroush_client_send_message` `soroush_client_send_photo` `soroush_client_send_file` `soroush_client_get_chat` `soroush_client_get_chats` `soroush_client_get_history` `soroush_client_get_updates` |
-| ایتا (ربات) | `eitaa_get_me` `eitaa_send_message` `eitaa_send_photo` `eitaa_send_file` |
-| ایتا (حساب کاربری، پل EitaaBun) | `eitaa_client_get_me` `eitaa_client_get_chat` `eitaa_client_send_message` `eitaa_client_get_chats` `eitaa_client_get_history` `eitaa_client_get_updates` |
-| روبیکا (ربات) | `rubika_get_me` `rubika_send_message` `rubika_send_photo` `rubika_send_file` `rubika_send_location` `rubika_get_chat` `rubika_get_updates` |
-| روبیکا (حساب کاربری) | `rubika_client_get_me` `rubika_client_send_message` `rubika_client_send_photo` `rubika_client_send_file` `rubika_client_get_chat` `rubika_client_get_chats` `rubika_client_get_history` `rubika_client_get_updates` |
-| همه | `list_services` `list_chats` |
+| `diba-mcp` | Start full server (Web dashboard + MCP endpoint) |
+| `diba-mcp stdio` | Run lightweight stdio transport for Claude Desktop |
+| `diba-mcp netcheck` | Test connectivity from current host to messenger APIs |
+| `diba-mcp selftest [provider] --send` | Comprehensive step-by-step test of credentials, network & delivery |
+| `diba-mcp token` | Display active MCP authorization token |
+| `diba-mcp reset-password` | Reset dashboard administrator password |
 
-**ارسال عکس و فایل:** ورودی هر ابزار رسانه‌ای می‌تواند لینک عمومی، فایل انتخاب‌شده از دستگاه (در داشبورد: دکمه، کشیدن و رها کردن، یا Ctrl+V)، یا `file_id` قبلی همان پیام‌رسان باشد. لینک‌ها را خود سرور دانلود و آپلود می‌کند، پس لازم نیست پیام‌رسان به آن لینک دسترسی داشته باشد. حداکثر حجم ۲۰ مگابایت.
-برای امنیت، دانلود از آدرس‌های داخلی (localhost، شبکه‌ی خصوصی، metadata ابری) مسدود است؛ اگر عمداً لازم دارید: `ALLOW_PRIVATE_MEDIA_URLS=true`.
+---
 
-اگر برای سرویسی «چت پیش‌فرض» تعیین کنید، `chat_id` اختیاری می‌شود و مدل می‌تواند فقط با `text` پیام بفرستد.
+### AI Client Integration
 
-## پیام‌های دریافتی و پیدا کردن chat_id
+#### Claude Desktop
+Add to your `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "diba-mcp": {
+      "command": "npx",
+      "args": ["-y", "diba-mcp", "stdio"]
+    }
+  }
+}
+```
 
-در داشبورد، صفحه‌ی **«پیام‌های دریافتی»**:
-
-1. برای بله (ربات یا حساب کاربری)، روبیکا (ربات یا حساب کاربری)، سروش (ربات یا حساب کاربری) یا ایتا (حساب کاربری) «دریافت خودکار» را روشن کنید (یا یک بار «بررسی الان» را بزنید).
-2. از گوشی یک پیام به ربات بدهید. برای کانال: ربات را ادمین کنید و یک پست بگذارید.
-3. چت در فهرست ظاهر می‌شود: شناسه‌اش را کپی کنید، «تنظیم به‌عنوان چت پیش‌فرض» را بزنید یا همان‌جا جواب بدهید.
-
-پیام‌هایی که خود ربات می‌فرستد (از داشبورد، از طرف هوش مصنوعی یا در تست کامل) هم در همان گفتگو، سمت دیگر و با رنگ متفاوت نمایش داده می‌شوند.
-
-وقتی دریافت خودکار روشن است، ابزار `*_get_updates` مدل از همین صندوق جواب می‌دهد و `list_chats` فهرست چت‌ها را به مدل می‌دهد. پیام‌ها در `data/inbox` ذخیره می‌شوند (۵۰۰ پیام آخر هر پیام‌رسان).
-از env هم می‌شود روشنش کرد: `BALE_RECEIVE=true` یا `BALE_CLIENT_RECEIVE=true`.
-
-> فقط یک برنامه باید پیام‌های یک ربات را بخواند. اگر روی ربات وبهوک تنظیم شده یا برنامه‌ی دیگری با همان توکن کار می‌کند، دریافت خودکار را روشن نکنید. خطای وبهوک در همان صفحه با دکمه‌ی «حذف وبهوک» نمایش داده می‌شود.
-> ایتایار دریافت پیام ندارد.
-
-## بله با حساب کاربری (Bale Client)
-
-بله برای ربات‌ها Bot API رسمی دارد، اما برای **خود کاربر** API عمومی ندارد. این پروژه یک سرویس جدا به نام **«بله (حساب کاربری)»** دارد که از پروتکل داخلی کلاینت وب بله استفاده می‌کند (gRPC-Web برای ورود و WebSocket + Protobuf برای پیام‌ها). با آن می‌شود مثل خودتان — با همان حساب شخصی — پیام فرستاد و خواند؛ بدون ربات و بدون اینکه طرف مقابل ربات ببیند.
-
-**ورود:**
-
-1. در «پیام‌رسان‌ها» کارت **بله (حساب کاربری)** را باز کنید.
-2. شماره را با `09…` یا `+98…` وارد کنید و «ارسال کد ورود» را بزنید.
-3. کد پیامک/بله را وارد کنید. اگر حساب رمز دومرحله‌ای دارد، رمز را هم می‌پرسد.
-4. بعد از ورود، نشست روی همین سرور ذخیره می‌شود و سرویس خودکار روشن می‌شود.
-
-نشست به شکل `userId:jwt` در فایل تنظیمات (با دسترسی ۶۰۰) ذخیره می‌شود. از env هم می‌شود آن را داد: `BALE_CLIENT_SESSION` و `BALE_CLIENT_PHONE`. «خروج از حساب» نشست را پاک می‌کند.
-
-**دریافت پیام:** در صفحه‌ی «پیام‌های دریافتی» برای این سرویس «دریافت خودکار» را روشن کنید یا `BALE_CLIENT_RECEIVE=true`. پیام‌هایی که از گوشی/وب خودتان می‌فرستید با برچسب «از حساب بله» نمایش داده می‌شوند.
-
-**نکته‌های مهم:**
-
-- این API **خصوصی و غیررسمی** است؛ بله می‌تواند بدون اطلاع تغییرش دهد. برای همین سرویس جدا از ربات است تا خرابی یکی روی دیگری اثر نگذارد.
-- تا این نسخه ارسال **متن** پشتیبانی می‌شود؛ برای عکس و فایل از ربات بله (`bale_send_photo` / `bale_send_document`) استفاده کنید. خواندن نوع و کپشن عکس/فایل در صندوق کار می‌کند.
-- فقط یک نمونه از این سرور باید با یک نشست به بله وصل شود. اگر همزمان با کلاینت وب/موبایل وصل شوید مشکلی نیست، ولی دو نمونه از dibaMCP با یک نشست می‌توانند پیام‌ها را از دست هم دربیاورند.
-- این کلاینت مستقیم به `next-ws.bale.ai` وصل می‌شود و از `SOCKS_PROXY`/`HTTPS_PROXY` پروژه عبور نمی‌کند. اگر سرور خارج از ایران است و بله دسترسی را بست، سرور را داخل ایران اجرا کنید یا مسیر شبکه را شفاف تونل کنید. آدرس‌ها در تنظیمات همین سرویس (`baseUrl` و `wsUrl`) قابل تغییرند.
-
-پیاده‌سازی پروتکل از کتابخانه‌ی متن‌باز [`@hoseinbnoob/balejs`](https://github.com/Zellias/balejs) (MIT) استفاده می‌کند که برای سازگاری با Node 24 به‌صورت وصله‌شده در [`vendor/balejs`](vendor/balejs) قرار گرفته است.
-
-## روبیکا با حساب کاربری (Rubika Client)
-
-روبیکا هم مثل بله برای ربات‌ها Bot API دارد، اما برای حساب شخصی API عمومی ندارد. سرویس **«روبیکا (حساب کاربری)»** با پروتکل خصوصی کلاینت روبیکا (ورود با شماره/کد، تبادل کلید RSA/AES و WebSocket) کار می‌کند و پیام‌ها را با همان حساب خودتان می‌فرستد و می‌خواند.
-
-**ورود:**
-
-1. در «پیام‌رسان‌ها» کارت **روبیکا (حساب کاربری)** را باز کنید.
-2. شماره را با `09…` وارد کنید و «ارسال کد ورود» را بزنید.
-3. اگر حساب رمز دومرحله‌ای دارد، اول رمز را وارد کنید؛ بعد کد روبیکا را بزنید.
-4. بعد از ورود، نشست (JSON شامل `auth`، `guid` و کلید خصوصی) در `config.json` با دسترسی ۶۰۰ ذخیره و سرویس خودکار روشن می‌شود.
-
-از env هم می‌شود نشست را داد: `RUBIKA_CLIENT_SESSION` (JSON) و `RUBIKA_CLIENT_PHONE`. دریافت خودکار: `RUBIKA_CLIENT_RECEIVE=true`.
-
-**تست با curl:** دستورهای کامل ورود، دریافت کد، گرفتن `chat_id`، ارسال پیام و خواندن صندوق در [`docs/RUBIKA_CLIENT_CURL.md`](docs/RUBIKA_CLIENT_CURL.md) آمده است.
-
-**نکته‌ها:**
-
-- این API خصوصی است و روبیکا می‌تواند بدون اطلاع تغییرش دهد؛ سرویس جدا از ربات است تا خرابی یکی روی دیگری اثر نگذارد.
-- ارسال متن، عکس و فایل پشتیبانی می‌شود. برای `file_id` قبلی در این سرویس پشتیبانی نیست؛ لینک عمومی یا فایل انتخاب‌شده بدهید.
-- یک نمونه از dibaMCP با یک نشست به روبیکا وصل شود؛ چند نمونه همزمان می‌توانند پیام‌ها را از دست هم دربیاورند.
-- این کلاینت مستقیم به سرورهای `iranlms.ir` وصل می‌شود و از `SOCKS_PROXY`/`HTTPS_PROXY` پروژه عبور نمی‌کند؛ اگر سرور خارج از ایران است و روبیکا دسترسی را بست، سرور را داخل ایران اجرا کنید.
-
-پیاده‌سازی پروتکل از کتابخانه‌ی متن‌باز [`rubjs`](https://github.com/hadi-rostami/rubjs) (نسخه‌ی ۳.۲.۴) استفاده می‌کند.
-
-## ایتا با حساب کاربری (Eitaa Client)
-
-ایتا هم MTProto است و کتابخانه‌ی مستقیم Node ندارد. برای همین سرویس **«ایتا (حساب کاربری)»** از یک **پل محلی** به نام [EitaaBun](https://github.com/ghaemifard/EitaaBun) استفاده می‌کند: EitaaBun روی پورت `1234` اجرا می‌شود و dibaMCP از طریق HTTP با آن حرف می‌زند.
-
+#### Claude Code (CLI)
 ```bash
-# پیش‌نیاز: Bun
-npm run eitaa:bridge
+claude mcp add --transport http diba-mcp http://127.0.0.1:3790/mcp --header "Authorization: Bearer <YOUR_TOKEN>"
 ```
 
-بار اول EitaaBun را در `.eitaa-bridge` دانلود و نصب می‌کند. بعد در داشبورد:
-
-- **آدرس پل:** `http://127.0.0.1:1234`
-- **آدرس وب‌هوک:** `http://127.0.0.1:3790/api/eitaa-bridge/webhook`
-- **ورود با حساب ایتا:** شماره → کد → رمز دومرحله‌ای (اگر دارد)
-
-راهنمای کامل و دستورهای curl: [`docs/EITAA_CLIENT_BRIDGE.md`](docs/EITAA_CLIENT_BRIDGE.md).
-
-**نکته‌ها:** پل باید همیشه روشن باشد. ارسال متن، فهرست گفتگوها، تاریخچه و دریافت webhook پشتیبانی می‌شود؛ ارسال مدیا در این نسخه نیست.
-
-## سروش‌پلاس با حساب کاربری (Soroush Client)
-
-سروش‌پلاس روی **MTProto** (پروتکل تلگرام) کار می‌کند، نه یک API ساده. سرویس **«سروش‌پلاس (حساب کاربری)»** از کتابخانه‌ی `sroosh` (پیاده‌سازی GramJS برای سرورهای سروش) استفاده می‌کند و ورود با شماره/کد، رمز دومرحله‌ای، دریافت WebSocket و ارسال متن/عکس/فایل را پشتیبانی می‌کند.
-
-**ورود:**
-
-1. در «پیام‌رسان‌ها» کارت **سروش‌پلاس (حساب کاربری)** را باز کنید.
-2. شماره را با `09…` یا `+98…` وارد کنید و «ارسال کد ورود» را بزنید.
-3. کد ارسال‌شده در اپ سروش (یا پیامک) را وارد کنید.
-4. اگر حساب رمز دومرحله‌ای دارد، رمز را وارد کنید.
-
-نشست به شکل StringSession در `config.json` ذخیره می‌شود. از env هم: `SOROUSH_CLIENT_SESSION` و `SOROUSH_CLIENT_PHONE`؛ دریافت خودکار: `SOROUSH_CLIENT_RECEIVE=true`.
-
-**تست با curl:** دستورها در [`docs/SOROUSH_CLIENT_CURL.md`](docs/SOROUSH_CLIENT_CURL.md).
-
-**نکته‌ها:**
-
-- API خصوصی MTProto است و سروش می‌تواند لایه/سرور را تغییر دهد؛ کتابخانه‌ی `sroosh` باید در آن صورت به‌روزرسانی شود.
-- این کلاینت مستقیم به `im-server.splus.ir` وصل می‌شود و از `SOCKS_PROXY`/`HTTPS_PROXY` پروژه عبور نمی‌کند.
-- فقط یک نمونه از dibaMCP با یک نشست به سروش وصل شود.
-- ورود فقط با شماره و کد انجام می‌شود؛ API ID/Hash به‌صورت داخلی و ثابت در برنامه است.
-
-پیاده‌سازی از کتابخانه‌ی متن‌باز [`sroosh`](https://github.com/hadi-rostami/srooshjs) (نسخه‌ی ۱.۰.۱، MIT) استفاده می‌کند.
-
-## تست کامل
-
-در «پیام‌رسان‌ها» هر سرویس دکمه‌ی **«تست کامل»** دارد (یا `diba-mcp selftest`). قدم‌به‌قدم بررسی می‌کند:
-تنظیمات ← دسترسی شبکه ← توکن ← دسترسی به چت ← ارسال متن ← ارسال عکس ← دریافت پیام.
-برای هر خطا یک راهنمای فارسی نشان می‌دهد و با «کپی گزارش» نتیجه را به‌صورت متن (بدون توکن) برمی‌دارید.
-
-**محدودیت‌ها:** ایتایار فقط به کانال/گروه ارسال می‌کند و دریافت پیام ندارد. `get_updates` در بله و سروش وقتی webhook تنظیم شده باشد کار نمی‌کند. کلاینت‌های حساب کاربری (بله، روبیکا، ایتا و سروش‌پلاس) API خصوصی دارند و ممکن است بعد از تغییر سرویس نیاز به به‌روزرسانی داشته باشند؛ «بله با حساب کاربری» و «ایتا با حساب کاربری» فعلاً فقط متن می‌فرستند (خواندن نوع و کپشن عکس/فایل کار می‌کند).
-
-## تنظیمات امنیت و محدودیت‌ها
-
-| متغیر | پیش‌فرض | کار |
-|---|---|---|
-| `MCP_RATE_LIMIT` | `120` | حداکثر درخواست به `/mcp` در دقیقه برای هر IP |
-| `MCP_WRITE_LIMIT` | `30` | حداکثر فراخوانی ابزارهای ارسالی (پیام، عکس، ...) از طرف مدل در دقیقه — جلوی ارسال انبوه ناخواسته را می‌گیرد |
-| `LOG_RETENTION_DAYS` | `14` | فایل‌های لاگ قدیمی‌تر پاک می‌شوند |
-| `LOG_TO_FILE` | `true` | `false` = لاگ فقط در حافظه |
-| `UPSTREAM_TIMEOUT_MS` | `20000` | سقف انتظار برای جواب API پیام‌رسان‌ها |
-
-نشست داشبورد کوکی امضاشده است و با ری‌استارت سرور از بین نمی‌رود. «خروج» همه‌ی نشست‌ها را باطل می‌کند.
-
-## الحاق به پروژه‌ی دیگر
-
-```js
-import express from "express";
-import { createDibaMcp } from "diba-mcp";   // npm i diba-mcp
-
-const app = express();
-const dibaMcp = createDibaMcp({ dataDir: "./data/diba-mcp" });
-
-app.use("/diba-mcp", dibaMcp.router());                  // داشبورد + /diba-mcp/mcp
-// app.use("/diba-mcp", dibaMcp.router({ dashboard: false }));  // فقط اندپوینت MCP
-
-// استفاده‌ی مستقیم از کد، بدون مدل:
-await dibaMcp.engine.callTool("eitaa_send_message", { text: "سفارش جدید" }, "dashboard");
+#### Cursor & Standard HTTP Clients
+```json
+{
+  "mcpServers": {
+    "diba-mcp": {
+      "url": "http://127.0.0.1:3790/mcp",
+      "headers": {
+        "Authorization": "Bearer <YOUR_TOKEN>"
+      }
+    }
+  }
+}
 ```
 
-تا وقتی روی npm منتشر نشده: `npm i https://github.com/yunessfa/diba-MCP/releases/download/v0.4.1/diba-mcp-0.4.1.tgz`
+---
 
-## اضافه کردن سرویس جدید
+### About Dibachain
 
-یک فایل در `src/providers/` بسازید:
+<p align="center">
+  <a href="https://dibachain.ir" target="_blank" rel="noopener noreferrer">
+    <img src="public/assets/logo-sm.png" alt="Dibachain Logo" width="80" />
+  </a>
+</p>
 
-```ts
-import { z } from "zod";
-import { defineTool, type ProviderDef } from "../core/types.js";
-import { request } from "../core/http.js";
+**Dibachain** is an AI and software engineering company specializing in **large language models (LLMs), autonomous AI agents, enterprise automation, and high-concurrency infrastructure**. Founded in 2015 with offices in Mashhad, Iran and Dubai, UAE, Dibachain builds technical products that empower modern businesses:
+- **Diba Model Family:** Open-weights Persian LLMs and benchmarks on Hugging Face.
+- **DibaRouter:** Intelligent, low-latency AI inference routing layer.
+- **Enterprise Automation:** 24/7 intelligent conversational agents, document parsing, and business process automation.
 
-export const kavenegar: ProviderDef = {
-  id: "kavenegar", name: "Kavenegar", nameFa: "کاوه‌نگار", category: "sms",
-  color: "#0ea5e9", glyph: "ک", description: "ارسال پیامک",
-  fields: [{ key: "apiKey", label: "کلید API", type: "secret", required: true }],
-  tools: [
-    defineTool({
-      name: "kavenegar_send_sms", title: "ارسال پیامک",
-      description: "Send an SMS via Kavenegar",
-      input: { receptor: z.string(), message: z.string() },
-      handler: (a, ctx) => request(`https://api.kavenegar.com/v1/${ctx.config.apiKey}/sms/send.json`, { json: a, secrets: [ctx.config.apiKey] }),
-    }),
-  ],
-};
-```
+#### Contact & Connect
+- 🌐 **Official Website:** [dibachain.ir](https://dibachain.ir)
+- 📞 **Phone:** [+98 (21) 9103-5874](tel:+982191035874)
+- ✉️ **Email:** [info@dibachain.ir](mailto:info@dibachain.ir)
+- 🏢 **R&D Center:** Unit 1002, 10th Floor, Tower 1, Paj Business Complex, Janbaz Sq., Mashhad, Iran
+- 🕒 **Hours:** Saturday – Thursday, 09:00 – 21:00 (IRST)
 
-و در `src/providers/index.ts` به آرایه اضافه‌اش کنید. داشبورد، فرم تنظیمات، آزمایشگاه و ابزار MCP خودکار ساخته می‌شوند.
+---
 
-اگر سرویس API رسمی کلاینت ندارد (مثل بله با حساب کاربری)، می‌توانید در `ProviderDef` فیلد `auth` را هم پیاده کنید؛ آن‌وقت فرم ورود مرحله‌ای (شماره ← کد ← رمز دومرحله‌ای) در کارت همان سرویس نمایش داده می‌شود و نشست با `save` در تنظیمات ذخیره می‌شود.
+### License
 
-## استقرار با داکر
+Distributed under the **MIT License**. Created by Yuness and powered by the Dibachain engineering team.
 
-```bash
-cp .env.example .env          # ADMIN_PASSWORD را عوض کنید
-docker compose up -d --build
-docker compose exec diba-mcp node dist/netcheck.js   # آیا سرور به APIها می‌رسد؟
-```
-
-راهنمای کامل قدم‌به‌قدم (سرور خارج از ایران، تونل SSH، HTTPS با Caddy): **[DEPLOY.md](DEPLOY.md)**
-
-- **سرور خارج از ایران:** بعضی APIهای ایرانی IP خارجی را محدود می‌کنند. با `npm run netcheck` بررسی کنید؛ اگر بسته بود `SOCKS_PROXY` یا `HTTPS_PROXY` را به یک سرور داخل ایران بدهید. همه‌ی درخواست‌های بیرونی از `src/core/net.ts` رد می‌شوند.
-- داشبورد را روی اینترنت فقط با HTTPS باز کنید (پروفایل `https` در compose، با `TRUST_PROXY=1`).
-- تنظیمات و توکن‌ها در volume `diba-mcp-data` (فایل `config.json` با دسترسی 600) می‌مانند. هیچ‌وقت `.env` یا `data/` را commit نکنید.
-
-## نقشه‌ی راه
-
-1. ✅ پیام‌رسان‌ها: بله، ایتا، روبیکا، سروش‌پلاس — متن، عکس، فایل، دریافت پیام و تست کامل
-2. دکمه‌ها در پیام‌ها و «منوی ربات» (پیام خوش‌آمد، دکمه‌ها و جواب خودکار) از داشبورد
-3. پیامک: کاوه‌نگار، SMS.ir، ملی‌پیامک
-4. پرداخت: زرین‌پال، IDPay (ساخت لینک و verify — callback روی پروژه‌ی میزبان)
-5. نقشه: نشان، Map.ir
-6. ابزارهای آفلاین: کد ملی، شبا، تاریخ شمسی، اعداد فارسی
-7. ذخیره‌ی لاگ در دیتابیس، چند کاربر و دسترسی جدا برای هر توکن
+</div>

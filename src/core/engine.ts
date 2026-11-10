@@ -339,6 +339,7 @@ export class DibaMcpEngine {
         description: p.description,
         docsUrl: p.docsUrl,
         enabled: this.store.isEnabled(p),
+        enabledFromEnv: this.store.enabledFromEnv(p),
         ready: this.store.isReady(p),
         missing: this.store.missingFields(p),
         hasTest: Boolean(p.test),

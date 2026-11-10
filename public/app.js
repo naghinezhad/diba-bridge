@@ -308,46 +308,6 @@ async function render() {
 }
 
 // ---------------------------------------------------------------- overview
-function hubSvg(providers, activeTools) {
-  const W = 560, H = 380, cx = W / 2, cy = H / 2;
-  const angles = providers.length === 4 ? [-38, 38, 142, 218] : providers.map((_, i) => (360 / providers.length) * i - 90);
-  const nodes = providers.map((p, i) => {
-    const a = (angles[i] * Math.PI) / 180;
-    return { ...p, x: cx + 205 * Math.cos(a), y: cy + 128 * Math.sin(a) };
-  });
-  const wires = nodes.map((n) => {
-    const mx = (cx + n.x) / 2, my = n.y;
-    const d = `M ${cx} ${cy} Q ${mx} ${my} ${n.x} ${n.y}`;
-    return n.ready ? `<path class="wire-base live" d="${d}"/><path class="wire live" d="${d}"/>` : `<path class="wire" d="${d}"/>`;
-  }).join("");
-  const sub = (n) => (n.ready ? `${fa(n.toolCount)} ابزار` : n.enabled ? "نیاز به تنظیم" : "خاموش");
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="وضعیت اتصال پیام‌رسان‌ها">
-    <defs>
-      <linearGradient id="hubHalo" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#3b82f6"/>
-        <stop offset=".5" stop-color="#1e40af"/>
-        <stop offset="1" stop-color="#3b82f6" stop-opacity="0"/>
-      </linearGradient>
-    </defs>
-    ${wires}
-    <g class="hub">
-      <circle class="hub-halo" cx="${cx}" cy="${cy}" r="64" fill="none" stroke="url(#hubHalo)" stroke-width="2" stroke-dasharray="120 60 40 30"/>
-      <circle cx="${cx}" cy="${cy}" r="50" fill="var(--brand-700)"/>
-      <circle cx="${cx}" cy="${cy}" r="50" fill="none" stroke="rgba(255,255,255,.2)"/>
-      <text x="${cx}" y="${cy - 2}" text-anchor="middle" font-size="22" font-weight="800" fill="#fff">${fa(activeTools)}</text>
-      <text x="${cx}" y="${cy + 18}" text-anchor="middle" font-size="11" font-weight="600" fill="#dbeafe">ابزار فعال</text>
-    </g>
-    ${nodes.map((n) => `
-      <g class="node${n.ready ? "" : " off"}"><a href="#/providers?open=${n.id}" aria-label="${esc(n.nameFa)}">
-        <circle class="node-ring" cx="${n.x}" cy="${n.y}" r="33"/>
-        <g class="disc"><circle cx="${n.x}" cy="${n.y}" r="26" fill="${n.color}"/>
-        <text class="glyph" x="${n.x}" y="${n.y + 7}" text-anchor="middle">${esc(n.glyph)}</text></g>
-        <text class="label" x="${n.x}" y="${n.y + 54}" text-anchor="middle">${esc(n.nameFa)}</text>
-        <text class="sub" x="${n.x}" y="${n.y + 71}" text-anchor="middle">${sub(n)}</text>
-      </a></g>`).join("")}
-  </svg>`;
-}
-
 function callRow(l, expandable = false) {
   return `<div class="call${l.ok ? "" : " fail"}" ${expandable ? `role="button" tabindex="0" data-log="${l.id}"` : ""}>
     <span class="dot" aria-label="${l.ok ? "موفق" : "ناموفق"}"></span>
@@ -363,32 +323,67 @@ async function pageOverview(main) {
   document.getElementById("ver").textContent = `نسخه ${o.version}`;
   const ready = o.providers.filter((p) => p.ready).length;
   main.innerHTML = `
-    ${head("نمای کلی", "هر پیام‌رسانی که توکنش ثبت و روشن شده باشد، ابزارهایش به‌صورت زنده به مدل هوش مصنوعی وصل می‌شود.", "داشبورد دیباچین")}
-    <section class="board">
-      <div class="board-map">${hubSvg(o.providers, o.activeTools)}</div>
-      <div class="board-side">
-        <div class="metric"><span>پیام‌رسان‌های آماده</span><b>${fa(ready)}<small>از ${fa(o.providers.length)}</small></b></div>
-        <div class="metric"><span>فراخوانی‌های امروز</span><b>${fa(o.stats.today)}</b></div>
-        <div class="metric"><span>نرخ موفقیت امروز</span><b>${o.stats.successRate === null ? "—" : fa(o.stats.successRate) + "٪"}</b></div>
-        <div class="metric"><span>میانگین زمان پاسخ</span><b>${o.stats.avgMs === null ? "—" : fa(o.stats.avgMs)}<small>${o.stats.avgMs === null ? "" : "میلی‌ثانیه"}</small></b></div>
-        ${ready === 0 ? `<a class="btn btn-primary" href="#/providers">اولین پیام‌رسان را وصل کنید</a>` : `<a class="btn btn-ghost" href="#/connect">اتصال به Claude و کلاینت‌ها</a>`}
+    ${head("نمای کلی", "وضعیت اتصال، مصرف امروز و آخرین فراخوانی‌ها در یک نگاه.", "داشبورد دیباچین")}
+    <section class="ov-grid">
+      <div class="ov-status">
+        <div class="ov-status-head">
+          <div>
+            <span class="eyebrow">وضعیت زنده</span>
+            <h2>سرویس‌ها</h2>
+          </div>
+          <span class="pill ${ready === o.providers.length ? "pill-ok" : ready ? "pill-warn" : "pill-off"}">
+            ${fa(ready)} از ${fa(o.providers.length)} آماده
+          </span>
+        </div>
+        <div class="ov-provider-list">
+          ${o.providers.map((p) => `
+            <a class="ov-prov ${p.ready ? "is-ready" : p.enabled ? "is-warn" : "is-off"}" href="#/providers?open=${p.id}">
+              <span class="ov-prov-glyph" style="background:${p.color}">${esc(p.glyph)}</span>
+              <span class="ov-prov-text">
+                <b>${esc(p.nameFa)}</b>
+                <small>${p.ready ? `${fa(p.toolCount)} ابزار` : p.enabled ? "نیاز به تنظیم" : "خاموش"}</small>
+              </span>
+              <span class="ov-dot" aria-hidden="true"></span>
+            </a>`).join("")}
+        </div>
+        <div class="ov-status-foot">
+          <button class="btn btn-ghost btn-sm" id="netcheck">بررسی دسترسی شبکه</button>
+          <a class="link-arrow" href="#/providers">مدیریت سرویس‌ها</a>
+        </div>
+        <div class="calls ov-net-out" id="net-out" hidden aria-live="polite"></div>
       </div>
+
+      <aside class="ov-insight">
+        <div class="ov-metric-grid">
+          <div class="ov-metric"><b>${fa(ready)}<small>/${fa(o.providers.length)}</small></b><span>سرویس آماده</span></div>
+          <div class="ov-metric"><b>${fa(o.stats.today)}</b><span>فراخوانی امروز</span></div>
+          <div class="ov-metric"><b>${o.stats.successRate === null ? "—" : fa(o.stats.successRate) + "٪"}</b><span>نرخ موفقیت</span></div>
+          <div class="ov-metric"><b>${o.stats.avgMs === null ? "—" : fa(o.stats.avgMs)}<small>${o.stats.avgMs === null ? "" : "ms"}</small></b><span>میانگین پاسخ</span></div>
+        </div>
+        <div class="ov-next">
+          <span class="ov-kicker">قدم بعدی</span>
+          <b>${ready === 0 ? "اولین سرویس را وصل کنید" : "ابزارها را به مدل وصل کنید"}</b>
+          <p>${ready === 0 ? "یک پیام‌رسان را روشن کنید تا ابزارهایش در دسترس هوش مصنوعی قرار بگیرد." : "آدرس MCP و توکن اتصال را بردارید و در Claude یا کلاینت MCP ثبت کنید."}</p>
+          <div class="ov-next-actions">
+            ${ready === 0
+              ? `<a class="btn btn-primary" href="#/providers">اتصال سرویس</a><a class="btn btn-ghost" href="#/connect">راهنمای اتصال</a>`
+              : `<a class="btn btn-primary" href="#/connect">اتصال به مدل</a><a class="btn btn-ghost" href="#/inbox">${icons.inbox} پیام‌ها</a>`}
+          </div>
+        </div>
+      </aside>
     </section>
-    <div class="section-title">
-      <h2>دسترسی این سرور به پیام‌رسان‌ها</h2>
-      <button class="btn btn-ghost btn-sm" id="netcheck">بررسی دسترسی شبکه</button>
-    </div>
-    <div class="calls" id="net-out"><div class="empty"><b>هنوز بررسی نشده است</b>با کلیک بر روی دکمه بالا، دسترسی این سرور به API پیام‌رسان‌ها تست می‌شود.</div></div>
-    <div class="section-title">
-      <h2>آخرین فراخوانی‌های هوش مصنوعی</h2>
+
+    <div class="section-title ov-recent-title">
+      <h2>آخرین فراخوانی‌ها</h2>
       <a class="link-arrow" href="#/logs">مشاهده همه گزارش‌ها</a>
     </div>
     <div class="calls">
-      ${o.recent.length ? o.recent.map((l) => callRow(l)).join("") : `<div class="empty"><b>هنوز ابزاری فراخوانی نشده است</b>از بخش «آزمایش ابزارها» اولین پیام را ارسال کنید.</div>`}
+      ${o.recent.length ? o.recent.slice(0, 5).map((l) => callRow(l)).join("") : `<div class="empty"><b>هنوز ابزاری فراخوانی نشده است</b>از بخش «آزمایش ابزارها» اولین پیام را ارسال کنید.</div>`}
     </div>`;
 
   document.getElementById("netcheck").onclick = async (e) => {
     const out = document.getElementById("net-out");
+    out.hidden = false;
     const r = await busy(e.currentTarget, () => api("netcheck"));
     const via = r.proxy.type === "direct" ? "مستقیم" : `از طریق پراکسی ${r.proxy.type}`;
     out.innerHTML =
@@ -408,6 +403,10 @@ function fieldHtml(p, f) {
   const locked = f.fromEnv;
   const label = `<label for="${id}">${esc(f.label)}${f.required ? '<span class="req" aria-label="الزامی">*</span>' : ""}${locked ? `<span class="env-badge" title="${esc(f.envName)}">از env</span>` : ""}</label>`;
   const hint = locked ? `<span class="hint">مقدار از متغیر <code class="ltr">${esc(f.envName)}</code> خوانده می‌شود.</span>` : f.help ? `<span class="hint">${esc(f.help)}</span>` : "";
+  if (f.type === "boolean") {
+    const checked = String(f.value) === "true" ? "checked" : "";
+    return `<div class="field"><span class="field-label">${label}</span><div class="check"><label class="switch"><input id="${id}" name="${f.key}" type="checkbox" ${checked} ${locked ? "disabled" : ""}><span></span></label></div>${hint}</div>`;
+  }
   if (f.type === "secret") {
     const ph = f.masked || f.placeholder || "";
     const savedHint = f.masked && !locked ? `<span class="hint">توکن ذخیره شده است. برای تغییر، مقدار جدید را وارد کنید.</span>` : hint;
@@ -504,8 +503,8 @@ function renderProviderMode(p, role, plat) {
         </div>
         <div class="prov-mode-controls">
           ${status(p)}
-          <label class="switch" title="روشن/خاموش کردن این بخش">
-            <input type="checkbox" data-toggle data-id="${p.id}" ${p.enabled ? "checked" : ""} aria-label="روشن کردن ${esc(p.nameFa)}">
+          <label class="switch" title="${p.enabledFromEnv ? "از env کنترل می‌شود" : "روشن/خاموش کردن این بخش"}">
+            <input type="checkbox" data-toggle data-id="${p.id}" ${p.enabled ? "checked" : ""} ${p.enabledFromEnv ? "disabled" : ""} aria-label="روشن کردن ${esc(p.nameFa)}">
             <span></span>
           </label>
         </div>
@@ -845,14 +844,21 @@ async function pageProviders(main, q) {
 
   list.addEventListener("change", async (e) => {
     if (!e.target.matches("[data-toggle]")) return;
-    const id = e.target.dataset.id;
+    const input = e.target;
+    const id = input.dataset.id;
+    if (input.dataset.busy === "1") return;
+    input.dataset.busy = "1";
+    input.disabled = true;
     try {
-      const p = await api(`providers/${id}`, { method: "PUT", body: { enabled: e.target.checked } });
+      const p = await api(`providers/${id}`, { method: "PUT", body: { enabled: input.checked } });
       replace(p);
       toast(p.enabled ? (p.ready ? `${p.nameFa} روشن شد و آماده کار است` : `${p.nameFa} روشن شد؛ تنظیمات را تکمیل کنید`) : `${p.nameFa} خاموش شد`);
     } catch (ex) {
+      input.checked = !input.checked;
       toast(ex.message, true);
-      e.target.checked = !e.target.checked;
+    } finally {
+      delete input.dataset.busy;
+      input.disabled = false;
     }
   });
 
@@ -862,7 +868,9 @@ async function pageProviders(main, q) {
     if (!form) return;
     const id = form.dataset.id;
     const values = {};
-    form.querySelectorAll("input[name]:not(:disabled)").forEach((i) => (values[i.name] = i.value.trim()));
+    form.querySelectorAll("input[name]:not(:disabled)").forEach((i) => {
+      values[i.name] = i.type === "checkbox" ? (i.checked ? "true" : "false") : i.value.trim();
+    });
     try {
       const p = await busy(form.querySelector("[type=submit]"), () => api(`providers/${id}`, { method: "PUT", body: { values } }));
       replace(p);
@@ -881,7 +889,7 @@ function inputFor(name, prop, required, p) {
   const type = prop.type || prop.anyOf?.[0]?.type;
   if (prop["x-media"]) return mediaInput(id, name, label, prop["x-media"], prop.description);
   if (type === "boolean")
-    return `<div class="field"><span class="field-label">${label}</span><div class="check"><label class="switch"><input type="checkbox" id="${id}" data-arg="${name}" data-type="boolean"><span></span></label></div>${desc}</div>`;
+    return `<div class="field"><span class="field-label">${label}</span><div class="check"><label class="switch"><input type="checkbox" id="${id}" data-arg="${name}" data-type="boolean" ${prop.default === true ? "checked" : ""}><span></span></label></div>${desc}</div>`;
   if (type === "number" || type === "integer")
     return `<div class="field">${label}<input id="${id}" class="input ltr-input" type="number" step="${type === "integer" ? 1 : "any"}" data-arg="${name}" data-type="number" ${prop.minimum !== undefined ? `min="${prop.minimum}"` : ""} ${prop.maximum !== undefined ? `max="${prop.maximum}"` : ""}>${desc}</div>`;
   const long = ["text", "caption"].includes(name);
@@ -1070,7 +1078,7 @@ async function pagePlayground(main, q) {
     const args = {};
     pane.querySelectorAll("[data-arg]").forEach((el) => {
       const k = el.dataset.arg;
-      if (el.dataset.type === "boolean") { if (el.checked) args[k] = true; return; }
+      if (el.dataset.type === "boolean") { args[k] = Boolean(el.checked); return; }
       if (el.dataset.type === "media" && el.dataset.dataUrl) { args[k] = el.dataset.dataUrl; return; }
       const v = el.value.trim();
       if (v === "") return;
@@ -1217,8 +1225,13 @@ async function pageInbox(main, q) {
     const qs = sel.p && sel.c ? `?provider=${encodeURIComponent(sel.p)}&chat=${encodeURIComponent(sel.c)}` : "";
     data = await api(`inbox${qs}`);
     const sig = JSON.stringify([data.statuses.map((s) => [s.enabled, s.running, s.lastError, s.received, s.lastPollAt && ago(s.lastPollAt)]), data.chats.map((c) => c.lastDate + c.count), data.messages.length, data.messages[0]?.key, sel]);
-    drawReceivers();
-    if (force || sig !== lastSig) { drawChats(); drawConvo(); }
+    if (force || sig !== lastSig) {
+      // اگر کاربر روی یک سوییچ فوکوس دارد، بازسازی DOM کلیکش را از بین می‌برد؛
+      // ولی بعد از یک تغییر عمدی (force) باید وضعیت تازه کشیده شود.
+      if (force || !document.activeElement?.closest?.("[data-receive]")) drawReceivers();
+      drawChats();
+      drawConvo();
+    }
     lastSig = sig;
   };
   await load(true);
@@ -1257,11 +1270,23 @@ async function pageInbox(main, q) {
     const sw = e.target.closest("[data-receive]");
     if (!sw) return;
     const id = sw.closest("[data-rcv]").dataset.rcv;
+    if (sw.dataset.busy === "1") return;
+    sw.dataset.busy = "1";
+    sw.disabled = true;
     try {
       await api(`inbox/${id}/receive`, { body: { enabled: sw.checked } });
       toast(sw.checked ? `دریافت خودکار ${provOf(id)?.nameFa} فعال شد` : `دریافت خودکار ${provOf(id)?.nameFa} غیرفعال شد`);
-    } catch (ex) { sw.checked = !sw.checked; toast(ex.message, true); }
-    setTimeout(() => load(true), 600);
+    } catch (ex) {
+      sw.checked = !sw.checked;
+      sw.disabled = false;
+      delete sw.dataset.busy;
+      toast(ex.message, true);
+      return;
+    }
+    setTimeout(() => load(true).catch(() => {
+      sw.disabled = false;
+      delete sw.dataset.busy;
+    }), 600);
   });
 
   main.addEventListener("submit", async (e) => {

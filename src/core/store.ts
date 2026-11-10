@@ -160,6 +160,11 @@ export class ConfigStore {
     return this.state(def.id).enabled;
   }
 
+  /** آیا روشن/خاموش بودن از env کنترل می‌شود؟ */
+  enabledFromEnv(def: ProviderDef): boolean {
+    return this.env[`${def.id.toUpperCase()}_ENABLED`] !== undefined;
+  }
+
   missingFields(def: ProviderDef): string[] {
     const { values } = this.resolve(def);
     return def.fields.filter((f) => f.required && !values[f.key]).map((f) => f.key);
