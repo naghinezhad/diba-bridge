@@ -4,10 +4,10 @@
   </a>
 </p>
 
-<h1 align="center">dibaMCP</h1>
+<h1 align="center">Diba Bridge | دیبا پل</h1>
 
 <p align="center">
-  <b>دروازه هوشمند اتصال پیام‌رسان‌های ایرانی به هوش مصنوعی (پروتکل MCP)</b><br>
+  <b>دروازه هوشمند اتصال پیام‌رسان‌های ایرانی به هوش مصنوعی بر بستر پروتکل MCP</b><br>
   <i>Universal Model Context Protocol (MCP) Server & Dashboard for Iranian Messengers</i>
 </p>
 
@@ -25,7 +25,7 @@
   <img src="https://img.shields.io/badge/protocol-MCP_1.32+-green.svg" alt="MCP Version" />
   <img src="https://img.shields.io/badge/license-MIT-purple.svg" alt="License" />
   <img src="https://img.shields.io/badge/docker-ready-2496ed.svg" alt="Docker" />
-  <img src="https://img.shields.io/badge/version-0.4.1-brand.svg" alt="Version 0.4.1" />
+  <img src="https://img.shields.io/badge/brand-Diba_Bridge_%7C_%D8%AF%DB%8C%D8%A8%D8%A7_%D9%BE%D9%84-2563eb.svg" alt="Diba Bridge" />
 </p>
 
 ---
@@ -34,54 +34,54 @@
 
 ## 🇮🇷 فارسی
 
-**dibaMCP** یک سرور قدرتمند، امن و متن‌باز مبتنی بر پروتکل **Model Context Protocol (MCP)** است که امکان اتصال مستقیم و دوطرفه پیام‌رسان‌های محبوب ایرانی (**بله**، **ایتا**، **روبیکا** و **سروش‌پلاس**) را به مدل‌ها و دستیارهای هوش مصنوعی مانند **Claude Code**، **Cursor**، **Claude Desktop** و کلیه کلاینت‌های استاندارد هوش مصنوعی فراهم می‌کند.
+**دیبا پل (Diba Bridge)** یک سرور قدرتمند، امن و استاندارد بر پایه پروتکل **Model Context Protocol (MCP)** است که امکان اتصال پیام‌رسان‌های ایرانی (**بله**، **ایتا**، **روبیکا** و **سروش‌پلاس**) را به دستیارها و کلاینت‌های هوش مصنوعی نظیر **Claude Code**، **Cursor**، **Claude Desktop** و سایر ابزارهای متصل به LLM فراهم می‌سازد.
 
-این پروژه همراه با یک **داشبورد فارسی مدرن** و طراحی‌شده بر اساس **سیستم طراحی رسمی دیباچین** ارائه می‌شود تا مدیریت حساب‌ها، ربات‌ها، مشاهده پیام‌های دریافتی، تست خطوط ارتباطی و آزمایش ابزارها در کمترین زمان ممکن انجام پذیرد.
+این پروژه به همراه یک **داشبورد مدیریتی مدرن فارسی** ارائه می‌شود که بر اساس **سیستم طراحی اختصاصی دیباچین** پیاده‌سازی شده است و مدیریت یکپارچه حساب‌های کاربری و ربات‌ها، خواندن و پاسخ‌گویی به پیام‌های زنده، تست اتصال و آزمایش ابزارها را بسیار ساده و کارآمد می‌کند.
 
 ---
 
-### قابلیت‌های کلیدی
+### قابلیت‌های اصلی دیبا پل
 
-- 🤖 **پشتیبانی دوگانه (ربات رسمی + حساب کاربری):**
-  - **بله (Bale):** ربات رسمی Bot API + کلاینت حساب کاربری (پروتکل وب/WebSocket)
-  - **ایتا (Eitaa):** ربات رسمی ایتایار + کلاینت حساب کاربری (پروتکل MTProto با پل EitaaBun)
-  - **روبیکا (Rubika):** ربات رسمی + کلاینت حساب کاربری (پروتکل کلاینت اختصاصی وب)
-  - **سروش‌پلاس (Soroush+):** ربات رسمی Bot API + کلاینت حساب کاربری (پروتکل MTProto)
-- 📬 **صندوق پیام‌های دریافتی یکپارچه (Shared Inbox):** دریافت پیام‌ها به همراه ارسال پاسخ مستقیم از داشبورد و از طریق ابزار `get_updates` مدل هوش مصنوعی.
-- 🎨 **داشبورد فارسی با سیستم طراحی دیباچین:** رابط کاربری واکنش‌گرا، پشتیبانی از حالت تیره (Dark Mode)، پالت رنگ استاندارد، آکاردئون یکپارچه پیام‌رسان‌ها با اولویت حساب کاربری.
-- ⚡ **آزمایشگاه زنده ابزارها (Playground):** فراخوانی آزمایشی ابزارها، ارسال تصویر و فایل با Drag & Drop یا Paste (Ctrl+V) و مشاهده پاسخ خام JSON.
-- 🔒 **امنیت در سطح سازمانی:** اعتبارسنجی با توکن‌های Bearer، حفاظت در برابر Brute-force، جداسازی دسترسی‌ها و ذخیره نشست‌ها به صورت رمزنگاری‌شده محلی.
-- 🌐 **تست هوشمند شبکه (NetCheck & SelfTest):** امکان بررسی اتصال از داخل یا خارج از ایران به همراه پشتیبانی از SOCKS5/HTTP Proxy.
+- 🤖 **پشتیبانی دوگانه از ربات رسمی و حساب کاربری (Client):**
+  - **بله (Bale):** ربات رسمی Bot API + حساب کاربری (پروتکل وب، WebSocket و Protobuf)
+  - **ایتا (Eitaa):** ربات رسمی ایتایار + حساب کاربری (پروتکل MTProto با پل محلی EitaaBun)
+  - **روبیکا (Rubika):** ربات رسمی + حساب کاربری (پروتکل کلاینت وب با تبادل کلید RSA/AES)
+  - **سروش‌پلاس (Soroush+):** ربات رسمی Bot API + حساب کاربری (پروتکل تلگرامی MTProto)
+- 📬 **صندوق پیام‌های دریافتی یکپارچه (Shared Inbox):** مشاهده پیام‌های دریافتی، تفکیک پیام‌های ورودی و خروجی، امکان پاسخ‌گویی مستقیم و استفاده هوش مصنوعی از ابزار `get_updates`.
+- 🎨 **داشبورد اختصاصی با زبان طراحی دیباچین:** رابط کاربری مدرن، تفکیک آکاردئونی پیام‌رسان‌ها با تب پیش‌فرض حساب کاربری، تم تاریک/روشن و واکنش‌گرایی کامل.
+- 🧪 **محیط آزمایش زنده (Playground):** تست دستی ابزارها، ارسال متن، تصویر و فایل با قابلیت Drag & Drop یا Paste (Ctrl+V) و مشاهده پاسخ JSON سرور.
+- 🔒 **امنیت در سطح سازمانی:** استفاده از توکن‌های Bearer، محدودکننده نرخ درخواست (Rate Limiting) و ذخیره‌سازی نشست‌ها روی سرور محلی با مجوز امنیتی ۶۰۰.
+- 🌐 **تست خودکار شبکه و سلامت اتصال (NetCheck & SelfTest):** بررسی وضعیت دسترسی سرور به APIهای داخلی و خارجی با پشتیبانی از SOCKS5 و HTTP Proxy.
 
 ---
 
 ### نصب و راه‌اندازی سریع
 
-پیش‌نیاز: **Node.js نسخه ۲۲.۱۹ یا بالاتر** (یا استفاده از **Docker**).
+پیش‌نیاز: **Node.js نسخه ۲۲.۱۹ یا بالاتر** (یا استفاده از داکر).
 
-#### روش ۱: اجرای فوری بدون نیاز به نصب (پیشنهادی)
+#### ۱. اجرای سریع بدون نیاز به نصب (با npx)
 ```bash
 npx diba-mcp
 ```
 
-#### روش ۲: نصب سراسری با npm
+#### ۲. نصب سراسری
 ```bash
 npm install -g diba-mcp
 diba-mcp
 ```
 
-#### روش ۳: اجرا با داکر (Docker)
+#### ۳. اجرا با داکر (Docker)
 ```bash
-docker run -d --name diba-mcp -p 127.0.0.1:3790:3790 \
+docker run -d --name diba-bridge -p 127.0.0.1:3790:3790 \
   -e ADMIN_PASSWORD=your-secure-password \
-  -v diba-mcp-data:/app/data \
+  -v diba-bridge-data:/app/data \
   ghcr.io/yunessfa/diba-mcp:latest
 ```
 
-پس از اجرا، داشبورد در آدرس زیر در دسترس خواهد بود:
+سپس داشبورد را در مرورگر باز کنید:  
 👉 **http://127.0.0.1:3790**
 
-> **نکته راه‌اندازی اولیه:** در اولین اجرا در صورت مشخص نکردن `ADMIN_PASSWORD` در فایل محیطی، یک کد راه‌اندازی ۶ حرفی در ترمینال چاپ می‌شود. با وارد کردن آن کد در داشبورد، رمز عبور دلخواه مدیریت را تعیین کنید.
+> **کد راه‌اندازی اولیه:** در اجرای اول (در صورت عدم تعیین `ADMIN_PASSWORD`)، یک کد راه‌اندازی شش‌حرفی در کنسول نمایش داده می‌شود که با استفاده از آن می‌توانید رمز عبور داشبورد را ثبت نمایید.
 
 ---
 
@@ -89,24 +89,24 @@ docker run -d --name diba-mcp -p 127.0.0.1:3790:3790 \
 
 | دستور | توضیحات |
 |---|---|
-| `diba-mcp` | اجرای سرور ترکیبی (داشبورد وب + اندپوینت MCP) |
-| `diba-mcp stdio` | اجرای سبک با ورودی/خروجی استاندارد برای Claude Desktop |
-| `diba-mcp netcheck` | بررسی سلامت دسترسی سرور به سرورهای بله، ایتا، روبیکا و سروش |
-| `diba-mcp selftest [provider] --send` | تست جامع گام‌به‌گام شبکه، توکن و ارسال پیام آزمایشی |
-| `diba-mcp token` | دریافت و چاپ توکن اتصال MCP |
-| `diba-mcp reset-password` | بازنشانی رمز عبور داشبورد |
+| `diba-mcp` | اجرای کامل سرور (داشبورد مدیریتی + اندپوینت پروتکل MCP) |
+| `diba-mcp stdio` | اجرای سبک با انتقال stdio برای کلاینت Claude Desktop |
+| `diba-mcp netcheck` | بررسی ارتباط سرور با آدرس API پیام‌رسان‌ها |
+| `diba-mcp selftest [provider] --send` | تست جامع مرحله‌به‌مرحله شامل شبکه، توکن، چت و ارسال آزمایشی |
+| `diba-mcp token` | نمایش توکن احراز هویت اندپوینت MCP |
+| `diba-mcp reset-password` | بازنشانی رمز عبور ورود به داشبورد |
 
 ---
 
 ### اتصال به کلاینت‌های هوش مصنوعی
 
 #### ۱. Claude Desktop
-فایل پیکربندی Claude Desktop (`claude_desktop_config.json`) را باز کرده و خطوط زیر را اضافه کنید:
+تنظیمات زیر را به فایل `claude_desktop_config.json` اضافه کنید:
 
 ```json
 {
   "mcpServers": {
-    "diba-mcp": {
+    "diba-bridge": {
       "command": "npx",
       "args": ["-y", "diba-mcp", "stdio"]
     }
@@ -116,14 +116,14 @@ docker run -d --name diba-mcp -p 127.0.0.1:3790:3790 \
 
 #### ۲. Claude Code (CLI)
 ```bash
-claude mcp add --transport http diba-mcp http://127.0.0.1:3790/mcp --header "Authorization: Bearer <YOUR_TOKEN>"
+claude mcp add --transport http diba-bridge http://127.0.0.1:3790/mcp --header "Authorization: Bearer <YOUR_TOKEN>"
 ```
 
-#### ۳. Cursor و کلاینت‌های مبتنی بر HTTP
+#### ۳. Cursor و کلاینت‌های JSON
 ```json
 {
   "mcpServers": {
-    "diba-mcp": {
+    "diba-bridge": {
       "url": "http://127.0.0.1:3790/mcp",
       "headers": {
         "Authorization": "Bearer <YOUR_TOKEN>"
@@ -135,9 +135,9 @@ claude mcp add --transport http diba-mcp http://127.0.0.1:3790/mcp --header "Aut
 
 ---
 
-### فهرست ابزارهای MCP (Tools)
+### فهرست ابزارهای هوش مصنوعی (MCP Tools)
 
-| پلتفرم | ابزارهای در اختیار مدل |
+| پیام‌رسان | ابزارهای در دسترس مدل هوش مصنوعی |
 |---|---|
 | **بله (ربات)** | `bale_get_me`, `bale_send_message`, `bale_send_photo`, `bale_send_document`, `bale_get_chat`, `bale_get_updates` |
 | **بله (حساب کاربری)** | `bale_client_get_me`, `bale_client_send_message`, `bale_client_get_chat`, `bale_client_get_dialogs`, `bale_client_get_history`, `bale_client_get_updates` |
@@ -147,29 +147,31 @@ claude mcp add --transport http diba-mcp http://127.0.0.1:3790/mcp --header "Aut
 | **روبیکا (حساب کاربری)** | `rubika_client_get_me`, `rubika_client_send_message`, `rubika_client_send_photo`, `rubika_client_send_file`, `rubika_client_get_chat`, `rubika_client_get_chats`, `rubika_client_get_history`, `rubika_client_get_updates` |
 | **سروش‌پلاس (ربات)** | `soroush_get_me`, `soroush_send_message`, `soroush_send_photo`, `soroush_send_document`, `soroush_get_chat`, `soroush_get_updates` |
 | **سروش‌پلاس (حساب کاربری)** | `soroush_client_get_me`, `soroush_client_send_message`, `soroush_client_send_photo`, `soroush_client_send_file`, `soroush_client_get_chat`, `soroush_client_get_chats`, `soroush_client_get_history`, `soroush_client_get_updates` |
-| **مدیریت عمومی** | `list_services`, `list_chats` |
+| **ابزارهای عمومی** | `list_services`, `list_chats` |
 
 ---
 
 ### درباره دیباچین (Dibachain)
 
 <p align="center">
-  <img src="public/assets/logo-sm.png" alt="لوگوی دیباچین" width="80" />
+  <a href="https://dibachain.ir" target="_blank" rel="noopener noreferrer">
+    <img src="public/assets/logo-sm.png" alt="لوگوی دیباچین" width="84" />
+  </a>
 </p>
 
-**دیباچین (Dibachain)** یک شرکت پیشرو در حوزه **مهندسی نرم‌افزار، هوش مصنوعی (AI)، توسعه مدل‌های زبانی بومی (LLM)، سیستم‌های خودکارساز سازمانی و زیرساخت‌های مقیاس‌پذیر** است.
+**دیباچین (Dibachain)** یک شرکت تخصصی در حوزه **مهندسی نرم‌افزار، هوش مصنوعی (AI)، توسعه مدل‌های زبانی بومی، ایجنت‌های هوشمند سازمانی و زیرساخت‌های مقیاس‌پذیر** است.
 
-فعالیت دیباچین از سال **۱۳۹۴** در مشهد آغاز شده و امروزه با گسترش بازارهای بین‌المللی و ثبت دفتر رسمی در **دبی (امارات متحده عربی)**، راهکارهای فنی در کلاس جهانی ارائه می‌دهد:
-- **خانواده مدل‌های دیبا (Diba Models):** مدل‌های زبانی متن‌باز و تخصصی برای زبان فارسی بر بستر Hugging Face.
-- **روتر هوشمند دیبا (DibaRouter):** زیرساخت هدایت بهینه، کم‌هزینه و پرسرعت درخواست‌های هوش مصنوعی.
-- **توسعه ایجنت‌ها و سیستم‌های اتوماسیون سازمانی:** چت‌بات‌های پاسخگوی ۲۴ ساعته، خطوط تحلیل داده و پردازش صوت و تصویر.
+فعالیت دیباچین از سال **۱۳۹۴** توسط تیمی از متخصصان نرم‌افزار در مشهد آغاز گردید و با گسترش بازارهای فناوری، امروزه با ثبت دفتر بین‌المللی در **دبی (امارات متحده عربی)** به ارائه خدمات می‌پردازد:
+- **خانواده مدل‌های دیبا (Diba Models):** مدل‌های زبانی متن‌باز و تخصصی برای زبان فارسی، میزبانی‌شده بر بستر Hugging Face.
+- **روتر هوشمند دیبا (DibaRouter):** زیرساخت مسیریابی هوشمند و کم‌هزینه بین مدل‌های مختلف زبانی برای کسب‌وکارها.
+- **راهکارهای اتوماسیون سازمانی و ایجنت‌های هوشمند:** چت‌بات‌های پاسخگوی مشتریان، سیستم‌های صوتی و پردازش تصویر و داده.
 
-#### راه‌های ارتباطی با دیباچین
+#### اطلاعات و راه‌های ارتباط با دیباچین
 - 🌐 **وب‌سایت رسمی:** [dibachain.ir](https://dibachain.ir)
-- 📞 **شماره تماس پشتیبانی و مشاوره:** [۰۲۱-۹۱۰۳۵۸۷۴](tel:+982191035874)
-- ✉️ **ایمیل ارتباطی:** [info@dibachain.ir](mailto:info@dibachain.ir)
+- 📞 **شماره تماس:** [۰۲۱-۹۱۰۳۵۸۷۴](tel:+982191035874)
+- ✉️ **پست الکترونیکی:** [info@dibachain.ir](mailto:info@dibachain.ir)
 - 🏢 **آدرس دفتر فنی:** مشهد، میدان جانباز، برج اداری تجاری پاژ، ساختمان اداری ۱، طبقه ۱۰، واحد ۱۰۰۲
-- 🕒 **ساعات کاری:** شنبه تا پنجشنبه، از ساعت ۹:۰۰ الی ۲۱:۰۰
+- 🕒 **ساعات کاری:** شنبه تا پنجشنبه (۹:۰۰ الی ۲۱:۰۰)
 
 ---
 
@@ -179,24 +181,24 @@ claude mcp add --transport http diba-mcp http://127.0.0.1:3790/mcp --header "Aut
 
 ## 🇬🇧 English
 
-**dibaMCP** is a modern, high-performance, and secure **Model Context Protocol (MCP)** server with an integrated Persian web management dashboard. It connects leading Iranian messaging networks (**Bale**, **Eitaa**, **Rubika**, and **Soroush Plus**) to cutting-edge AI coding agents, assistants, and LLM clients including **Claude Code**, **Cursor**, **Claude Desktop**, and custom autonomous workflows.
+**Diba Bridge (دیبا پل)** is an enterprise-grade, high-performance **Model Context Protocol (MCP)** server with an integrated web management dashboard. It connects leading Iranian messaging networks (**Bale**, **Eitaa**, **Rubika**, and **Soroush Plus**) to modern AI agents, developer tools, and LLM clients including **Claude Code**, **Cursor**, **Claude Desktop**, and custom autonomous workflows.
 
-Developed by **[Dibachain](https://dibachain.ir)**, the dashboard and API are built following Dibachain's production design system, ensuring an accessible, responsive, and robust developer experience.
+Developed by **[Dibachain](https://dibachain.ir)**, the dashboard and API strictly follow Dibachain's production design system, delivering a clean, accessible, and responsive user experience.
 
 ---
 
-### Highlights
+### Key Features
 
-- ⚡ **Dual Provider Support (Official Bot API & User Client Accounts):**
-  - **Bale:** Official Bot API + User Web client protocol (gRPC-Web / WebSocket / Protobuf).
-  - **Eitaa:** Official Eitaayar API + User MTProto client via EitaaBun bridge.
-  - **Rubika:** Official Bot API + User Web client protocol (RSA/AES exchange).
-  - **Soroush Plus:** Official Bot API + User MTProto client protocol.
-- 💬 **Shared Live Inbox:** Real-time synchronization of inbound messages with direct reply capabilities from both the dashboard and the AI model (`get_updates`).
-- 🎨 **Dibachain Design System:** Clean, accessible UI with Dark/Light themes, logical RTL layout, and responsive accordions featuring default Client tabs.
-- 🧪 **Interactive Playground:** Direct invocation of tools with file/image drag & drop, clipboard paste support, and real-time response inspection.
-- 🛡️ **Enterprise-Grade Security:** Bearer token authentication, rate limiting, and encrypted local storage.
-- 🌍 **Connectivity Diagnostics:** Built-in `netcheck` and step-by-step `selftest` tools with SOCKS5/HTTP proxy support.
+- ⚡ **Dual Provider Architecture (Official Bot API & User Accounts):**
+  - **Bale:** Official Bot API + Personal User Account (internal Web client protocol via gRPC-Web, WebSocket, and Protobuf).
+  - **Eitaa:** Official Eitaayar API + Personal User Account (MTProto protocol powered by the EitaaBun local bridge).
+  - **Rubika:** Official Bot API + Personal User Account (Web client protocol with RSA/AES key exchange).
+  - **Soroush Plus:** Official Bot API + Personal User Account (Telegram-compatible MTProto client protocol).
+- 💬 **Integrated Live Inbox:** Synchronize real-time conversations across both bot and personal accounts, allowing two-way responses from either the dashboard or the AI agent (`get_updates`).
+- 🎨 **Dibachain Design System:** Production-grade UI featuring unified messenger accordions, default Client account tabs, Dark/Light modes, and accessible RTL typography.
+- 🧪 **Live Tool Playground:** Execute tools interactively, upload images or files via drag & drop or clipboard paste (Ctrl+V), and inspect raw JSON payloads.
+- 🛡️ **Robust Security:** Authenticated Bearer tokens, granular rate limiting, brute-force protection, and secure local session credential storage (POSIX permissions 600).
+- 🌍 **Network Diagnostics:** Built-in `netcheck` and automated `selftest` suites with SOCKS5 and HTTP proxy support.
 
 ---
 
@@ -204,12 +206,12 @@ Developed by **[Dibachain](https://dibachain.ir)**, the dashboard and API are bu
 
 Requires **Node.js >= 22.19** or **Docker**.
 
-#### 1. Instant Run via npx (Zero Installation)
+#### 1. Zero Installation (Run with npx)
 ```bash
 npx diba-mcp
 ```
 
-#### 2. Global Installation via npm
+#### 2. Global Installation
 ```bash
 npm install -g diba-mcp
 diba-mcp
@@ -217,14 +219,16 @@ diba-mcp
 
 #### 3. Run with Docker
 ```bash
-docker run -d --name diba-mcp -p 127.0.0.1:3790:3790 \
+docker run -d --name diba-bridge -p 127.0.0.1:3790:3790 \
   -e ADMIN_PASSWORD=your-secure-password \
-  -v diba-mcp-data:/app/data \
+  -v diba-bridge-data:/app/data \
   ghcr.io/yunessfa/diba-mcp:latest
 ```
 
-Open your browser at:  
+Access the dashboard at:  
 👉 **http://127.0.0.1:3790**
+
+> **Initial Setup:** On first launch without `ADMIN_PASSWORD` in your environment, a 6-character setup code is printed to the console. Enter this code in the dashboard to set your administrative password.
 
 ---
 
@@ -232,23 +236,23 @@ Open your browser at:
 
 | Command | Description |
 |---|---|
-| `diba-mcp` | Start full server (Web dashboard + MCP endpoint) |
+| `diba-mcp` | Start full server (Web dashboard + MCP HTTP endpoint) |
 | `diba-mcp stdio` | Run lightweight stdio transport for Claude Desktop |
-| `diba-mcp netcheck` | Test connectivity from current host to messenger APIs |
-| `diba-mcp selftest [provider] --send` | Comprehensive step-by-step test of credentials, network & delivery |
-| `diba-mcp token` | Display active MCP authorization token |
+| `diba-mcp netcheck` | Verify server network reachability to all messenger APIs |
+| `diba-mcp selftest [provider] --send` | Run automated end-to-end tests (network, tokens, chat and delivery) |
+| `diba-mcp token` | Print current active MCP authentication token |
 | `diba-mcp reset-password` | Reset dashboard administrator password |
 
 ---
 
 ### AI Client Integration
 
-#### Claude Desktop
-Add to your `claude_desktop_config.json`:
+#### 1. Claude Desktop
+Add the following configuration to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "diba-mcp": {
+    "diba-bridge": {
       "command": "npx",
       "args": ["-y", "diba-mcp", "stdio"]
     }
@@ -256,16 +260,16 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-#### Claude Code (CLI)
+#### 2. Claude Code (CLI)
 ```bash
-claude mcp add --transport http diba-mcp http://127.0.0.1:3790/mcp --header "Authorization: Bearer <YOUR_TOKEN>"
+claude mcp add --transport http diba-bridge http://127.0.0.1:3790/mcp --header "Authorization: Bearer <YOUR_TOKEN>"
 ```
 
-#### Cursor & Standard HTTP Clients
+#### 3. Cursor & JSON-based MCP Clients
 ```json
 {
   "mcpServers": {
-    "diba-mcp": {
+    "diba-bridge": {
       "url": "http://127.0.0.1:3790/mcp",
       "headers": {
         "Authorization": "Bearer <YOUR_TOKEN>"
@@ -277,30 +281,48 @@ claude mcp add --transport http diba-mcp http://127.0.0.1:3790/mcp --header "Aut
 
 ---
 
+### MCP Tools Inventory
+
+| Platform | Exposed MCP Tools |
+|---|---|
+| **Bale (Bot)** | `bale_get_me`, `bale_send_message`, `bale_send_photo`, `bale_send_document`, `bale_get_chat`, `bale_get_updates` |
+| **Bale (User Account)** | `bale_client_get_me`, `bale_client_send_message`, `bale_client_get_chat`, `bale_client_get_dialogs`, `bale_client_get_history`, `bale_client_get_updates` |
+| **Eitaa (Bot)** | `eitaa_get_me`, `eitaa_send_message`, `eitaa_send_photo`, `eitaa_send_file` |
+| **Eitaa (User Account)** | `eitaa_client_get_me`, `eitaa_client_send_message`, `eitaa_client_get_chat`, `eitaa_client_get_chats`, `eitaa_client_get_history`, `eitaa_client_get_updates` |
+| **Rubika (Bot)** | `rubika_get_me`, `rubika_send_message`, `rubika_send_photo`, `rubika_send_file`, `rubika_send_location`, `rubika_get_chat`, `rubika_get_updates` |
+| **Rubika (User Account)** | `rubika_client_get_me`, `rubika_client_send_message`, `rubika_client_send_photo`, `rubika_client_send_file`, `rubika_client_get_chat`, `rubika_client_get_chats`, `rubika_client_get_history`, `rubika_client_get_updates` |
+| **Soroush Plus (Bot)** | `soroush_get_me`, `soroush_send_message`, `soroush_send_photo`, `soroush_send_document`, `soroush_get_chat`, `soroush_get_updates` |
+| **Soroush Plus (User Account)** | `soroush_client_get_me`, `soroush_client_send_message`, `soroush_client_send_photo`, `soroush_client_send_file`, `soroush_client_get_chat`, `soroush_client_get_chats`, `soroush_client_get_history`, `soroush_client_get_updates` |
+| **General Utilities** | `list_services`, `list_chats` |
+
+---
+
 ### About Dibachain
 
 <p align="center">
   <a href="https://dibachain.ir" target="_blank" rel="noopener noreferrer">
-    <img src="public/assets/logo-sm.png" alt="Dibachain Logo" width="80" />
+    <img src="public/assets/logo-sm.png" alt="Dibachain Logo" width="84" />
   </a>
 </p>
 
-**Dibachain** is an AI and software engineering company specializing in **large language models (LLMs), autonomous AI agents, enterprise automation, and high-concurrency infrastructure**. Founded in 2015 with offices in Mashhad, Iran and Dubai, UAE, Dibachain builds technical products that empower modern businesses:
-- **Diba Model Family:** Open-weights Persian LLMs and benchmarks on Hugging Face.
-- **DibaRouter:** Intelligent, low-latency AI inference routing layer.
-- **Enterprise Automation:** 24/7 intelligent conversational agents, document parsing, and business process automation.
+**Dibachain** is an engineering technology company specializing in **large language models (LLMs), artificial intelligence systems, enterprise business automation, and high-throughput software architecture**.
 
-#### Contact & Connect
+Founded in 2015 in Mashhad, Iran, Dibachain has expanded its technical reach internationally with registered operations in **Dubai, United Arab Emirates**:
+- **Diba Model Family:** Open-source Persian language models and specialized evaluation datasets hosted on Hugging Face.
+- **DibaRouter:** Low-latency, cost-effective smart model routing platform for enterprises.
+- **AI Automation & Intelligent Agents:** Multi-channel 24/7 autonomous support bots, computer vision pipelines, and voice integration systems.
+
+#### Contact & Company Information
 - 🌐 **Official Website:** [dibachain.ir](https://dibachain.ir)
-- 📞 **Phone:** [+98 (21) 9103-5874](tel:+982191035874)
+- 📞 **Phone Support:** [+98 (21) 9103-5874](tel:+982191035874)
 - ✉️ **Email:** [info@dibachain.ir](mailto:info@dibachain.ir)
-- 🏢 **R&D Center:** Unit 1002, 10th Floor, Tower 1, Paj Business Complex, Janbaz Sq., Mashhad, Iran
-- 🕒 **Hours:** Saturday – Thursday, 09:00 – 21:00 (IRST)
+- 🏢 **Technical Center:** Unit 1002, 10th Floor, Tower 1, Paj Commercial Complex, Janbaz Sq., Mashhad, Iran
+- 🕒 **Business Hours:** Saturday – Thursday, 09:00 – 21:00 (IRST)
 
 ---
 
 ### License
 
-Distributed under the **MIT License**. Created by Yuness and powered by the Dibachain engineering team.
+Distributed under the **MIT License**. Maintained and powered by the Dibachain engineering team.
 
 </div>

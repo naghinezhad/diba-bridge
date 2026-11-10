@@ -1,4 +1,4 @@
-// dibaMCP — داشبورد مدیریت پیام‌رسان‌های هوشمند | دیباچین
+// Diba Bridge (دیبا پل) — داشبورد مدیریت پیام‌رسان‌های هوشمند | دیباچین
 // استانداردهای سیستم طراحی دیباچین (dibachain-design-system.md)
 
 const $app = document.getElementById("app");
@@ -223,7 +223,7 @@ function renderAuth(needsSetup) {
     <div class="auth-form">
       <div class="brand" style="padding:0">
         <img src="assets/logo-sm.png" alt="دیباچین" class="brand-logo">
-        <div><b>dibaMCP</b><small>اتصال پیام‌رسان‌های ایرانی به هوش مصنوعی</small></div>
+        <div><b>Diba Bridge</b><small>دیبا پل — اتصال پیام‌رسان‌ها به هوش مصنوعی</small></div>
       </div>
       ${needsSetup ? `
         <h1>راه‌اندازی اولیه</h1>
@@ -270,8 +270,8 @@ function renderShell() {
       <div class="brand">
         <img src="assets/logo-sm.png" alt="دیباچین" class="brand-logo">
         <div>
-          <b>dibaMCP</b>
-          <small id="ver">نسخه ۰.۴.۱</small>
+          <b>Diba Bridge</b>
+          <small id="ver">دیبا پل</small>
         </div>
       </div>
       <nav class="nav" aria-label="بخش‌ها">
@@ -297,7 +297,7 @@ async function render() {
   clearInterval(state.timer);
   const { page, q } = route();
   document.querySelectorAll(".nav a").forEach((a) => (a.dataset.page === page ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
-  document.title = `${pages.find((p) => p.id === page).title} — dibaMCP | دیباچین`;
+  document.title = `${pages.find((p) => p.id === page).title} — Diba Bridge (دیبا پل) | دیباچین`;
   const main = document.getElementById("main");
   try {
     await ({ overview: pageOverview, providers: pageProviders, playground: pagePlayground, inbox: pageInbox, logs: pageLogs, connect: pageConnect })[page](main, q);
@@ -366,8 +366,8 @@ async function pageOverview(main) {
           <p>${ready === 0 ? "یک پیام‌رسان را روشن کنید تا ابزارهایش در دسترس هوش مصنوعی قرار بگیرد." : "آدرس MCP و توکن اتصال را بردارید و در Claude یا کلاینت MCP ثبت کنید."}</p>
           <div class="ov-next-actions">
             ${ready === 0
-              ? `<a class="btn btn-primary" href="#/providers">اتصال سرویس</a><a class="btn btn-ghost" href="#/connect">راهنمای اتصال</a>`
-              : `<a class="btn btn-primary" href="#/connect">اتصال به مدل</a><a class="btn btn-ghost" href="#/inbox">${icons.inbox} پیام‌ها</a>`}
+      ? `<a class="btn btn-primary" href="#/providers">اتصال سرویس</a><a class="btn btn-ghost" href="#/connect">راهنمای اتصال</a>`
+      : `<a class="btn btn-primary" href="#/connect">اتصال به مدل</a><a class="btn btn-ghost" href="#/inbox">${icons.inbox} پیام‌ها</a>`}
           </div>
         </div>
       </aside>
@@ -497,8 +497,8 @@ function renderProviderMode(p, role, plat) {
           </span>
           <p class="prov-mode-desc">
             ${isClient
-              ? "اتصال از طریق پروتکل وب؛ ارسال و دریافت دوطرفه پیام‌ها به عنوان کاربر واقعی با دسترسی به مخاطبان و گروه‌ها."
-              : "اتصال با توکن اختصاصی BotFather؛ ارسال پیام، محتوای چندرسانه‌ای و دکمه‌های شیشه‌ای برای کسب‌وکار."}
+      ? "اتصال از طریق پروتکل وب؛ ارسال و دریافت دوطرفه پیام‌ها به عنوان کاربر واقعی با دسترسی به مخاطبان و گروه‌ها."
+      : "اتصال با توکن اختصاصی BotFather؛ ارسال پیام، محتوای چندرسانه‌ای و دکمه‌های شیشه‌ای برای کسب‌وکار."}
           </p>
         </div>
         <div class="prov-mode-controls">
