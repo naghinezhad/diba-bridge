@@ -11,7 +11,7 @@ const state = {
   activeTab: {}, // platformKey -> 'client' | 'bot'
   timer: null,
   authTx: {},
-  agent: { open: false, busy: false, messages: [], config: null, unread: 0 },
+  agent: { open: true, busy: false, messages: [], config: null, unread: 0 },
 };
 
 // ---------------------------------------------------------------- utils
@@ -308,6 +308,13 @@ function renderAgentMessages() {
     state.agent.messages
       .map((m) => `<div class="agent-msg ${m.role === "user" ? "is-user" : "is-bot"}"><div class="agent-bubble">${esc(m.content).replace(/\n/g, "<br>")}</div></div>`)
       .join("") +
+    (state.agent.messages.length <= 1 && !state.agent.busy
+      ? `<div class="agent-suggestions">
+          ${["کدام سرویس‌ها آماده‌اند؟", "چرا یک سرویس آماده نیست؟", "چطور ایتا را وصل کنم؟", "اتصال MCP چطور کار می‌کند؟"]
+            .map((q) => `<button type="button" data-agent-suggest="${esc(q)}">${esc(q)}</button>`)
+            .join("")}
+        </div>`
+      : "") +
     (state.agent.busy ? `<div class="agent-msg is-bot"><div class="agent-bubble agent-typing"><i></i><i></i><i></i></div></div>` : "");
   box.scrollTop = box.scrollHeight;
 }
@@ -348,6 +355,7 @@ function initAgent() {
     state.agent.open = open;
     panel.hidden = !open;
     dock.classList.toggle("open", open);
+    document.querySelector(".shell")?.classList.toggle("with-agent", open);
     toggle.setAttribute("aria-expanded", String(open));
     if (open) setTimeout(() => input?.focus(), 50);
   };
@@ -382,6 +390,12 @@ function initAgent() {
       form.requestSubmit();
     }
   });
+  document.getElementById("agent-messages").addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-agent-suggest]");
+    if (!chip) return;
+    input.value = chip.dataset.agentSuggest;
+    form.requestSubmit();
+  });
 
   window.addEventListener("dibarouter-config", refreshAgentConfig);
 }
@@ -389,7 +403,7 @@ function initAgent() {
 // ---------------------------------------------------------------- shell
 function renderShell() {
   $app.innerHTML = `
-  <div class="shell">
+  <div class="shell${state.agent.open ? " with-agent" : ""}">
     <aside class="side">
       <div class="brand">
         <img src="assets/logo-sm.png" alt="دیباپل" class="brand-logo">

@@ -213,6 +213,10 @@ code, .mono {
   grid-template-columns: 260px 1fr;
   min-height: 100vh;
 }
+/* دستیار دیبا به‌صورت ستون چپ ثابت */
+.shell.with-agent {
+  grid-template-columns: 260px minmax(0, 1fr) 360px;
+}
 
 .side {
   position: sticky;
@@ -2388,7 +2392,7 @@ pre.json .b { color: var(--error); }
 .agent-panel {
   width: 350px;
   max-width: calc(100vw - 36px);
-  height: min(520px, calc(100vh - 110px));
+  height: min(520px, calc(100vh - 80px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2398,6 +2402,30 @@ pre.json .b { color: var(--error); }
   box-shadow: 0 24px 70px -18px rgba(8, 20, 50, .55);
 }
 .agent-panel[hidden] { display: none; }
+
+/* Desktop: the assistant is a real left column, not a floating overlay */
+.shell.with-agent .agent-dock {
+  position: sticky;
+  top: 0;
+  left: auto;
+  bottom: auto;
+  width: auto;
+  height: 100vh;
+  z-index: 20;
+  padding: 14px;
+  gap: 0;
+  align-items: stretch;
+  border-inline-start: 1px solid var(--line);
+  background: var(--bg-soft);
+}
+.shell.with-agent .agent-panel {
+  width: 100%;
+  max-width: none;
+  height: calc(100vh - 28px);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.shell.with-agent .agent-fab { display: none; }
 .agent-head {
   display: flex;
   align-items: center;
@@ -2434,6 +2462,27 @@ pre.json .b { color: var(--error); }
 }
 .agent-msg { display: flex; }
 .agent-msg.is-user { justify-content: flex-end; }
+.agent-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 4px;
+}
+.agent-suggestions button {
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 10.5px;
+  cursor: pointer;
+  text-align: start;
+}
+.agent-suggestions button:hover {
+  color: var(--brand-600);
+  border-color: var(--brand-300);
+  background: var(--brand-50);
+}
 .agent-bubble {
   max-width: 88%;
   padding: 9px 11px;
@@ -2491,11 +2540,39 @@ pre.json .b { color: var(--error); }
 }
 .agent-foot a { color: var(--brand-600); font-weight: 700; text-decoration: none; }
 
+@media (max-width: 1400px) {
+  .shell.with-agent .ov-grid,
+  .shell.with-agent .dr-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 1200px) {
+  .shell.with-agent { grid-template-columns: 260px minmax(0, 1fr); }
+  .shell.with-agent .agent-dock {
+    position: fixed;
+    top: auto;
+    left: 18px;
+    bottom: 18px;
+    width: auto;
+    height: auto;
+    z-index: 80;
+    padding: 0;
+    border: 0;
+    background: none;
+    align-items: flex-start;
+  }
+  .shell.with-agent .agent-panel {
+    width: 350px;
+    max-width: calc(100vw - 36px);
+    height: min(520px, calc(100vh - 110px));
+    border-radius: 18px;
+    box-shadow: 0 24px 70px -18px rgba(8, 20, 50, .55);
+  }
+}
 @media (max-width: 900px) {
   .dr-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
-  .agent-dock { left: 12px; right: 12px; bottom: 12px; }
+  .shell.with-agent .agent-dock { left: 12px; right: 12px; bottom: 12px; }
   .agent-fab { align-self: flex-start; }
+  .shell.with-agent .agent-panel { width: 100%; max-width: none; height: min(65vh, 520px); }
   .agent-panel { width: 100%; max-width: none; height: min(65vh, 520px); }
 }
