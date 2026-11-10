@@ -1,10 +1,13 @@
 <p align="center">
   <a href="https://dibachain.ir" target="_blank" rel="noopener noreferrer">
-    <img src="public/assets/logo-sm.png" alt="دیباچین | Dibachain" width="100" height="100" />
+    <img src="public/assets/logo-sm.png" alt="دیباپل | DibaBridge" width="88" height="88" />
   </a>
 </p>
 
-<h1 align="center">Diba Bridge | دیبا پل</h1>
+<h1 align="center" style="margin-bottom: 2px;">دیباپل</h1>
+<p align="center" style="margin-top: 0; font-family: ui-monospace, 'JetBrains Mono', monospace; color: #2563eb; font-weight: 700; font-size: 19px; letter-spacing: 0.5px;">
+  DibaBridge · MCP
+</p>
 
 <p align="center">
   <b>دروازه هوشمند اتصال پیام‌رسان‌های ایرانی به هوش مصنوعی بر بستر پروتکل MCP</b><br>

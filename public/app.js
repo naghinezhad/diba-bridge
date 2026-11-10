@@ -222,8 +222,11 @@ function renderAuth(needsSetup) {
     </div>
     <div class="auth-form">
       <div class="brand" style="padding:0">
-        <img src="assets/logo-sm.png" alt="دیباچین" class="brand-logo">
-        <div><b>Diba Bridge</b><small>دیبا پل — اتصال پیام‌رسان‌ها به هوش مصنوعی</small></div>
+        <img src="assets/logo-sm.png" alt="دیباپل" class="brand-logo">
+        <div class="brand-text">
+          <span class="brand-title">دیباپل</span>
+          <span class="brand-sub">DibaBridge · MCP</span>
+        </div>
       </div>
       ${needsSetup ? `
         <h1>راه‌اندازی اولیه</h1>
@@ -268,10 +271,10 @@ function renderShell() {
   <div class="shell">
     <aside class="side">
       <div class="brand">
-        <img src="assets/logo-sm.png" alt="دیباچین" class="brand-logo">
-        <div>
-          <b>Diba Bridge</b>
-          <small id="ver">دیبا پل</small>
+        <img src="assets/logo-sm.png" alt="دیباپل" class="brand-logo">
+        <div class="brand-text">
+          <span class="brand-title">دیباپل</span>
+          <span class="brand-sub">DibaBridge · MCP</span>
         </div>
       </div>
       <nav class="nav" aria-label="بخش‌ها">
