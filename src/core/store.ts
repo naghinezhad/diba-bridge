@@ -19,7 +19,18 @@ export interface StoredConfig {
   /** با هر خروج یا تغییر رمز زیاد می‌شود و همه‌ی نشست‌های قبلی باطل می‌شوند */
   sessionEpoch: number;
   providers: Record<string, ProviderState>;
+  /** اتصال دیبا روتر برای دستیار داشبورد */
+  dibarouter?: DibaRouterStored;
 }
+
+export interface DibaRouterStored {
+  baseUrl?: string;
+  apiKey?: string;
+  model?: string;
+}
+
+export const DIBAROUTER_DEFAULT_BASE = "https://dibarouter.ir/api/v1";
+export const DIBAROUTER_DEFAULT_MODEL = "dibachain/diba-router-free";
 
 /** نام متغیر محیطی برای هر فیلد: BALE_TOKEN ، RUBIKA_BASE_URL ، ... */
 export function envKey(providerId: string, fieldKey: string): string {
@@ -119,6 +130,43 @@ export class ConfigStore {
   bumpSessionEpoch() {
     this.data.sessionEpoch++;
     this.persist();
+  }
+
+  // ---------- دیبا روتر ----------
+  dibarouter() {
+    const saved = this.data.dibarouter ?? {};
+    const baseUrl = (this.env.DIBAROUTER_BASE_URL || saved.baseUrl || DIBAROUTER_DEFAULT_BASE).replace(/\/+$/, "");
+    return {
+      baseUrl,
+      apiKey: this.env.DIBAROUTER_API_KEY || saved.apiKey || "",
+      model: this.env.DIBAROUTER_MODEL || saved.model || DIBAROUTER_DEFAULT_MODEL,
+      apiKeyFromEnv: Boolean(this.env.DIBAROUTER_API_KEY),
+      baseUrlFromEnv: Boolean(this.env.DIBAROUTER_BASE_URL),
+      modelFromEnv: Boolean(this.env.DIBAROUTER_MODEL),
+    };
+  }
+
+  updateDibarouter(patch: { baseUrl?: string; apiKey?: string; model?: string }) {
+    const cur = this.data.dibarouter ?? {};
+    const next: DibaRouterStored = { ...cur };
+    if (patch.baseUrl !== undefined) {
+      const value = patch.baseUrl.trim().replace(/\/+$/, "");
+      if (value) next.baseUrl = value;
+      else delete next.baseUrl;
+    }
+    if (patch.apiKey !== undefined) {
+      const value = patch.apiKey.trim();
+      if (value) next.apiKey = value;
+      else delete next.apiKey;
+    }
+    if (patch.model !== undefined) {
+      const value = patch.model.trim();
+      if (value) next.model = value;
+      else delete next.model;
+    }
+    this.data.dibarouter = next;
+    this.persist();
+    return this.dibarouter();
   }
 
   // ---------- سرویس‌ها ----------

@@ -30,6 +30,14 @@ describe("soroushClient provider", () => {
       "soroush_client_get_chats",
       "soroush_client_get_history",
       "soroush_client_get_updates",
+      "soroush_client_list_groups",
+      "soroush_client_create_group",
+      "soroush_client_group_members",
+      "soroush_client_add_group_members",
+      "soroush_client_list_channels",
+      "soroush_client_create_channel",
+      "soroush_client_channel_members",
+      "soroush_client_add_channel_members",
     ])
       assert.ok(names.includes(name), `missing ${name}`);
     assert.equal(typeof soroushClient.receive?.poll, "function");

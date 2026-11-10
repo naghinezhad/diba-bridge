@@ -50,6 +50,14 @@ describe("rubikaClient provider", () => {
       "rubika_client_get_chats",
       "rubika_client_get_history",
       "rubika_client_get_updates",
+      "rubika_client_list_groups",
+      "rubika_client_create_group",
+      "rubika_client_group_members",
+      "rubika_client_add_group_members",
+      "rubika_client_list_channels",
+      "rubika_client_create_channel",
+      "rubika_client_channel_members",
+      "rubika_client_add_channel_members",
     ])
       assert.ok(names.includes(name), `missing ${name}`);
     assert.equal(typeof rubikaClient.receive?.poll, "function");

@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { hashPassword, RateLimiter, safeEqual, SignedSessions, verifyPassword } from "../core/auth.js";
+import { dibaRouterChat, dibaRouterModels, dibaRouterTest } from "../core/dibarouter.js";
 import { SERVER_VERSION, type DibaMcpEngine } from "../core/engine.js";
 import { runNetcheck } from "../core/netcheck.js";
 import { hintFor, runSelfTest } from "../core/selftest.js";
@@ -20,6 +21,42 @@ export interface RouterOptions {
 const COOKIE = "dmcp_sid";
 const SESSION_MAX_AGE = 12 * 60 * 60;
 const defaultPublic = fileURLToPath(new URL("../../public", import.meta.url));
+
+function maskKey(key: string): string {
+  if (!key) return "";
+  if (key.length <= 10) return "••••••";
+  return `${key.slice(0, 8)}…${key.slice(-4)}`;
+}
+
+/** پرامپت دستیار: فقط وضعیت امن و راهنمای داشبورد را می‌بیند، نه توکن‌ها */
+function agentSystemPrompt(engine: DibaMcpEngine): string {
+  const providers = engine.describeProviders().map((p) => {
+    const state = p.ready ? "آماده" : p.enabled ? `ناقص (${p.missing.join("، ") || "تنظیم نشده"})` : "خاموش";
+    const auth = p.auth ? `، ورود ${p.auth.loggedIn ? "انجام شده" : "انجام نشده"}` : "";
+    const receive = p.receive.supported ? `، دریافت ${p.receive.enabled ? "روشن" : "خاموش"}` : "";
+    return `- ${p.nameFa} (${p.id}): ${state}${auth}${receive}، ${p.tools.length} ابزار`;
+  });
+  const inbox = engine.inbox
+    .statuses()
+    .map((s) => `- ${s.provider}: ${s.enabled ? "دریافت روشن" : "دریافت خاموش"}${s.lastError ? `، خطا: ${s.lastError}` : ""}`)
+    .join("\n");
+  return `تو «دستیار دیبا» هستی؛ دستیار فارسی داشبورد dibaMCP برای مدیریت پیام‌رسان‌های ایرانی و اتصال آن‌ها به هوش مصنوعی.
+وظیفه‌ات پاسخ دادن به سؤال کاربر درباره‌ی همین سیستم است: وضعیت سرویس‌ها، دلیل آماده نبودن، ورود حساب کاربری، دریافت پیام، ابزارها، MCP، و تنظیمات دیبا روتر.
+قواعد:
+- فارسی، کوتاه، دقیق و عملی جواب بده. اگر مشکل کاربر با یک کلیک حل می‌شود، مسیر همان صفحه را بگو.
+- هیچ توکن، کلید API، رمز یا نشستی را حدس نزن و تکرار نکن؛ فقط بگو در کدام بخش داشبورد ثبت می‌شود.
+- اگر اطلاعات کافی نیست، یک سؤال روشن‌کننده بپرس. اگر پاسخ در سیستم نیست، صادقانه بگو و به مستندات ارجاع بده.
+- صفحه‌های داشبورد: نمای کلی (#/overview)، پیام‌رسان‌ها (#/providers)، پیام‌های دریافتی (#/inbox)، آزمایش ابزارها (#/playground)، گزارش‌ها (#/logs)، اتصال به هوش مصنوعی (#/connect)، دیبا روتر (#/dibarouter).
+- API دیبا روتر سازگار با OpenAI است؛ آدرس پایه https://dibarouter.ir/api/v1 و مستندات https://dibarouter.ir/docs
+- MCP endpoint داشبورد: http://127.0.0.1:3790/mcp (توکن اتصال در صفحه‌ی «اتصال به هوش مصنوعی» است).
+
+وضعیت فعلی سرویس‌ها:
+${providers.join("\n") || "- هنوز سرویسی ثبت نشده"}
+
+وضعیت دریافت پیام‌ها:
+${inbox || "- وضعیتی ثبت نشده"}`;
+}
+
 
 /**
  * یک express.Router کامل:
@@ -158,6 +195,95 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   api.use((req, res, next) => {
     if (!sessions.valid(sid(req))) return void res.status(401).json({ error: "ابتدا وارد شوید" });
     next();
+  });
+
+  // ---------------- دیبا روتر ----------------
+  api.get("/dibarouter", (_req, res) => {
+    const c = engine.store.dibarouter();
+    res.json({
+      baseUrl: c.baseUrl,
+      model: c.model,
+      hasApiKey: Boolean(c.apiKey),
+      apiKeyMasked: maskKey(c.apiKey),
+      apiKeyFromEnv: c.apiKeyFromEnv,
+      baseUrlFromEnv: c.baseUrlFromEnv,
+      modelFromEnv: c.modelFromEnv,
+      configured: Boolean(c.apiKey),
+      docsUrl: "https://dibarouter.ir/docs",
+      keysUrl: "https://dibarouter.ir/keys",
+      defaultBase: "https://dibarouter.ir/api/v1",
+      defaultModel: "dibachain/diba-router-free",
+    });
+  });
+
+  api.put("/dibarouter", (req, res) => {
+    const body = req.body ?? {};
+    if (body.baseUrl !== undefined) {
+      try {
+        const u = new URL(String(body.baseUrl));
+        if (!/^https?:$/.test(u.protocol)) throw new Error("protocol");
+      } catch {
+        return void res.status(400).json({ error: "آدرس پایه باید یک URL معتبر http(s) باشد" });
+      }
+    }
+    engine.store.updateDibarouter({
+      baseUrl: typeof body.baseUrl === "string" ? body.baseUrl : undefined,
+      apiKey: typeof body.apiKey === "string" && body.apiKey.trim() ? body.apiKey : undefined,
+      model: typeof body.model === "string" ? body.model : undefined,
+    });
+    const c = engine.store.dibarouter();
+    res.json({
+      ok: true,
+      baseUrl: c.baseUrl,
+      model: c.model,
+      hasApiKey: Boolean(c.apiKey),
+      apiKeyMasked: maskKey(c.apiKey),
+      configured: Boolean(c.apiKey),
+    });
+  });
+
+  api.post("/dibarouter/test", async (_req, res) => {
+    const c = engine.store.dibarouter();
+    if (!c.apiKey) return void res.status(400).json({ error: "اول کلید API دیبا روتر را ذخیره کنید" });
+    try {
+      const out = await dibaRouterTest(c);
+      res.json({ ok: true, ...out });
+    } catch (err: any) {
+      res.status(err?.status && err.status < 500 ? 400 : 502).json({ error: String(err?.message ?? err) });
+    }
+  });
+
+  api.get("/dibarouter/models", async (_req, res) => {
+    try {
+      const models = await dibaRouterModels(engine.store.dibarouter());
+      res.json({ ok: true, count: models.length, models });
+    } catch (err: any) {
+      res.status(err?.status && err.status < 500 ? 400 : 502).json({ error: String(err?.message ?? err) });
+    }
+  });
+
+  // ---------------- دستیار دیبا (چت‌بات داشبورد) ----------------
+  api.post("/agent/chat", async (req, res) => {
+    const raw = Array.isArray(req.body?.messages) ? req.body.messages : [];
+    const history = raw
+      .filter((m: any) => (m?.role === "user" || m?.role === "assistant") && typeof m?.content === "string")
+      .slice(-20)
+      .map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content.trim().slice(0, 4000) }))
+      .filter((m: any) => m.content);
+    if (!history.length) return void res.status(400).json({ error: "پیامی برای دستیار ارسال نشد" });
+    const total = history.reduce((n: number, m: { content: string }) => n + m.content.length, 0);
+    if (total > 16_000) return void res.status(400).json({ error: "گفتگو طولانی شده؛ یک گفتگوی تازه شروع کنید" });
+    const c = engine.store.dibarouter();
+    if (!c.apiKey) return void res.status(400).json({ error: "برای استفاده از دستیار، ابتدا دیبا روتر را در تب «دیبا روتر» وصل کنید" });
+    try {
+      const out = await dibaRouterChat(c, [{ role: "system", content: agentSystemPrompt(engine) }, ...history], {
+        maxTokens: 900,
+        temperature: 0.35,
+      });
+      res.json({ ok: true, ...out });
+    } catch (err: any) {
+      res.status(err?.status && err.status < 500 ? 400 : 502).json({ error: String(err?.message ?? err) });
+    }
   });
 
   api.get("/overview", (_req, res) => {

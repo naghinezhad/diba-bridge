@@ -530,6 +530,108 @@ const chatId = z
   .optional()
   .describe("Soroush chat id (numeric) or @username. If omitted, the default chat from settings is used.");
 
+function spaceId(value: string): string {
+  const id = String(value ?? "").trim();
+  if (!id) throw new ProviderError("chat_id لازم است.");
+  return id;
+}
+
+async function inputEntity(client: SrooshClient, id: string): Promise<any> {
+  try {
+    return await client.getInputEntity(id);
+  } catch {
+    throw new ProviderError(`چت «${id}» در سروش پیدا نشد.`);
+  }
+}
+
+async function inputUsers(client: SrooshClient, ids: string[]): Promise<any[]> {
+  const users = ids.map((x) => String(x).trim()).filter(Boolean);
+  if (!users.length) throw new ProviderError("حداقل یک member لازم است.");
+  return Promise.all(users.map((id) => inputEntity(client, id)));
+}
+
+async function createSpace(
+  client: SrooshClient,
+  kind: "group" | "channel",
+  title: string,
+  about: string | undefined,
+  members: string[],
+): Promise<any> {
+  const Channels: any = (Api as any).channels;
+  const result: any = await client.invoke(
+    new Channels.CreateChannel({
+      title,
+      about: about ?? "",
+      megagroup: kind === "group",
+      broadcast: kind === "channel",
+    }),
+  );
+  const chat = result?.chats?.[0];
+  const id = chat?.id === undefined ? "" : String(chat.id);
+  if (members.length && id) {
+    const users = await inputUsers(client, members);
+    await client.invoke(new Channels.InviteToChannel({ channel: await inputEntity(client, id), users }));
+  }
+  return {
+    ok: true,
+    chat_id: id,
+    title: chat?.title ?? title,
+    type: kind,
+  };
+}
+
+async function editSpace(client: SrooshClient, id: string, title?: string, about?: string): Promise<any> {
+  const Channels: any = (Api as any).channels;
+  const channel = await inputEntity(client, id);
+  if (title) await client.invoke(new Channels.EditTitle({ channel, title }));
+  if (about !== undefined) {
+    const Messages: any = (Api as any).messages;
+    await client.invoke(new Messages.EditChatAbout({ peer: channel, about }));
+  }
+  return { ok: true, chat_id: id };
+}
+
+async function leaveSpace(client: SrooshClient, id: string): Promise<any> {
+  const Channels: any = (Api as any).channels;
+  await client.invoke(new Channels.LeaveChannel({ channel: await inputEntity(client, id) }));
+  return { ok: true, chat_id: id };
+}
+
+async function deleteSpace(client: SrooshClient, id: string): Promise<any> {
+  const Channels: any = (Api as any).channels;
+  await client.invoke(new Channels.DeleteChannel({ channel: await inputEntity(client, id) }));
+  return { ok: true, chat_id: id };
+}
+
+async function addMembers(client: SrooshClient, id: string, memberIds: string[]): Promise<any> {
+  const Channels: any = (Api as any).channels;
+  const users = await inputUsers(client, memberIds);
+  await client.invoke(new Channels.InviteToChannel({ channel: await inputEntity(client, id), users }));
+  return { ok: true, chat_id: id, added: users.length };
+}
+
+async function membersOf(client: SrooshClient, id: string, limit: number): Promise<any> {
+  const Channels: any = (Api as any).channels;
+  const result: any = await client.invoke(
+    new Channels.GetParticipants({
+      channel: await inputEntity(client, id),
+      filter: new (Api as any).ChannelParticipantsRecent(),
+      offset: 0,
+      limit,
+      hash: 0,
+    }),
+  );
+  return {
+    chat_id: id,
+    count: result?.count,
+    members: (result?.participants ?? []).map((p: any) => ({
+      id: p?.userId === undefined ? undefined : String(p.userId),
+      role: p?.className ?? undefined,
+      admin_rights: p?.adminRights ?? undefined,
+    })),
+  };
+}
+
 export const soroushClient: ProviderDef = {
   id: SOROUSH_CLIENT_ID,
   name: "Soroush Client",
@@ -645,6 +747,168 @@ export const soroushClient: ProviderDef = {
         const entity = await resolveEntity(m.client, chatIdOf(ctx, a.chat_id));
         return sendWithMedia(m.client, entity, a.file, { caption: a.caption, filename: a.filename, forceDocument: true });
       },
+    }),
+    defineTool({
+      name: "soroush_client_list_groups",
+      title: "فهرست گروه‌ها",
+      description: "List Soroush groups of the logged-in account.",
+      input: { limit: z.number().int().min(1).max(100).optional() },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        const dialogs = await m.client.getDialogs({ limit: a.limit ?? 50 });
+        return {
+          groups: dialogs
+            .filter((d: any) => d.isGroup)
+            .map((d: any) => ({ chat_id: String(d.id), title: d.title || d.name, type: "group", unread_count: d.unreadCount })),
+        };
+      },
+    }),
+    defineTool({
+      name: "soroush_client_create_group",
+      title: "ساخت گروه",
+      description: "Create a Soroush group (supergroup), optionally with initial members.",
+      input: {
+        title: z.string().min(1).max(128),
+        about: z.string().max(1024).optional(),
+        member_ids: z.array(z.string()).optional(),
+      },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        return await createSpace(m.client, "group", a.title, a.about, a.member_ids ?? []);
+      },
+    }),
+    defineTool({
+      name: "soroush_client_group_members",
+      title: "اعضای گروه",
+      description: "List members of a Soroush group.",
+      input: { chat_id: z.string(), limit: z.number().int().min(1).max(200).optional() },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        return await membersOf(m.client, spaceId(a.chat_id), a.limit ?? 100);
+      },
+    }),
+    defineTool({
+      name: "soroush_client_add_group_members",
+      title: "افزودن عضو به گروه",
+      description: "Add members to a Soroush group.",
+      input: { chat_id: z.string(), member_ids: z.array(z.string()).min(1) },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        return await addMembers(m.client, spaceId(a.chat_id), a.member_ids);
+      },
+    }),
+    defineTool({
+      name: "soroush_client_edit_group",
+      title: "ویرایش گروه",
+      description: "Edit a Soroush group title/about.",
+      input: { chat_id: z.string(), title: z.string().max(128).optional(), about: z.string().max(1024).optional() },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        if (!a.title && a.about === undefined) throw new ProviderError("title یا about لازم است.");
+        return await editSpace(m.client, spaceId(a.chat_id), a.title, a.about);
+      },
+    }),
+    defineTool({
+      name: "soroush_client_leave_group",
+      title: "خروج از گروه",
+      description: "Leave a Soroush group.",
+      input: { chat_id: z.string() },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => leaveSpace((await getManaged(ctx)).client, spaceId(a.chat_id)),
+    }),
+    defineTool({
+      name: "soroush_client_delete_group",
+      title: "حذف گروه",
+      description: "Delete a Soroush group (owner only).",
+      input: { chat_id: z.string() },
+      annotations: { openWorldHint: true, destructiveHint: true },
+      handler: async (a, ctx) => deleteSpace((await getManaged(ctx)).client, spaceId(a.chat_id)),
+    }),
+    defineTool({
+      name: "soroush_client_list_channels",
+      title: "فهرست کانال‌ها",
+      description: "List Soroush channels of the logged-in account.",
+      input: { limit: z.number().int().min(1).max(100).optional() },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        const dialogs = await m.client.getDialogs({ limit: a.limit ?? 50 });
+        return {
+          channels: dialogs
+            .filter((d: any) => d.isChannel)
+            .map((d: any) => ({ chat_id: String(d.id), title: d.title || d.name, type: "channel", unread_count: d.unreadCount })),
+        };
+      },
+    }),
+    defineTool({
+      name: "soroush_client_create_channel",
+      title: "ساخت کانال",
+      description: "Create a Soroush channel, optionally with initial members.",
+      input: {
+        title: z.string().min(1).max(128),
+        about: z.string().max(1024).optional(),
+        member_ids: z.array(z.string()).optional(),
+      },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        return await createSpace(m.client, "channel", a.title, a.about, a.member_ids ?? []);
+      },
+    }),
+    defineTool({
+      name: "soroush_client_channel_members",
+      title: "اعضای کانال",
+      description: "List members of a Soroush channel.",
+      input: { chat_id: z.string(), limit: z.number().int().min(1).max(200).optional() },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        return await membersOf(m.client, spaceId(a.chat_id), a.limit ?? 100);
+      },
+    }),
+    defineTool({
+      name: "soroush_client_add_channel_members",
+      title: "افزودن عضو به کانال",
+      description: "Add members to a Soroush channel.",
+      input: { chat_id: z.string(), member_ids: z.array(z.string()).min(1) },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        return await addMembers(m.client, spaceId(a.chat_id), a.member_ids);
+      },
+    }),
+    defineTool({
+      name: "soroush_client_edit_channel",
+      title: "ویرایش کانال",
+      description: "Edit a Soroush channel title/about.",
+      input: { chat_id: z.string(), title: z.string().max(128).optional(), about: z.string().max(1024).optional() },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        if (!a.title && a.about === undefined) throw new ProviderError("title یا about لازم است.");
+        return await editSpace(m.client, spaceId(a.chat_id), a.title, a.about);
+      },
+    }),
+    defineTool({
+      name: "soroush_client_leave_channel",
+      title: "خروج از کانال",
+      description: "Leave a Soroush channel.",
+      input: { chat_id: z.string() },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => leaveSpace((await getManaged(ctx)).client, spaceId(a.chat_id)),
+    }),
+    defineTool({
+      name: "soroush_client_delete_channel",
+      title: "حذف کانال",
+      description: "Delete a Soroush channel (owner only).",
+      input: { chat_id: z.string() },
+      annotations: { openWorldHint: true, destructiveHint: true },
+      handler: async (a, ctx) => deleteSpace((await getManaged(ctx)).client, spaceId(a.chat_id)),
     }),
     defineTool({
       name: "soroush_client_get_chats",

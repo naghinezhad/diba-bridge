@@ -147,9 +147,9 @@ claude mcp add --transport http diba-bridge http://127.0.0.1:3790/mcp --header "
 | **ایتا (ربات)** | `eitaa_get_me`, `eitaa_send_message`, `eitaa_send_photo`, `eitaa_send_file` |
 | **ایتا (حساب کاربری)** | `eitaa_client_get_me`, `eitaa_client_send_message`, `eitaa_client_get_chat`, `eitaa_client_get_chats`, `eitaa_client_get_history`, `eitaa_client_get_updates` |
 | **روبیکا (ربات)** | `rubika_get_me`, `rubika_send_message`, `rubika_send_photo`, `rubika_send_file`, `rubika_send_location`, `rubika_get_chat`, `rubika_get_updates` |
-| **روبیکا (حساب کاربری)** | `rubika_client_get_me`, `rubika_client_send_message`, `rubika_client_send_photo`, `rubika_client_send_file`, `rubika_client_get_chat`, `rubika_client_get_chats`, `rubika_client_get_history`, `rubika_client_get_updates` |
+| **روبیکا (حساب کاربری)** | `rubika_client_get_me`, `rubika_client_send_message`, `rubika_client_send_photo`, `rubika_client_send_file`, `rubika_client_get_chat`, `rubika_client_get_chats`, `rubika_client_get_history`, `rubika_client_get_updates` + مدیریت گروه/کانال: `list_groups`, `create_group`, `group_members`, `add_group_members`, `remove_group_member`, `edit_group`, `leave_group`, `delete_group`, `list_channels`, `create_channel`, `channel_members`, `add_channel_members`, `remove_channel_member`, `edit_channel`, `delete_channel` |
 | **سروش‌پلاس (ربات)** | `soroush_get_me`, `soroush_send_message`, `soroush_send_photo`, `soroush_send_document`, `soroush_get_chat`, `soroush_get_updates` |
-| **سروش‌پلاس (حساب کاربری)** | `soroush_client_get_me`, `soroush_client_send_message`, `soroush_client_send_photo`, `soroush_client_send_file`, `soroush_client_get_chat`, `soroush_client_get_chats`, `soroush_client_get_history`, `soroush_client_get_updates` |
+| **سروش‌پلاس (حساب کاربری)** | `soroush_client_get_me`, `soroush_client_send_message`, `soroush_client_send_photo`, `soroush_client_send_file`, `soroush_client_get_chat`, `soroush_client_get_chats`, `soroush_client_get_history`, `soroush_client_get_updates` + مدیریت گروه/کانال: `list_groups`, `create_group`, `group_members`, `add_group_members`, `edit_group`, `leave_group`, `delete_group`, `list_channels`, `create_channel`, `channel_members`, `add_channel_members`, `edit_channel`, `leave_channel`, `delete_channel` |
 | **ابزارهای عمومی** | `list_services`, `list_chats` |
 
 ---
@@ -293,9 +293,9 @@ claude mcp add --transport http diba-bridge http://127.0.0.1:3790/mcp --header "
 | **Eitaa (Bot)** | `eitaa_get_me`, `eitaa_send_message`, `eitaa_send_photo`, `eitaa_send_file` |
 | **Eitaa (User Account)** | `eitaa_client_get_me`, `eitaa_client_send_message`, `eitaa_client_get_chat`, `eitaa_client_get_chats`, `eitaa_client_get_history`, `eitaa_client_get_updates` |
 | **Rubika (Bot)** | `rubika_get_me`, `rubika_send_message`, `rubika_send_photo`, `rubika_send_file`, `rubika_send_location`, `rubika_get_chat`, `rubika_get_updates` |
-| **Rubika (User Account)** | `rubika_client_get_me`, `rubika_client_send_message`, `rubika_client_send_photo`, `rubika_client_send_file`, `rubika_client_get_chat`, `rubika_client_get_chats`, `rubika_client_get_history`, `rubika_client_get_updates` |
+| **Rubika (User Account)** | `rubika_client_get_me`, `rubika_client_send_message`, `rubika_client_send_photo`, `rubika_client_send_file`, `rubika_client_get_chat`, `rubika_client_get_chats`, `rubika_client_get_history`, `rubika_client_get_updates` + group/channel management: `rubika_client_list_groups`, `create_group`, `group_members`, `add_group_members`, `remove_group_member`, `edit_group`, `leave_group`, `delete_group`, `list_channels`, `create_channel`, `channel_members`, `add_channel_members`, `remove_channel_member`, `edit_channel`, `delete_channel` |
 | **Soroush Plus (Bot)** | `soroush_get_me`, `soroush_send_message`, `soroush_send_photo`, `soroush_send_document`, `soroush_get_chat`, `soroush_get_updates` |
-| **Soroush Plus (User Account)** | `soroush_client_get_me`, `soroush_client_send_message`, `soroush_client_send_photo`, `soroush_client_send_file`, `soroush_client_get_chat`, `soroush_client_get_chats`, `soroush_client_get_history`, `soroush_client_get_updates` |
+| **Soroush Plus (User Account)** | `soroush_client_get_me`, `soroush_client_send_message`, `soroush_client_send_photo`, `soroush_client_send_file`, `soroush_client_get_chat`, `soroush_client_get_chats`, `soroush_client_get_history`, `soroush_client_get_updates` + group/channel management: `soroush_client_list_groups`, `create_group`, `group_members`, `add_group_members`, `edit_group`, `leave_group`, `delete_group`, `list_channels`, `create_channel`, `channel_members`, `add_channel_members`, `edit_channel`, `leave_channel`, `delete_channel` |
 | **General Utilities** | `list_services`, `list_chats` |
 
 ---

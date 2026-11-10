@@ -684,6 +684,44 @@ const chatId = z
   .optional()
   .describe("Rubika object_guid (u0… user, g0… group, c0… channel). If omitted, the default chat from settings is used.");
 
+function groupGuid(value: string): string {
+  const id = String(value ?? "").trim();
+  if (!/^g0/i.test(id)) throw new ProviderError("group_guid باید با g0 شروع شود.");
+  return id;
+}
+
+function channelGuid(value: string): string {
+  const id = String(value ?? "").trim();
+  if (!/^c0/i.test(id)) throw new ProviderError("channel_guid باید با c0 شروع شود.");
+  return id;
+}
+
+function memberGuids(values: string[]): string[] {
+  const list = values.map((v) => String(v).trim()).filter(Boolean);
+  if (!list.length) throw new ProviderError("حداقل یک member_guid لازم است.");
+  return list;
+}
+
+function createdEntity(result: any, key: "group" | "channel"): any {
+  return result?.[key] ?? result?.data?.[key] ?? result;
+}
+
+async function listByType(client: any, type: "group" | "channel", limit: number): Promise<any[]> {
+  const data: any = await fetchChats(client);
+  const chats = Array.isArray(data?.chats) ? data.chats : [];
+  return chats
+    .filter((c: any) => chatTypeOfGuid(String(c.object_guid ?? c.guid ?? "")) === type)
+    .slice(0, limit)
+    .map((c: any) => ({
+      chat_id: String(c.object_guid ?? c.guid ?? ""),
+      title: titleOfChat(c),
+      type,
+      member_count: c.member_count,
+      last_message: c.last_message?.text,
+      last_date: isoDate(c.last_message?.time ?? c.time),
+    }));
+}
+
 export const rubikaClient: ProviderDef = {
   id: RUBIKA_CLIENT_ID,
   name: "Rubika Client",
@@ -813,6 +851,196 @@ export const rubikaClient: ProviderDef = {
         const m = await getManaged(ctx);
         const target = await resolveTarget(m.client, chatIdOf(ctx, a.chat_id));
         return sendWithMedia(m.client, target, a.file, "File", a.caption, { filename: a.filename });
+      },
+    }),
+    defineTool({
+      name: "rubika_client_list_groups",
+      title: "فهرست گروه‌ها",
+      description: "List Rubika groups of the logged-in account.",
+      input: { limit: z.number().int().min(1).max(100).optional() },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        return { groups: await listByType(m.client, "group", a.limit ?? 50) };
+      },
+    }),
+    defineTool({
+      name: "rubika_client_create_group",
+      title: "ساخت گروه",
+      description: "Create a Rubika group, optionally with initial members.",
+      input: {
+        title: z.string().min(1).max(128),
+        member_guids: z.array(z.string()).optional(),
+        description: z.string().max(1024).optional(),
+      },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        const members = a.member_guids?.length ? memberGuids(a.member_guids) : [];
+        const result: any = await m.client.addGroup(a.title, members, a.description);
+        const group = createdEntity(result, "group");
+        return { ok: true, group_guid: group?.group_guid ?? group?.object_guid, group };
+      },
+    }),
+    defineTool({
+      name: "rubika_client_group_members",
+      title: "اعضای گروه",
+      description: "List members of a Rubika group (group_guid starts with g0).",
+      input: { group_guid: z.string(), search_text: z.string().optional() },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        return await m.client.getGroupAllMembers(groupGuid(a.group_guid), a.search_text);
+      },
+    }),
+    defineTool({
+      name: "rubika_client_add_group_members",
+      title: "افزودن عضو به گروه",
+      description: "Add one or more members to a Rubika group.",
+      input: { group_guid: z.string(), member_guids: z.array(z.string()).min(1) },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        const result: any = await m.client.addGroupMembers(groupGuid(a.group_guid), memberGuids(a.member_guids));
+        return { ok: true, result };
+      },
+    }),
+    defineTool({
+      name: "rubika_client_remove_group_member",
+      title: "حذف عضو از گروه",
+      description: "Remove/ban a member from a Rubika group.",
+      input: { group_guid: z.string(), member_guid: z.string() },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        const result: any = await m.client.banGroupMember(groupGuid(a.group_guid), String(a.member_guid).trim(), "Set");
+        return { ok: true, result };
+      },
+    }),
+    defineTool({
+      name: "rubika_client_edit_group",
+      title: "ویرایش گروه",
+      description: "Edit a Rubika group title/description.",
+      input: { group_guid: z.string(), title: z.string().max(128).optional(), description: z.string().max(1024).optional() },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        if (!a.title && a.description === undefined) throw new ProviderError("title یا description لازم است.");
+        const result: any = await m.client.editGroupInfo(groupGuid(a.group_guid), a.title, a.description);
+        return { ok: true, result };
+      },
+    }),
+    defineTool({
+      name: "rubika_client_leave_group",
+      title: "خروج از گروه",
+      description: "Leave a Rubika group.",
+      input: { group_guid: z.string() },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        const result: any = await m.client.leaveGroup(groupGuid(a.group_guid));
+        return { ok: true, result };
+      },
+    }),
+    defineTool({
+      name: "rubika_client_delete_group",
+      title: "حذف گروه",
+      description: "Delete a Rubika group (owner only).",
+      input: { group_guid: z.string() },
+      annotations: { openWorldHint: true, destructiveHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        const result: any = await m.client.removeGroup(groupGuid(a.group_guid));
+        return { ok: true, result };
+      },
+    }),
+    defineTool({
+      name: "rubika_client_list_channels",
+      title: "فهرست کانال‌ها",
+      description: "List Rubika channels of the logged-in account.",
+      input: { limit: z.number().int().min(1).max(100).optional() },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        return { channels: await listByType(m.client, "channel", a.limit ?? 50) };
+      },
+    }),
+    defineTool({
+      name: "rubika_client_create_channel",
+      title: "ساخت کانال",
+      description: "Create a Rubika channel, optionally with initial members.",
+      input: {
+        title: z.string().min(1).max(128),
+        description: z.string().max(1024).optional(),
+        member_guids: z.array(z.string()).optional(),
+      },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        const members = a.member_guids?.length ? memberGuids(a.member_guids) : [];
+        const result: any = await m.client.addChannel(a.title, a.description, members);
+        const channel = createdEntity(result, "channel");
+        return { ok: true, channel_guid: channel?.channel_guid ?? channel?.object_guid, channel };
+      },
+    }),
+    defineTool({
+      name: "rubika_client_channel_members",
+      title: "اعضای کانال",
+      description: "List members of a Rubika channel (channel_guid starts with c0).",
+      input: { channel_guid: z.string(), search_text: z.string().optional() },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        return await m.client.getChannelAllMembers(channelGuid(a.channel_guid), a.search_text);
+      },
+    }),
+    defineTool({
+      name: "rubika_client_add_channel_members",
+      title: "افزودن عضو به کانال",
+      description: "Add one or more members to a Rubika channel.",
+      input: { channel_guid: z.string(), member_guids: z.array(z.string()).min(1) },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        const result: any = await m.client.addChannelMembers(channelGuid(a.channel_guid), memberGuids(a.member_guids));
+        return { ok: true, result };
+      },
+    }),
+    defineTool({
+      name: "rubika_client_remove_channel_member",
+      title: "حذف عضو از کانال",
+      description: "Remove/ban a member from a Rubika channel.",
+      input: { channel_guid: z.string(), member_guid: z.string() },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        const result: any = await m.client.banChannelMember(channelGuid(a.channel_guid), String(a.member_guid).trim(), "Set");
+        return { ok: true, result };
+      },
+    }),
+    defineTool({
+      name: "rubika_client_edit_channel",
+      title: "ویرایش کانال",
+      description: "Edit a Rubika channel title/description.",
+      input: { channel_guid: z.string(), title: z.string().max(128).optional(), description: z.string().max(1024).optional() },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        if (!a.title && a.description === undefined) throw new ProviderError("title یا description لازم است.");
+        const result: any = await m.client.editChannelInfo(channelGuid(a.channel_guid), a.title, a.description);
+        return { ok: true, result };
+      },
+    }),
+    defineTool({
+      name: "rubika_client_delete_channel",
+      title: "حذف کانال",
+      description: "Delete a Rubika channel (owner only).",
+      input: { channel_guid: z.string() },
+      annotations: { openWorldHint: true, destructiveHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        const result: any = await m.client.removeChannel(channelGuid(a.channel_guid));
+        return { ok: true, result };
       },
     }),
     defineTool({

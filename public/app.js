@@ -11,6 +11,7 @@ const state = {
   activeTab: {}, // platformKey -> 'client' | 'bot'
   timer: null,
   authTx: {},
+  agent: { open: false, busy: false, messages: [], config: null, unread: 0 },
 };
 
 // ---------------------------------------------------------------- utils
@@ -82,6 +83,7 @@ const icons = {
   playground: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"/></svg>',
   logs: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h10M4 18h13"/></svg>',
   connect: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 15l6-6M10 6l1-1a4.2 4.2 0 0 1 6 6l-1 1M14 18l-1 1a4.2 4.2 0 0 1-6-6l1-1"/></svg>',
+  router: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 16.5h.01M10 16.5h.01M7 9h10M12 2v7M9 5l3-3 3 3"/></svg>',
   theme: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
   logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/></svg>',
   chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>',
@@ -95,6 +97,8 @@ const icons = {
   sparkles: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8zM19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9zM5 16l.9 2.1L8 19l-2.1.9L5 22l-.9-2.1L2 19l2.1-.9z"/></svg>',
   shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
 };
+// کلید منو با شناسه‌ی صفحه یکی است
+icons.dibarouter = icons.router;
 
 const pages = [
   { id: "overview", title: "نمای کلی" },
@@ -102,6 +106,7 @@ const pages = [
   { id: "inbox", title: "پیام‌های دریافتی" },
   { id: "playground", title: "آزمایش ابزارها" },
   { id: "logs", title: "گزارش فراخوانی‌ها" },
+  { id: "dibarouter", title: "دیبا روتر" },
   { id: "connect", title: "اتصال به هوش مصنوعی" },
 ];
 
@@ -134,7 +139,7 @@ const platformMeta = {
     key: "bale",
     nameFa: "بله",
     nameEn: "Bale",
-    glyph: "ب",
+    glyph: '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 10.5C7 9.12 8.12 8 9.5 8h5c1.38 0 2.5 1.12 2.5 2.5v2c0 1.38-1.12 2.5-2.5 2.5h-2.5l-3 2v-2.5H9.5C8.12 14.5 7 13.38 7 12v-1.5z" fill="white"/></svg>',
     color: "#1fb486",
     description: "پیام‌رسان بانکی و ارتباطی بله — اتصال حساب کاربری و ربات رسمی Bot API",
     docsUrl: "https://docs.bale.ai/",
@@ -143,7 +148,7 @@ const platformMeta = {
     key: "eitaa",
     nameFa: "ایتا",
     nameEn: "Eitaa",
-    glyph: "ای",
+    glyph: '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 8.5c0-.83.67-1.5 1.5-1.5h9c.83 0 1.5.67 1.5 1.5v7c0 .83-.67 1.5-1.5 1.5h-9c-.83 0-1.5-.67-1.5-1.5v-7zm1.5 0L12 12l4.5-3.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     color: "#f08a24",
     description: "پیام‌رسان ابری ایتا — پشتیبانی از حساب کاربری و ارسال با ایتایار",
     docsUrl: "https://eitaayar.ir/",
@@ -152,7 +157,7 @@ const platformMeta = {
     key: "rubika",
     nameFa: "روبیکا",
     nameEn: "Rubika",
-    glyph: "رو",
+    glyph: '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 7.5l7 4.5-7 4.5v-9z" fill="white"/>',
     color: "#8b5cf6",
     description: "سوپراپلیکیشن روبیکا — اتصال حساب کاربری برای گروه‌ها و ربات رسمی",
     docsUrl: "https://rubika.ir/",
@@ -161,7 +166,7 @@ const platformMeta = {
     key: "soroush",
     nameFa: "سروش‌پلاس",
     nameEn: "Soroush+",
-    glyph: "س",
+    glyph: '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 9.5A2.5 2.5 0 019.5 7h5A2.5 2.5 0 0117 9.5v2a2.5 2.5 0 01-2.5 2.5H13l-2.5 2v-2H9.5A2.5 2.5 0 017 11.5v-2z" fill="white"/><circle cx="10" cy="11" r=".8" fill="#2563eb"/><circle cx="12" cy="11" r=".8" fill="#2563eb"/><circle cx="14" cy="11" r=".8" fill="#2563eb"/></svg>',
     color: "#2563eb",
     description: "پیام‌رسان سروش‌پلاس — بات‌های تعاملی رسمی و مدیریت حساب کاربری",
     docsUrl: "https://soroush-app.ir/",
@@ -265,6 +270,122 @@ function renderAuth(needsSetup) {
   });
 }
 
+// ---------------------------------------------------------------- agent dock
+function agentDockHtml() {
+  const a = state.agent;
+  return `<div class="agent-dock${a.open ? " open" : ""}" id="agent-dock">
+    <button class="agent-fab" id="agent-toggle" type="button" aria-expanded="${a.open}" aria-controls="agent-panel">
+      <span class="agent-fab-icon">${icons.sparkles}</span>
+      <span class="agent-fab-text">دستیار دیبا</span>
+      <span class="agent-fab-dot" aria-hidden="true"></span>
+    </button>
+    <section class="agent-panel" id="agent-panel" ${a.open ? "" : "hidden"} aria-label="دستیار دیبا">
+      <header class="agent-head">
+        <span class="agent-avatar">${icons.sparkles}</span>
+        <div class="agent-head-text">
+          <b>دستیار دیبا</b>
+          <small id="agent-status">در حال بررسی اتصال…</small>
+        </div>
+        <button class="btn btn-icon btn-quiet" id="agent-close" type="button" aria-label="بستن دستیار">${icons.cross}</button>
+      </header>
+      <div class="agent-messages" id="agent-messages" aria-live="polite"></div>
+      <form class="agent-form" id="agent-form">
+        <textarea id="agent-input" rows="2" placeholder="درباره‌ی سیستم بپرس…" aria-label="سؤال از دستیار"></textarea>
+        <button class="btn btn-primary btn-icon" id="agent-send" type="submit" aria-label="ارسال">${icons.send}</button>
+      </form>
+      <div class="agent-foot">
+        <a href="#/dibarouter">تنظیم دیبا روتر</a>
+        <span>پاسخ‌ها با هوش مصنوعی دیبا روتر</span>
+      </div>
+    </section>
+  </div>`;
+}
+
+function renderAgentMessages() {
+  const box = document.getElementById("agent-messages");
+  if (!box) return;
+  box.innerHTML =
+    state.agent.messages
+      .map((m) => `<div class="agent-msg ${m.role === "user" ? "is-user" : "is-bot"}"><div class="agent-bubble">${esc(m.content).replace(/\n/g, "<br>")}</div></div>`)
+      .join("") +
+    (state.agent.busy ? `<div class="agent-msg is-bot"><div class="agent-bubble agent-typing"><i></i><i></i><i></i></div></div>` : "");
+  box.scrollTop = box.scrollHeight;
+}
+
+async function refreshAgentConfig() {
+  try {
+    const c = await api("dibarouter");
+    state.agent.config = c;
+    const el = document.getElementById("agent-status");
+    if (el) {
+      el.textContent = c.configured ? `متصل · ${c.model}` : "دیبا روتر وصل نیست";
+      el.classList.toggle("is-off", !c.configured);
+    }
+  } catch {
+    // وضعیت اتصال اختیاری است
+  }
+}
+
+function initAgent() {
+  if (!state.agent.messages.length) {
+    state.agent.messages.push({
+      role: "assistant",
+      content: "سلام! من دستیار دیبا هستم. درباره‌ی وضعیت پیام‌رسان‌ها، دلیل آماده نبودن یک سرویس، دریافت پیام‌ها، ابزارها یا اتصال MCP بپرسید.",
+    });
+  }
+  renderAgentMessages();
+  refreshAgentConfig();
+
+  const dock = document.getElementById("agent-dock");
+  const panel = document.getElementById("agent-panel");
+  const toggle = document.getElementById("agent-toggle");
+  const close = document.getElementById("agent-close");
+  const input = document.getElementById("agent-input");
+  const form = document.getElementById("agent-form");
+  if (!dock || !panel || !form) return;
+
+  const setOpen = (open) => {
+    state.agent.open = open;
+    panel.hidden = !open;
+    dock.classList.toggle("open", open);
+    toggle.setAttribute("aria-expanded", String(open));
+    if (open) setTimeout(() => input?.focus(), 50);
+  };
+  toggle.onclick = () => setOpen(!state.agent.open);
+  close.onclick = () => setOpen(false);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && state.agent.open) setOpen(false);
+  });
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text || state.agent.busy) return;
+    input.value = "";
+    state.agent.messages.push({ role: "user", content: text });
+    state.agent.busy = true;
+    renderAgentMessages();
+    try {
+      const r = await api("agent/chat", { body: { messages: state.agent.messages.slice(-20) } });
+      state.agent.messages.push({ role: "assistant", content: r.reply || "پاسخی دریافت نشد." });
+    } catch (err) {
+      const hint = /دیبا روتر|کلید/.test(err.message) ? "\n\nاز تب «دیبا روتر» اتصال را تنظیم کنید." : "";
+      state.agent.messages.push({ role: "assistant", content: `⚠️ ${err.message}${hint}` });
+    } finally {
+      state.agent.busy = false;
+      renderAgentMessages();
+    }
+  };
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      form.requestSubmit();
+    }
+  });
+
+  window.addEventListener("dibarouter-config", refreshAgentConfig);
+}
+
 // ---------------------------------------------------------------- shell
 function renderShell() {
   $app.innerHTML = `
@@ -273,7 +394,9 @@ function renderShell() {
       <div class="brand">
         <img src="assets/logo-sm.png" alt="دیباپل" class="brand-logo">
         <div class="brand-text">
-          <span class="brand-title">دیباپل</span>
+          <div class="brand-title-row">
+            <span class="brand-title">دیباپل</span>
+          </div>
           <span class="brand-sub">DibaBridge · MCP</span>
         </div>
       </div>
@@ -282,10 +405,12 @@ function renderShell() {
       </nav>
       <div class="side-foot">
         <button class="btn btn-icon btn-quiet" id="theme" title="تغییر تم (روشن / تاریک)" aria-label="تغییر تم">${icons.theme}</button>
+            <span class="ver-badge" id="ver"></span>
         <button class="btn btn-icon btn-quiet" id="logout" title="خروج از حساب" aria-label="خروج">${icons.logout}</button>
       </div>
     </aside>
     <main class="main" id="main"></main>
+    ${agentDockHtml()}
   </div>`;
   document.getElementById("theme").onclick = () => {
     const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
@@ -294,6 +419,7 @@ function renderShell() {
     try { localStorage.setItem("dmcp-theme", next); } catch { }
   };
   document.getElementById("logout").onclick = async () => { await api("auth/logout", { body: {} }); boot(); };
+  initAgent();
 }
 
 async function render() {
@@ -303,7 +429,7 @@ async function render() {
   document.title = `${pages.find((p) => p.id === page).title} — Diba Bridge (دیبا پل) | دیباچین`;
   const main = document.getElementById("main");
   try {
-    await ({ overview: pageOverview, providers: pageProviders, playground: pagePlayground, inbox: pageInbox, logs: pageLogs, connect: pageConnect })[page](main, q);
+    await ({ overview: pageOverview, providers: pageProviders, playground: pagePlayground, inbox: pageInbox, logs: pageLogs, dibarouter: pageDibaRouter, connect: pageConnect })[page](main, q);
   } catch (e) {
     if (!(e instanceof AuthError)) main.innerHTML = `<div class="err-box">${esc(e.message)}</div>`;
   }
@@ -323,7 +449,8 @@ function callRow(l, expandable = false) {
 
 async function pageOverview(main) {
   const o = await api("overview");
-  document.getElementById("ver").textContent = `نسخه ${o.version}`;
+  const verEl = document.getElementById("ver");
+  if (verEl) verEl.textContent = `نسخه ${o.version}`;
   const ready = o.providers.filter((p) => p.ready).length;
   main.innerHTML = `
     ${head("نمای کلی", "وضعیت اتصال، مصرف امروز و آخرین فراخوانی‌ها در یک نگاه.", "داشبورد دیباچین")}
@@ -341,7 +468,7 @@ async function pageOverview(main) {
         <div class="ov-provider-list">
           ${o.providers.map((p) => `
             <a class="ov-prov ${p.ready ? "is-ready" : p.enabled ? "is-warn" : "is-off"}" href="#/providers?open=${p.id}">
-              <span class="ov-prov-glyph" style="background:${p.color}">${esc(p.glyph)}</span>
+              <span class="ov-prov-glyph" style="background:${p.color}">${p.glyph}</span>
               <span class="ov-prov-text">
                 <b>${esc(p.nameFa)}</b>
                 <small>${p.ready ? `${fa(p.toolCount)} ابزار` : p.enabled ? "نیاز به تنظیم" : "خاموش"}</small>
@@ -554,7 +681,7 @@ function platformAccordionHtml(plat) {
   return `
   <article class="prov-card ${isOpen ? "open" : ""} ${isReady ? "is-ready" : ""}" data-plat="${plat.key}">
     <div class="prov-card-header" data-plat-header="${plat.key}">
-      <div class="disc" style="background:${plat.color}">${esc(plat.glyph)}</div>
+      <div class="disc" style="background:${plat.color}">${plat.glyph}</div>
       <div class="prov-info">
         <div class="prov-info-top">
           <b class="prov-name">${esc(plat.nameFa)}</b>
@@ -1114,7 +1241,7 @@ const kindFa = { photo: "تصویر", file: "فایل", video: "ویدیو", voi
 function receiverHtml(p, st) {
   if (!p) return "";
   if (!st.supported)
-    return `<div class="rcv off"><div class="disc sm" style="background:${p.color}">${esc(p.glyph)}</div><div class="rcv-body"><b>${esc(p.nameFa)}</b><span class="hint">ایتایار فقط ارسال پیام دارد؛ دریافت در نسخه کلاینت پشتیبانی می‌شود.</span></div></div>`;
+    return `<div class="rcv off"><div class="disc sm" style="background:${p.color}">${p.glyph}</div><div class="rcv-body"><b>${esc(p.nameFa)}</b><span class="hint">ایتایار فقط ارسال پیام دارد؛ دریافت در نسخه کلاینت پشتیبانی می‌شود.</span></div></div>`;
   const ready = p.ready;
   let pill, info = "";
   if (!ready) { pill = `<span class="pill pill-off">${p.auth ? "وارد نشده" : "توکن ثبت نشده"}</span>`; info = `<a href="#/providers?open=${p.id}">${p.auth ? "ورود به حساب" : "ثبت توکن"}</a>`; }
@@ -1123,7 +1250,7 @@ function receiverHtml(p, st) {
   else pill = '<span class="pill pill-off">خاموش</span>';
   const webhook = /webhook/i.test(st.lastError || "");
   return `<div class="rcv${st.lastError ? " has-err" : ""}" data-rcv="${p.id}">
-    <div class="disc sm" style="background:${p.color}">${esc(p.glyph)}</div>
+    <div class="disc sm" style="background:${p.color}">${p.glyph}</div>
     <div class="rcv-body">
       <div class="rcv-top"><b>${esc(p.nameFa)}</b>${pill}</div>
       <span class="hint">${info}</span>
@@ -1169,7 +1296,7 @@ async function pageInbox(main, q) {
       const active = c.provider === sel.p && c.chatId === sel.c;
       const isDef = defaultChat(c.provider) === c.chatId;
       return `<button class="chat-item" data-p="${c.provider}" data-c="${esc(c.chatId)}" aria-current="${active}">
-        <span class="disc xs" style="background:${p?.color || "var(--brand)"}">${esc(p?.glyph || "•")}</span>
+        <span class="disc xs" style="background:${p?.color || "var(--brand)"}">${p?.glyph || "•"}</span>
         <span class="ci-body">
           <span class="ci-top"><b dir="auto">${esc(c.title || c.chatId)}</b><span class="meta">${ago(c.lastDate)}</span></span>
           <span class="ci-sub">${c.lastDirection === "out" ? '<span class="ci-you">شما: </span>' : ""}<span dir="auto">${esc(kindFa[c.lastText] ?? c.lastText ?? "—")}</span></span>
@@ -1364,6 +1491,137 @@ async function pageLogs(main) {
   };
 }
 
+// ---------------------------------------------------------------- diba router
+async function pageDibaRouter(main) {
+  const d = await api("dibarouter");
+  main.innerHTML = `${head(
+    "دیبا روتر",
+    "دستیار دیبا و ابزارهای هوش مصنوعی داشبورد از این اتصال استفاده می‌کنند. DibaRouter یک API سازگار با OpenAI است.",
+    "اتصال مدل",
+    `<a class="btn btn-ghost btn-sm" href="https://dibarouter.ir/docs" target="_blank" rel="noopener">${icons.external} مستندات</a>`,
+  )}
+  <section class="dr-grid">
+    <div class="dr-connector">
+      <div class="dr-head">
+        <div class="dr-title">
+          <span class="dr-logo">${icons.router}</span>
+          <div><b>اتصال DibaRouter</b><p class="hint">یک API برای همه‌ی مدل‌ها؛ سازگار با OpenAI SDK.</p></div>
+        </div>
+        <span class="pill ${d.configured ? "pill-ok" : "pill-off"}" id="dr-pill">${d.configured ? "متصل" : "تنظیم نشده"}</span>
+      </div>
+
+      <form class="prov-form dr-form" id="dr-form">
+        <div class="field">
+          <label for="dr-base">آدرس پایه API ${d.baseUrlFromEnv ? '<span class="env-badge">از env</span>' : ""}</label>
+          <input class="input ltr-input" id="dr-base" value="${esc(d.baseUrl)}" ${d.baseUrlFromEnv ? "disabled" : ""} placeholder="https://dibarouter.ir/api/v1">
+          <span class="hint">آدرس رسمی: <code class="ltr">https://dibarouter.ir/api/v1</code></span>
+        </div>
+        <div class="field">
+          <label for="dr-key">کلید API ${d.apiKeyFromEnv ? '<span class="env-badge">از env</span>' : ""}</label>
+          <div class="input-wrap">
+            <input class="input ltr-input" id="dr-key" type="password" autocomplete="off" ${d.apiKeyFromEnv ? "disabled" : ""} placeholder="${d.hasApiKey ? esc(d.apiKeyMasked) : "sk-dc-v1-…"}">
+            <button class="btn btn-icon btn-quiet" type="button" data-dr-reveal aria-label="نمایش کلید">${icons.eye}</button>
+          </div>
+          <span class="hint">${d.hasApiKey ? "کلید ذخیره شده است؛ برای تغییر مقدار جدید را وارد کنید." : `کلید را از <a href="${esc(d.keysUrl)}" target="_blank" rel="noopener">پنل دیبا روتر</a> بسازید.`}</span>
+        </div>
+        <div class="field">
+          <label for="dr-model">مدل ${d.modelFromEnv ? '<span class="env-badge">از env</span>' : ""}</label>
+          <input class="input ltr-input" id="dr-model" value="${esc(d.model)}" list="dr-models" ${d.modelFromEnv ? "disabled" : ""} placeholder="dibachain/diba-router-free">
+          <datalist id="dr-models"></datalist>
+          <span class="hint">پیش‌فرض <code class="ltr">dibachain/diba-router-free</code> رایگان و خودکار است. با «دریافت مدل‌ها» فهرست را ببینید.</span>
+        </div>
+        <div class="prov-actions">
+          <button class="btn btn-primary" type="submit">ذخیره اتصال</button>
+          <button class="btn btn-ghost" type="button" id="dr-test">تست اتصال</button>
+          <button class="btn btn-ghost" type="button" id="dr-models-btn">دریافت مدل‌ها</button>
+        </div>
+        <div class="test-out" id="dr-out"></div>
+      </form>
+    </div>
+
+    <aside class="dr-guide">
+      <div class="dr-guide-card">
+        <span class="eyebrow">سازگار با OpenAI</span>
+        <h3>اتصال در چند خط</h3>
+        <p class="hint">همان کلید و مدلی که اینجا ذخیره می‌کنید، در SDKهای OpenAI، LangChain و Vercel AI هم قابل استفاده است.</p>
+        <pre class="json ltr">${esc(`base_url = "${d.defaultBase}"\napi_key  = "sk-dc-v1-..."\nmodel    = "${d.defaultModel}"`)}</pre>
+        <div class="dr-links">
+          <a href="${esc(d.keysUrl)}" target="_blank" rel="noopener">ساخت کلید API</a>
+          <a href="https://dibarouter.ir/docs" target="_blank" rel="noopener">مستندات API</a>
+          <a href="https://dibarouter.ir/docs/sdks" target="_blank" rel="noopener">SDKها و Connectorها</a>
+        </div>
+      </div>
+      <div class="dr-guide-card dr-agent-card">
+        <span class="dr-agent-icon">${icons.sparkles}</span>
+        <div>
+          <b>دستیار دیبا</b>
+          <p class="hint">درباره‌ی سیستم، سرویس‌ها و اتصال‌ها از دستیار چت بپرسید. دستیار از همین اتصال استفاده می‌کند.</p>
+          <button class="btn btn-ghost btn-sm" type="button" id="dr-open-agent">باز کردن دستیار</button>
+        </div>
+      </div>
+    </aside>
+  </section>`;
+
+  const form = document.getElementById("dr-form");
+  const out = document.getElementById("dr-out");
+  const key = document.getElementById("dr-key");
+  const base = document.getElementById("dr-base");
+  const model = document.getElementById("dr-model");
+
+  document.querySelector("[data-dr-reveal]").onclick = () => {
+    key.type = key.type === "password" ? "text" : "password";
+  };
+  document.getElementById("dr-open-agent").onclick = () => document.getElementById("agent-toggle")?.click();
+
+  const show = (html, ok = true) => {
+    out.innerHTML = ok ? `<div class="ok-box">${html}</div>` : `<div class="err-box">${html}</div>`;
+  };
+  const refreshPill = (configured) => {
+    const pill = document.getElementById("dr-pill");
+    if (!pill) return;
+    pill.className = `pill ${configured ? "pill-ok" : "pill-off"}`;
+    pill.textContent = configured ? "متصل" : "تنظیم نشده";
+  };
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const body = { baseUrl: base.value.trim(), model: model.value.trim() };
+    if (key.value.trim()) body.apiKey = key.value.trim();
+    try {
+      const r = await busy(form.querySelector("[type=submit]"), () => api("dibarouter", { method: "PUT", body }));
+      key.value = "";
+      key.placeholder = r.apiKeyMasked || "sk-dc-v1-…";
+      refreshPill(r.configured);
+      window.dispatchEvent(new Event("dibarouter-config"));
+      toast(r.configured ? "اتصال دیبا روتر ذخیره شد" : "تنظیمات ذخیره شد؛ کلید API را وارد کنید");
+      show(`اتصال ذخیره شد. مدل: <code class="ltr">${esc(r.model)}</code>`);
+    } catch (ex) {
+      show(esc(ex.message), false);
+    }
+  };
+
+  document.getElementById("dr-test").onclick = async (e) => {
+    try {
+      const r = await busy(e.currentTarget, () => api("dibarouter/test", { body: {} }));
+      show(`اتصال موفق بود. پاسخ مدل: <b>${esc(r.reply)}</b> · مدل: <code class="ltr">${esc(r.routedModel || r.model)}</code>`);
+    } catch (ex) {
+      show(esc(ex.message), false);
+    }
+  };
+
+  document.getElementById("dr-models-btn").onclick = async (e) => {
+    try {
+      const r = await busy(e.currentTarget, () => api("dibarouter/models"));
+      const list = document.getElementById("dr-models");
+      list.innerHTML = r.models.map((m) => `<option value="${esc(m.id)}">${esc(m.name || m.id)}</option>`).join("");
+      const free = r.models.filter((m) => m.is_free).length;
+      show(`${fa(r.count)} مدل چت/بینایی دریافت شد${free ? ` · ${fa(free)} مدل رایگان` : ""}`);
+    } catch (ex) {
+      show(esc(ex.message), false);
+    }
+  };
+}
+
 // ---------------------------------------------------------------- connect
 async function pageConnect(main) {
   const c = await api("connection");
@@ -1438,7 +1696,8 @@ async function boot() {
   catch { $app.innerHTML = `<div class="boot"><div class="err-box">امکان اتصال به سرور diba-mcp وجود ندارد. از روشن بودن سرور اطمینان حاصل کرده و صفحه را تازه کنید.</div></div>`; return; }
   if (!s.authenticated) return renderAuth(s.needsSetup);
   renderShell();
-  document.getElementById("ver").textContent = `نسخه ${s.version}`;
+  const verEl = document.getElementById("ver");
+  if (verEl) verEl.textContent = `نسخه ${s.version}`;
   render();
 }
 
