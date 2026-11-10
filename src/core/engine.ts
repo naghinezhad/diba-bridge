@@ -260,7 +260,7 @@ export class DibaMcpEngine {
       { name: SERVER_NAME, version: SERVER_VERSION },
       {
         instructions:
-          "Tools for Iranian services (messengers: Bale bot, Bale user account, Eitaa, Rubika, Soroush Plus). Tool names are prefixed with the service id. Call list_services first if unsure what is configured.",
+          "Tools for Iranian services (messengers: Bale bot, Bale user account, Eitaa bot, Eitaa user account via bridge, Rubika bot, Rubika user account, Soroush Plus bot, Soroush Plus user account). Tool names are prefixed with the service id. Call list_services first if unsure what is configured.",
       },
     );
 

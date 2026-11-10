@@ -6,6 +6,7 @@ import { hashPassword, RateLimiter, safeEqual, SignedSessions, verifyPassword } 
 import { SERVER_VERSION, type DibaMcpEngine } from "../core/engine.js";
 import { runNetcheck } from "../core/netcheck.js";
 import { hintFor, runSelfTest } from "../core/selftest.js";
+import { handleEitaaBridgeWebhook } from "../providers/eitaa-client.js";
 
 export interface RouterOptions {
   /** نمایش داشبورد (پیش‌فرض: true). در پروژه‌ی میزبان می‌توانید خاموشش کنید */
@@ -143,6 +144,14 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     if (sessions.valid(sid(req))) engine.store.bumpSessionEpoch();
     setCookie(req, res, "", 0);
     res.json({ ok: true });
+  });
+
+  // EitaaBun پیام‌های جدید را به این آدرس می‌فرستد. توکن داخل query است چون
+  // EitaaBun هدر سفارشی نمی‌فرستد. عمداً قبل از middleware ورود است.
+  api.post("/eitaa-bridge/webhook", (req, res) => {
+    const token = typeof req.query.token === "string" ? req.query.token : undefined;
+    const accepted = handleEitaaBridgeWebhook(req.body, token);
+    res.status(accepted ? 200 : 202).json({ ok: accepted });
   });
 
   // از اینجا به بعد ورود لازم است

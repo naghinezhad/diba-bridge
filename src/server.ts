@@ -49,6 +49,10 @@ export function startHttp(opts: HttpOptions = {}): Promise<{ url: string; server
 
 /** اجرا با stdio (Claude Desktop و ...). هیچ چیزی روی stdout چاپ نمی‌شود. */
 export async function startStdio(opts: { dataDir?: string } = {}) {
+  // پروتکل stdio روی stdout کار می‌کند؛ لاگ‌های کتابخانه‌های کلاینت نباید آن را خراب کنند
+  console.log = (...args: any[]) => console.error(...args);
+  console.info = (...args: any[]) => console.error(...args);
+  console.debug = (...args: any[]) => console.error(...args);
   const dibaMcp = createDibaMcp({ dataDir: opts.dataDir });
   await dibaMcp.createMcpServer().connect(new StdioServerTransport());
   console.error(`[diba-mcp] stdio آماده است — ${dibaMcp.engine.activeTools().length} ابزار فعال — داده: ${dibaMcp.dataDir}`);

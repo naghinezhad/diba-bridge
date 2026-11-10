@@ -2,11 +2,12 @@
 
 سرور MCP برای وصل کردن سرویس‌های ایرانی به مدل‌های هوش مصنوعی (Claude، Cursor و هر کلاینت MCP دیگر)، همراه با داشبورد فارسی برای مدیریت.
 
-**مرحله‌ی ۱ (همین نسخه):** پیام‌رسان‌ها — بله (هم ربات و هم حساب کاربری)، ایتا، روبیکا، سروش‌پلاس
+**مرحله‌ی ۱ (همین نسخه):** پیام‌رسان‌ها — بله، روبیکا و سروش‌پلاس (هم ربات و هم حساب کاربری)، ایتا (ربات + حساب کاربری با پل EitaaBun)
 
 ## نصب و اجرا
 
 پیش‌نیاز: Node.js نسخه‌ی ۲۲.۱۹ یا جدیدتر (یا فقط Docker).
+> اگر با `bun dev` اجرا می‌کنید، Bun فقط اسکریپت را اجرا می‌کند و `tsx` از Node موجود در `PATH` استفاده می‌کند؛ اول Node 24 را فعال کنید (مثلاً `fnm use 24` یا `nvm use 24`).
 
 **با npx — بدون نصب:**
 
@@ -95,7 +96,7 @@ src/
 │  └─ logger.ts       # لاگ فراخوانی‌ها: حافظه + فایل روزانه در data/logs
 ├─ providers/
 │  ├─ telegram-like.ts  # factory مشترک بله و سروش‌پلاس (Bot API شبیه تلگرام)
-│  ├─ bale.ts  bale-client.ts  soroush.ts  eitaa.ts  rubika.ts
+│  ├─ bale.ts  bale-client.ts  soroush.ts  soroush-client.ts  eitaa.ts  eitaa-client.ts  rubika.ts  rubika-client.ts
 │  └─ index.ts          # فهرست سرویس‌ها
 ├─ http/router.ts     # express.Router: /mcp + /api + داشبورد
 ├─ index.ts           # API کتابخانه برای الحاق
@@ -104,6 +105,7 @@ src/
 ├─ main.ts            # اجرای HTTP از روی env (Docker، npm run dev)
 └─ stdio.ts           # اجرای stdio
 public/               # داشبورد (HTML/CSS/JS ساده، بدون build)
+docs/                 # راهنمای تست curl (ورود روبیکا با حساب کاربری)
 vendor/balejs/        # کتابخانه‌ی کلاینت بله، وصله‌شده برای Node 24
 test/
 ├─ unit/             # تست‌های واحد (auth، store، net، engine)
@@ -116,9 +118,12 @@ test/
 |---|---|
 | بله (ربات) | `bale_get_me` `bale_send_message` `bale_send_photo` `bale_send_document` `bale_get_chat` `bale_get_updates` |
 | بله (حساب کاربری) | `bale_client_get_me` `bale_client_send_message` `bale_client_get_chat` `bale_client_get_dialogs` `bale_client_get_history` `bale_client_get_updates` |
-| سروش‌پلاس | `soroush_get_me` `soroush_send_message` `soroush_send_photo` `soroush_send_document` `soroush_get_chat` `soroush_get_updates` |
-| ایتا | `eitaa_get_me` `eitaa_send_message` `eitaa_send_photo` `eitaa_send_file` |
-| روبیکا | `rubika_get_me` `rubika_send_message` `rubika_send_photo` `rubika_send_file` `rubika_send_location` `rubika_get_chat` `rubika_get_updates` |
+| سروش‌پلاس (ربات) | `soroush_get_me` `soroush_send_message` `soroush_send_photo` `soroush_send_document` `soroush_get_chat` `soroush_get_updates` |
+| سروش‌پلاس (حساب کاربری) | `soroush_client_get_me` `soroush_client_send_message` `soroush_client_send_photo` `soroush_client_send_file` `soroush_client_get_chat` `soroush_client_get_chats` `soroush_client_get_history` `soroush_client_get_updates` |
+| ایتا (ربات) | `eitaa_get_me` `eitaa_send_message` `eitaa_send_photo` `eitaa_send_file` |
+| ایتا (حساب کاربری، پل EitaaBun) | `eitaa_client_get_me` `eitaa_client_get_chat` `eitaa_client_send_message` `eitaa_client_get_chats` `eitaa_client_get_history` `eitaa_client_get_updates` |
+| روبیکا (ربات) | `rubika_get_me` `rubika_send_message` `rubika_send_photo` `rubika_send_file` `rubika_send_location` `rubika_get_chat` `rubika_get_updates` |
+| روبیکا (حساب کاربری) | `rubika_client_get_me` `rubika_client_send_message` `rubika_client_send_photo` `rubika_client_send_file` `rubika_client_get_chat` `rubika_client_get_chats` `rubika_client_get_history` `rubika_client_get_updates` |
 | همه | `list_services` `list_chats` |
 
 **ارسال عکس و فایل:** ورودی هر ابزار رسانه‌ای می‌تواند لینک عمومی، فایل انتخاب‌شده از دستگاه (در داشبورد: دکمه، کشیدن و رها کردن، یا Ctrl+V)، یا `file_id` قبلی همان پیام‌رسان باشد. لینک‌ها را خود سرور دانلود و آپلود می‌کند، پس لازم نیست پیام‌رسان به آن لینک دسترسی داشته باشد. حداکثر حجم ۲۰ مگابایت.
@@ -130,7 +135,7 @@ test/
 
 در داشبورد، صفحه‌ی **«پیام‌های دریافتی»**:
 
-1. برای بله (ربات یا حساب کاربری)، روبیکا یا سروش «دریافت خودکار» را روشن کنید (یا یک بار «بررسی الان» را بزنید).
+1. برای بله (ربات یا حساب کاربری)، روبیکا (ربات یا حساب کاربری)، سروش (ربات یا حساب کاربری) یا ایتا (حساب کاربری) «دریافت خودکار» را روشن کنید (یا یک بار «بررسی الان» را بزنید).
 2. از گوشی یک پیام به ربات بدهید. برای کانال: ربات را ادمین کنید و یک پست بگذارید.
 3. چت در فهرست ظاهر می‌شود: شناسه‌اش را کپی کنید، «تنظیم به‌عنوان چت پیش‌فرض» را بزنید یا همان‌جا جواب بدهید.
 
@@ -166,13 +171,80 @@ test/
 
 پیاده‌سازی پروتکل از کتابخانه‌ی متن‌باز [`@hoseinbnoob/balejs`](https://github.com/Zellias/balejs) (MIT) استفاده می‌کند که برای سازگاری با Node 24 به‌صورت وصله‌شده در [`vendor/balejs`](vendor/balejs) قرار گرفته است.
 
+## روبیکا با حساب کاربری (Rubika Client)
+
+روبیکا هم مثل بله برای ربات‌ها Bot API دارد، اما برای حساب شخصی API عمومی ندارد. سرویس **«روبیکا (حساب کاربری)»** با پروتکل خصوصی کلاینت روبیکا (ورود با شماره/کد، تبادل کلید RSA/AES و WebSocket) کار می‌کند و پیام‌ها را با همان حساب خودتان می‌فرستد و می‌خواند.
+
+**ورود:**
+
+1. در «پیام‌رسان‌ها» کارت **روبیکا (حساب کاربری)** را باز کنید.
+2. شماره را با `09…` وارد کنید و «ارسال کد ورود» را بزنید.
+3. اگر حساب رمز دومرحله‌ای دارد، اول رمز را وارد کنید؛ بعد کد روبیکا را بزنید.
+4. بعد از ورود، نشست (JSON شامل `auth`، `guid` و کلید خصوصی) در `config.json` با دسترسی ۶۰۰ ذخیره و سرویس خودکار روشن می‌شود.
+
+از env هم می‌شود نشست را داد: `RUBIKA_CLIENT_SESSION` (JSON) و `RUBIKA_CLIENT_PHONE`. دریافت خودکار: `RUBIKA_CLIENT_RECEIVE=true`.
+
+**تست با curl:** دستورهای کامل ورود، دریافت کد، گرفتن `chat_id`، ارسال پیام و خواندن صندوق در [`docs/RUBIKA_CLIENT_CURL.md`](docs/RUBIKA_CLIENT_CURL.md) آمده است.
+
+**نکته‌ها:**
+
+- این API خصوصی است و روبیکا می‌تواند بدون اطلاع تغییرش دهد؛ سرویس جدا از ربات است تا خرابی یکی روی دیگری اثر نگذارد.
+- ارسال متن، عکس و فایل پشتیبانی می‌شود. برای `file_id` قبلی در این سرویس پشتیبانی نیست؛ لینک عمومی یا فایل انتخاب‌شده بدهید.
+- یک نمونه از dibaMCP با یک نشست به روبیکا وصل شود؛ چند نمونه همزمان می‌توانند پیام‌ها را از دست هم دربیاورند.
+- این کلاینت مستقیم به سرورهای `iranlms.ir` وصل می‌شود و از `SOCKS_PROXY`/`HTTPS_PROXY` پروژه عبور نمی‌کند؛ اگر سرور خارج از ایران است و روبیکا دسترسی را بست، سرور را داخل ایران اجرا کنید.
+
+پیاده‌سازی پروتکل از کتابخانه‌ی متن‌باز [`rubjs`](https://github.com/hadi-rostami/rubjs) (نسخه‌ی ۳.۲.۴) استفاده می‌کند.
+
+## ایتا با حساب کاربری (Eitaa Client)
+
+ایتا هم MTProto است و کتابخانه‌ی مستقیم Node ندارد. برای همین سرویس **«ایتا (حساب کاربری)»** از یک **پل محلی** به نام [EitaaBun](https://github.com/ghaemifard/EitaaBun) استفاده می‌کند: EitaaBun روی پورت `1234` اجرا می‌شود و dibaMCP از طریق HTTP با آن حرف می‌زند.
+
+```bash
+# پیش‌نیاز: Bun
+npm run eitaa:bridge
+```
+
+بار اول EitaaBun را در `.eitaa-bridge` دانلود و نصب می‌کند. بعد در داشبورد:
+
+- **آدرس پل:** `http://127.0.0.1:1234`
+- **آدرس وب‌هوک:** `http://127.0.0.1:3790/api/eitaa-bridge/webhook`
+- **ورود با حساب ایتا:** شماره → کد → رمز دومرحله‌ای (اگر دارد)
+
+راهنمای کامل و دستورهای curl: [`docs/EITAA_CLIENT_BRIDGE.md`](docs/EITAA_CLIENT_BRIDGE.md).
+
+**نکته‌ها:** پل باید همیشه روشن باشد. ارسال متن، فهرست گفتگوها، تاریخچه و دریافت webhook پشتیبانی می‌شود؛ ارسال مدیا در این نسخه نیست.
+
+## سروش‌پلاس با حساب کاربری (Soroush Client)
+
+سروش‌پلاس روی **MTProto** (پروتکل تلگرام) کار می‌کند، نه یک API ساده. سرویس **«سروش‌پلاس (حساب کاربری)»** از کتابخانه‌ی `sroosh` (پیاده‌سازی GramJS برای سرورهای سروش) استفاده می‌کند و ورود با شماره/کد، رمز دومرحله‌ای، دریافت WebSocket و ارسال متن/عکس/فایل را پشتیبانی می‌کند.
+
+**ورود:**
+
+1. در «پیام‌رسان‌ها» کارت **سروش‌پلاس (حساب کاربری)** را باز کنید.
+2. شماره را با `09…` یا `+98…` وارد کنید و «ارسال کد ورود» را بزنید.
+3. کد ارسال‌شده در اپ سروش (یا پیامک) را وارد کنید.
+4. اگر حساب رمز دومرحله‌ای دارد، رمز را وارد کنید.
+
+نشست به شکل StringSession در `config.json` ذخیره می‌شود. از env هم: `SOROUSH_CLIENT_SESSION` و `SOROUSH_CLIENT_PHONE`؛ دریافت خودکار: `SOROUSH_CLIENT_RECEIVE=true`.
+
+**تست با curl:** دستورها در [`docs/SOROUSH_CLIENT_CURL.md`](docs/SOROUSH_CLIENT_CURL.md).
+
+**نکته‌ها:**
+
+- API خصوصی MTProto است و سروش می‌تواند لایه/سرور را تغییر دهد؛ کتابخانه‌ی `sroosh` باید در آن صورت به‌روزرسانی شود.
+- این کلاینت مستقیم به `im-server.splus.ir` وصل می‌شود و از `SOCKS_PROXY`/`HTTPS_PROXY` پروژه عبور نمی‌کند.
+- فقط یک نمونه از dibaMCP با یک نشست به سروش وصل شود.
+- ورود فقط با شماره و کد انجام می‌شود؛ API ID/Hash به‌صورت داخلی و ثابت در برنامه است.
+
+پیاده‌سازی از کتابخانه‌ی متن‌باز [`sroosh`](https://github.com/hadi-rostami/srooshjs) (نسخه‌ی ۱.۰.۱، MIT) استفاده می‌کند.
+
 ## تست کامل
 
 در «پیام‌رسان‌ها» هر سرویس دکمه‌ی **«تست کامل»** دارد (یا `diba-mcp selftest`). قدم‌به‌قدم بررسی می‌کند:
 تنظیمات ← دسترسی شبکه ← توکن ← دسترسی به چت ← ارسال متن ← ارسال عکس ← دریافت پیام.
 برای هر خطا یک راهنمای فارسی نشان می‌دهد و با «کپی گزارش» نتیجه را به‌صورت متن (بدون توکن) برمی‌دارید.
 
-**محدودیت‌ها:** ایتایار فقط به کانال/گروه ارسال می‌کند و دریافت پیام ندارد. `get_updates` در بله و سروش وقتی webhook تنظیم شده باشد کار نمی‌کند. «بله با حساب کاربری» فعلاً فقط متن می‌فرستد (خواندن عکس/فایل کار می‌کند) و چون API خصوصی است ممکن است بعد از تغییر بله نیاز به به‌روزرسانی داشته باشد.
+**محدودیت‌ها:** ایتایار فقط به کانال/گروه ارسال می‌کند و دریافت پیام ندارد. `get_updates` در بله و سروش وقتی webhook تنظیم شده باشد کار نمی‌کند. کلاینت‌های حساب کاربری (بله، روبیکا، ایتا و سروش‌پلاس) API خصوصی دارند و ممکن است بعد از تغییر سرویس نیاز به به‌روزرسانی داشته باشند؛ «بله با حساب کاربری» و «ایتا با حساب کاربری» فعلاً فقط متن می‌فرستند (خواندن نوع و کپشن عکس/فایل کار می‌کند).
 
 ## تنظیمات امنیت و محدودیت‌ها
 

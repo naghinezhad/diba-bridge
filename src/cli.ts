@@ -23,7 +23,7 @@ const HELP = `dibaMCP v${SERVER_VERSION} — سرور MCP برای پیام‌ر
   diba-mcp [start]          اجرای داشبورد و اندپوینت MCP (پیش‌فرض)
   diba-mcp stdio            اجرا با stdio برای Claude Desktop و کلاینت‌های مشابه
   diba-mcp netcheck         بررسی دسترسی این سیستم به API بله، ایتا، روبیکا و سروش
-  diba-mcp selftest <id>     تست کامل یک پیام‌رسان (bale، bale_client، eitaa، rubika، soroush)
+  diba-mcp selftest <id>     تست کامل یک پیام‌رسان (bale، bale_client، eitaa، eitaa_client، rubika، rubika_client، soroush، soroush_client)
                             --send: پیام و عکس آزمایشی هم بفرستد   --chat <id>: چت مقصد
   diba-mcp token            نمایش توکن اتصال MCP
   diba-mcp reset-password   حذف رمز داشبورد (اجرای بعدی کد راه‌اندازی می‌دهد)

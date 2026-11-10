@@ -1,11 +1,23 @@
-// dibaMCP — داشبورد (بدون فریم‌ورک)
+// dibaMCP — داشبورد مدیریت پیام‌رسان‌های هوشمند | دیباچین
+// استانداردهای سیستم طراحی دیباچین (dibachain-design-system.md)
+
 const $app = document.getElementById("app");
-const state = { providers: [], overview: null, logs: [], logFilter: { ok: "all", provider: "" }, openProv: null, timer: null, authTx: {} };
+const state = {
+  providers: [],
+  overview: null,
+  logs: [],
+  logFilter: { ok: "all", provider: "" },
+  openPlatform: null,
+  activeTab: {}, // platformKey -> 'client' | 'bot'
+  timer: null,
+  authTx: {},
+};
 
 // ---------------------------------------------------------------- utils
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const fa = (n) => (n === null || n === undefined ? "—" : Number(n).toLocaleString("fa-IR"));
 const rtf = new Intl.RelativeTimeFormat("fa", { numeric: "auto" });
+
 function ago(iso) {
   const s = Math.round((new Date(iso) - Date.now()) / 1000);
   if (Math.abs(s) < 60) return rtf.format(s, "second");
@@ -13,6 +25,7 @@ function ago(iso) {
   if (Math.abs(s) < 86400) return rtf.format(Math.round(s / 3600), "hour");
   return rtf.format(Math.round(s / 86400), "day");
 }
+
 function jsonHtml(v) {
   const s = esc(JSON.stringify(v, null, 2) ?? "null");
   return s.replace(/(&quot;(?:\\.|[^&]|&(?!quot;))*?&quot;)(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/g, (m, str, colon, lit) => {
@@ -21,6 +34,7 @@ function jsonHtml(v) {
     return `<span class="n">${m}</span>`;
   });
 }
+
 function toast(msg, isErr = false) {
   const el = document.createElement("div");
   el.className = "toast" + (isErr ? " err" : "");
@@ -28,20 +42,22 @@ function toast(msg, isErr = false) {
   document.getElementById("toasts").append(el);
   setTimeout(() => el.remove(), isErr ? 6000 : 3200);
 }
+
 async function copy(text) {
   try { await navigator.clipboard.writeText(text); }
   catch {
     const t = Object.assign(document.createElement("textarea"), { value: text });
     document.body.append(t); t.select(); document.execCommand("copy"); t.remove();
   }
-  toast("کپی شد");
+  toast("در کلیپ‌بورد کپی شد");
 }
+
 async function busy(btn, fn) {
   btn?.classList.add("loading"); if (btn) btn.disabled = true;
   try { return await fn(); } finally { btn?.classList.remove("loading"); if (btn) btn.disabled = false; }
 }
 
-class AuthError extends Error {}
+class AuthError extends Error { }
 async function api(path, opts = {}) {
   const res = await fetch("api/" + path, {
     method: opts.method ?? (opts.body ? "POST" : "GET"),
@@ -57,7 +73,7 @@ async function api(path, opts = {}) {
 
 const icons = {
   overview: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><circle cx="4.5" cy="6" r="1.8"/><circle cx="19.5" cy="6" r="1.8"/><circle cx="4.5" cy="18" r="1.8"/><circle cx="19.5" cy="18" r="1.8"/><path d="M6 7l3.5 3M18 7l-3.5 3M6 17l3.5-3M18 17l-3.5-3"/></svg>',
-  providers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v11H9l-5 4z"/></svg>',
+  providers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 8h10M7 12h6M7 16h4"/></svg>',
   inbox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 2h6l1-2h5"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   cross: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>',
@@ -73,6 +89,11 @@ const icons = {
   image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg>',
   file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>',
   refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>',
+  bot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="10" rx="3"/><circle cx="8.5" cy="16" r="1.5" fill="currentColor"/><circle cx="15.5" cy="16" r="1.5" fill="currentColor"/><path d="M12 2v4M8 6h8M2 15h1M21 15h1"/></svg>',
+  external: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>',
+  sparkles: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8zM19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9zM5 16l.9 2.1L8 19l-2.1.9L5 22l-.9-2.1L2 19l2.1-.9z"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
 };
 
 const pages = [
@@ -90,43 +111,136 @@ function route() {
 }
 
 function status(p) {
+  if (!p) return '<span class="pill pill-off">ناموجود</span>';
   if (p.ready) return '<span class="pill pill-ok">آماده</span>';
   if (p.enabled) return '<span class="pill pill-warn">نیاز به تنظیم</span>';
   return '<span class="pill pill-off">خاموش</span>';
 }
 
+function head(title, desc, eyebrow = "", actions = "") {
+  return `<header class="page-head">
+    <div>
+      ${eyebrow ? `<span class="eyebrow">${eyebrow}</span>` : ""}
+      <h1>${title}</h1>
+      ${desc ? `<p>${desc}</p>` : ""}
+    </div>
+    ${actions ? `<div class="page-head-actions">${actions}</div>` : ""}
+  </header>`;
+}
+
+// ---------------------------------------------------------------- Provider Grouping (Platforms)
+const platformMeta = {
+  bale: {
+    key: "bale",
+    nameFa: "بله",
+    nameEn: "Bale",
+    glyph: "ب",
+    color: "#1fb486",
+    description: "پیام‌رسان بانکی و ارتباطی بله — اتصال حساب کاربری و ربات رسمی Bot API",
+    docsUrl: "https://docs.bale.ai/",
+  },
+  eitaa: {
+    key: "eitaa",
+    nameFa: "ایتا",
+    nameEn: "Eitaa",
+    glyph: "ای",
+    color: "#f08a24",
+    description: "پیام‌رسان ابری ایتا — پشتیبانی از حساب کاربری و ارسال با ایتایار",
+    docsUrl: "https://eitaayar.ir/",
+  },
+  rubika: {
+    key: "rubika",
+    nameFa: "روبیکا",
+    nameEn: "Rubika",
+    glyph: "رو",
+    color: "#8b5cf6",
+    description: "سوپراپلیکیشن روبیکا — اتصال حساب کاربری برای گروه‌ها و ربات رسمی",
+    docsUrl: "https://rubika.ir/",
+  },
+  soroush: {
+    key: "soroush",
+    nameFa: "سروش‌پلاس",
+    nameEn: "Soroush+",
+    glyph: "س",
+    color: "#2563eb",
+    description: "پیام‌رسان سروش‌پلاس — بات‌های تعاملی رسمی و مدیریت حساب کاربری",
+    docsUrl: "https://soroush-app.ir/",
+  },
+};
+
+function parseProvider(p) {
+  const isClient = p.id.endsWith("_client") || Boolean(p.auth);
+  const platformKey = p.id.replace(/_client$/, "");
+  return { isClient, platformKey };
+}
+
+function groupProviders(providers) {
+  const map = new Map();
+  for (const p of providers) {
+    const { isClient, platformKey } = parseProvider(p);
+    if (!map.has(platformKey)) {
+      const meta = platformMeta[platformKey] || {
+        key: platformKey,
+        nameFa: p.nameFa.replace(/\s*\(حساب کاربری\)/g, ""),
+        nameEn: p.name.replace(/_client/g, ""),
+        glyph: p.glyph,
+        color: p.color,
+        description: p.description,
+        docsUrl: p.docsUrl,
+      };
+      map.set(platformKey, {
+        ...meta,
+        client: null,
+        bot: null,
+      });
+    }
+    const item = map.get(platformKey);
+    if (isClient) item.client = p;
+    else item.bot = p;
+  }
+  return Array.from(map.values());
+}
+
 // ---------------------------------------------------------------- auth
 function switchboardArt() {
-  const nodes = [["#1fb486", 120, 90], ["#f08a24", 400, 80], ["#c026d3", 430, 300], ["#3b82f6", 110, 290]];
+  const nodes = [["#1fb486", 110, 90], ["#f08a24", 410, 80], ["#8b5cf6", 430, 290], ["#2563eb", 100, 280]];
   return `<svg viewBox="0 0 540 380" aria-hidden="true">
     ${nodes.map(([c, x, y]) => `<path class="wire live" d="M270 190 Q ${(270 + x) / 2} ${y}, ${x} ${y}"/>`).join("")}
-    <circle cx="270" cy="190" r="56" fill="#24327a"/><circle cx="270" cy="190" r="20" fill="#2bb3a3"/>
-    ${nodes.map(([c, x, y]) => `<circle cx="${x}" cy="${y}" r="26" fill="${c}"/>`).join("")}
+    <circle cx="270" cy="190" r="58" fill="#0f2260"/>
+    <circle cx="270" cy="190" r="46" fill="#1e3a8a"/>
+    <circle cx="270" cy="190" r="20" fill="#2563eb"/>
+    ${nodes.map(([c, x, y]) => `<circle cx="${x}" cy="${y}" r="24" fill="${c}"/>`).join("")}
   </svg>`;
 }
 
 function renderAuth(needsSetup) {
   $app.innerHTML = `
   <div class="auth">
-    <div class="auth-art">${switchboardArt()}</div>
+    <div class="auth-art">
+      <div class="auth-art-glow"></div>
+      ${switchboardArt()}
+    </div>
     <div class="auth-form">
-      <div class="brand" style="padding:0"><span class="brand-mark"></span><div><b>dibaMCP</b><small>اتصال پیام‌رسان‌های ایرانی به هوش مصنوعی</small></div></div>
+      <div class="brand" style="padding:0">
+        <img src="assets/logo-sm.png" alt="دیباچین" class="brand-logo">
+        <div><b>dibaMCP</b><small>اتصال پیام‌رسان‌های ایرانی به هوش مصنوعی</small></div>
+      </div>
       ${needsSetup ? `
         <h1>راه‌اندازی اولیه</h1>
-        <p>کد شش‌حرفی‌ای که هنگام اجرای سرور در کنسول چاپ شد را وارد کنید و یک رمز برای داشبورد بسازید.</p>
+        <p>کد شش‌حرفی چاپ‌شده در کنسول سرور را وارد کرده و یک رمز عبور امن برای دسترسی به داشبورد بسازید.</p>
         <form id="f">
-          <div class="field"><label for="code">کد راه‌اندازی</label><input id="code" class="input ltr-input" autocomplete="off" required maxlength="6"></div>
-          <div class="field"><label for="pw">رمز داشبورد</label><input id="pw" type="password" class="input" autocomplete="new-password" minlength="8" required><span class="hint">حداقل ۸ کاراکتر</span></div>
-          <div class="field"><label for="pw2">تکرار رمز</label><input id="pw2" type="password" class="input" autocomplete="new-password" required></div>
+          <div class="field"><label for="code">کد راه‌اندازی سرور</label><input id="code" class="input ltr-input" autocomplete="off" required maxlength="6" placeholder="A1B2C3"></div>
+          <div class="field"><label for="pw">رمز عبور داشبورد</label><input id="pw" type="password" class="input" autocomplete="new-password" minlength="8" required><span class="hint">حداقل ۸ کاراکتر</span></div>
+          <div class="field"><label for="pw2">تکرار رمز عبور</label><input id="pw2" type="password" class="input" autocomplete="new-password" required></div>
           <div class="form-err" id="err"></div>
-          <button class="btn btn-primary" type="submit">ساخت رمز و ورود</button>
+          <button class="btn btn-primary" type="submit">ساخت رمز و ورود به داشبورد</button>
         </form>` : `
         <h1>ورود به داشبورد</h1>
-        <p>برای مدیریت سرویس‌ها و توکن‌ها وارد شوید.</p>
+        <p>برای مدیریت سرویس‌ها، بررسی پیام‌ها و کلیدهای ارتباطی وارد شوید.</p>
         <form id="f">
-          <div class="field"><label for="pw">رمز داشبورد</label><input id="pw" type="password" class="input" autocomplete="current-password" required autofocus></div>
+          <div class="field"><label for="pw">رمز عبور داشبورد</label><input id="pw" type="password" class="input" autocomplete="current-password" required autofocus></div>
           <div class="form-err" id="err"></div>
-          <button class="btn btn-primary" type="submit">ورود</button>
+          <button class="btn btn-primary" type="submit">ورود به سیستم</button>
         </form>`}
     </div>
   </div>`;
@@ -153,13 +267,19 @@ function renderShell() {
   $app.innerHTML = `
   <div class="shell">
     <aside class="side">
-      <div class="brand"><span class="brand-mark"></span><div><b>dibaMCP</b><small id="ver"></small></div></div>
+      <div class="brand">
+        <img src="assets/logo-sm.png" alt="دیباچین" class="brand-logo">
+        <div>
+          <b>dibaMCP</b>
+          <small id="ver">نسخه ۰.۴.۱</small>
+        </div>
+      </div>
       <nav class="nav" aria-label="بخش‌ها">
         ${pages.map((p) => `<a href="#/${p.id}" data-page="${p.id}">${icons[p.id]}<span>${p.title}</span></a>`).join("")}
       </nav>
       <div class="side-foot">
-        <button class="btn btn-icon btn-quiet" id="theme" title="تغییر تم" aria-label="تغییر تم">${icons.theme}</button>
-        <button class="btn btn-icon btn-quiet" id="logout" title="خروج" aria-label="خروج">${icons.logout}</button>
+        <button class="btn btn-icon btn-quiet" id="theme" title="تغییر تم (روشن / تاریک)" aria-label="تغییر تم">${icons.theme}</button>
+        <button class="btn btn-icon btn-quiet" id="logout" title="خروج از حساب" aria-label="خروج">${icons.logout}</button>
       </div>
     </aside>
     <main class="main" id="main"></main>
@@ -168,7 +288,7 @@ function renderShell() {
     const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
     const next = cur === "light" ? "dark" : "light";
     document.documentElement.dataset.theme = next;
-    try { localStorage.setItem("dmcp-theme", next); } catch {}
+    try { localStorage.setItem("dmcp-theme", next); } catch { }
   };
   document.getElementById("logout").onclick = async () => { await api("auth/logout", { body: {} }); boot(); };
 }
@@ -177,7 +297,7 @@ async function render() {
   clearInterval(state.timer);
   const { page, q } = route();
   document.querySelectorAll(".nav a").forEach((a) => (a.dataset.page === page ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
-  document.title = `${pages.find((p) => p.id === page).title} — dibaMCP`;
+  document.title = `${pages.find((p) => p.id === page).title} — dibaMCP | دیباچین`;
   const main = document.getElementById("main");
   try {
     await ({ overview: pageOverview, providers: pageProviders, playground: pagePlayground, inbox: pageInbox, logs: pageLogs, connect: pageConnect })[page](main, q);
@@ -185,10 +305,6 @@ async function render() {
     if (!(e instanceof AuthError)) main.innerHTML = `<div class="err-box">${esc(e.message)}</div>`;
   }
   main.focus?.();
-}
-
-function head(title, desc, actions = "") {
-  return `<header class="page-head"><div><h1>${title}</h1>${desc ? `<p>${desc}</p>` : ""}</div>${actions}</header>`;
 }
 
 // ---------------------------------------------------------------- overview
@@ -206,16 +322,20 @@ function hubSvg(providers, activeTools) {
   }).join("");
   const sub = (n) => (n.ready ? `${fa(n.toolCount)} ابزار` : n.enabled ? "نیاز به تنظیم" : "خاموش");
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="وضعیت اتصال پیام‌رسان‌ها">
-    <defs><linearGradient id="halo" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2bb3a3"/><stop offset=".5" stop-color="#e8a33d"/><stop offset="1" stop-color="#2bb3a3" stop-opacity="0"/>
-    </linearGradient></defs>
+    <defs>
+      <linearGradient id="hubHalo" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#3b82f6"/>
+        <stop offset=".5" stop-color="#1e40af"/>
+        <stop offset="1" stop-color="#3b82f6" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
     ${wires}
     <g class="hub">
-      <circle class="hub-halo" cx="${cx}" cy="${cy}" r="62" fill="none" stroke="url(#halo)" stroke-width="2" stroke-dasharray="120 60 40 30"/>
-      <circle cx="${cx}" cy="${cy}" r="50" fill="var(--lapis-600)"/>
-      <circle cx="${cx}" cy="${cy}" r="50" fill="none" stroke="rgba(255,255,255,.12)"/>
+      <circle class="hub-halo" cx="${cx}" cy="${cy}" r="64" fill="none" stroke="url(#hubHalo)" stroke-width="2" stroke-dasharray="120 60 40 30"/>
+      <circle cx="${cx}" cy="${cy}" r="50" fill="var(--brand-700)"/>
+      <circle cx="${cx}" cy="${cy}" r="50" fill="none" stroke="rgba(255,255,255,.2)"/>
       <text x="${cx}" y="${cy - 2}" text-anchor="middle" font-size="22" font-weight="800" fill="#fff">${fa(activeTools)}</text>
-      <text x="${cx}" y="${cy + 18}" text-anchor="middle" font-size="11" fill="#c6cdf0">ابزار فعال</text>
+      <text x="${cx}" y="${cy + 18}" text-anchor="middle" font-size="11" font-weight="600" fill="#dbeafe">ابزار فعال</text>
     </g>
     ${nodes.map((n) => `
       <g class="node${n.ready ? "" : " off"}"><a href="#/providers?open=${n.id}" aria-label="${esc(n.nameFa)}">
@@ -243,22 +363,28 @@ async function pageOverview(main) {
   document.getElementById("ver").textContent = `نسخه ${o.version}`;
   const ready = o.providers.filter((p) => p.ready).length;
   main.innerHTML = `
-    ${head("نمای کلی", "هر پیام‌رسانی که توکنش ثبت و روشن شده باشد، ابزارهایش به مدل هوش مصنوعی وصل می‌شود.")}
+    ${head("نمای کلی", "هر پیام‌رسانی که توکنش ثبت و روشن شده باشد، ابزارهایش به‌صورت زنده به مدل هوش مصنوعی وصل می‌شود.", "داشبورد دیباچین")}
     <section class="board">
       <div class="board-map">${hubSvg(o.providers, o.activeTools)}</div>
       <div class="board-side">
         <div class="metric"><span>پیام‌رسان‌های آماده</span><b>${fa(ready)}<small>از ${fa(o.providers.length)}</small></b></div>
         <div class="metric"><span>فراخوانی‌های امروز</span><b>${fa(o.stats.today)}</b></div>
-        <div class="metric"><span>موفقیت امروز</span><b>${o.stats.successRate === null ? "—" : fa(o.stats.successRate) + "٪"}</b></div>
+        <div class="metric"><span>نرخ موفقیت امروز</span><b>${o.stats.successRate === null ? "—" : fa(o.stats.successRate) + "٪"}</b></div>
         <div class="metric"><span>میانگین زمان پاسخ</span><b>${o.stats.avgMs === null ? "—" : fa(o.stats.avgMs)}<small>${o.stats.avgMs === null ? "" : "میلی‌ثانیه"}</small></b></div>
-        ${ready === 0 ? `<a class="btn btn-primary" href="#/providers">اولین پیام‌رسان را وصل کنید</a>` : `<a class="btn" href="#/connect">اتصال به Claude و ابزارهای دیگر</a>`}
+        ${ready === 0 ? `<a class="btn btn-primary" href="#/providers">اولین پیام‌رسان را وصل کنید</a>` : `<a class="btn btn-ghost" href="#/connect">اتصال به Claude و کلاینت‌ها</a>`}
       </div>
     </section>
-    <div class="section-title"><h2>دسترسی این سرور به پیام‌رسان‌ها</h2><button class="btn" id="netcheck">بررسی دسترسی</button></div>
-    <div class="calls" id="net-out"><div class="empty"><b>هنوز بررسی نشده</b>نشان می‌دهد این سرور (مثلاً سرور خارج از ایران) به API هر پیام‌رسان می‌رسد یا نه.</div></div>
-    <div class="section-title"><h2>آخرین فراخوانی‌ها</h2><a href="#/logs">همه‌ی گزارش‌ها</a></div>
+    <div class="section-title">
+      <h2>دسترسی این سرور به پیام‌رسان‌ها</h2>
+      <button class="btn btn-ghost btn-sm" id="netcheck">بررسی دسترسی شبکه</button>
+    </div>
+    <div class="calls" id="net-out"><div class="empty"><b>هنوز بررسی نشده است</b>با کلیک بر روی دکمه بالا، دسترسی این سرور به API پیام‌رسان‌ها تست می‌شود.</div></div>
+    <div class="section-title">
+      <h2>آخرین فراخوانی‌های هوش مصنوعی</h2>
+      <a class="link-arrow" href="#/logs">مشاهده همه گزارش‌ها</a>
+    </div>
     <div class="calls">
-      ${o.recent.length ? o.recent.map((l) => callRow(l)).join("") : `<div class="empty"><b>هنوز ابزاری صدا زده نشده</b>از بخش «آزمایش ابزارها» اولین پیام را بفرستید.</div>`}
+      ${o.recent.length ? o.recent.map((l) => callRow(l)).join("") : `<div class="empty"><b>هنوز ابزاری فراخوانی نشده است</b>از بخش «آزمایش ابزارها» اولین پیام را ارسال کنید.</div>`}
     </div>`;
 
   document.getElementById("netcheck").onclick = async (e) => {
@@ -266,17 +392,17 @@ async function pageOverview(main) {
     const r = await busy(e.currentTarget, () => api("netcheck"));
     const via = r.proxy.type === "direct" ? "مستقیم" : `از طریق پراکسی ${r.proxy.type}`;
     out.innerHTML =
-      `<div class="call"><span class="dot" style="background:var(--saffron)"></span><span>IP خروجی: ${r.egressIp ? `<span class="ltr mono">${esc(r.egressIp)}</span>` : "نامعلوم"}</span><span class="src">${esc(via)}</span><span></span><span></span></div>` +
+      `<div class="call"><span class="dot" style="background:var(--warning)"></span><span>IP خروجی: ${r.egressIp ? `<span class="ltr mono">${esc(r.egressIp)}</span>` : "نامعلوم"}</span><span class="src">${esc(via)}</span><span></span><span></span></div>` +
       r.results.map((x) => `<div class="call${x.reachable ? "" : " fail"}">
         <span class="dot"></span>
-        <span><b>${esc(x.name)}</b> <span class="ltr mono" style="color:var(--text-faint);font-size:12px">${esc(x.url)}</span></span>
+        <span><b>${esc(x.name)}</b> <span class="ltr mono" style="color:var(--muted-2);font-size:12px">${esc(x.url)}</span></span>
         ${x.reachable ? `<span class="src">در دسترس (HTTP ${fa(x.status)})</span>` : `<span class="err" title="${esc(x.error)}">${esc(x.error)}</span>`}
         <span class="meta">${fa(x.ms)} میلی‌ثانیه</span><span></span>
       </div>`).join("");
   };
 }
 
-// ---------------------------------------------------------------- providers
+// ---------------------------------------------------------------- providers (Accordions with Client & Bot Tabs)
 function fieldHtml(p, f) {
   const id = `${p.id}-${f.key}`;
   const locked = f.fromEnv;
@@ -284,10 +410,10 @@ function fieldHtml(p, f) {
   const hint = locked ? `<span class="hint">مقدار از متغیر <code class="ltr">${esc(f.envName)}</code> خوانده می‌شود.</span>` : f.help ? `<span class="hint">${esc(f.help)}</span>` : "";
   if (f.type === "secret") {
     const ph = f.masked || f.placeholder || "";
-    const savedHint = f.masked && !locked ? `<span class="hint">توکن ذخیره شده است. برای عوض کردنش، توکن جدید را بنویسید؛ خالی بماند یعنی بدون تغییر.</span>` : hint;
+    const savedHint = f.masked && !locked ? `<span class="hint">توکن ذخیره شده است. برای تغییر، مقدار جدید را وارد کنید.</span>` : hint;
     return `<div class="field">${label}<div class="input-wrap">
       <input id="${id}" name="${f.key}" type="password" class="input ltr-input" placeholder="${esc(ph)}" autocomplete="off" ${locked ? "disabled" : ""}>
-      <button type="button" class="btn btn-icon btn-quiet" data-reveal="${id}" aria-label="نمایش">${icons.eye}</button></div>${savedHint}</div>`;
+      <button type="button" class="btn btn-icon btn-quiet" data-reveal="${id}" aria-label="نمایش توکن">${icons.eye}</button></div>${savedHint}</div>`;
   }
   const pick = f.key === "defaultChatId" && p.receive?.supported && !locked ? `<span class="hint"><a href="#/inbox?p=${p.id}">انتخاب از پیام‌های دریافتی</a></span>` : "";
   return `<div class="field">${label}<input id="${id}" name="${f.key}" class="input ${f.type === "url" || /id$/i.test(f.key) ? "ltr-input" : ""}" value="${esc(f.value)}" placeholder="${esc(f.placeholder || f.default || "")}" ${locked ? "disabled" : ""}>${hint}${pick}</div>`;
@@ -297,69 +423,42 @@ function authHtml(p) {
   const a = p.auth;
   const phone = p.fields.find((f) => f.key === a.phoneField)?.value || "";
   const logged = a.loggedIn;
-  return `<div class="client-auth" data-auth>
+  return `<div class="client-auth" data-auth data-id="${p.id}">
     <div class="client-auth-head">
-      <b>${esc(a.title)}</b>
+      <div class="client-auth-title">
+        <span class="client-auth-icon">${icons.shield}</span>
+        <div>
+          <b>${esc(a.title)}</b>
+          <p class="hint">${esc(a.description)}</p>
+        </div>
+      </div>
       <span class="pill ${logged ? "pill-ok" : "pill-off"}">${logged ? "وارد شده" : "وارد نشده"}</span>
     </div>
-    <p class="hint">${esc(a.description)}</p>
     <div class="auth-step" data-auth-step="phone" ${logged ? "hidden" : ""}>
       <div class="auth-row">
         <input class="input ltr-input" data-auth-phone placeholder="09121234567" value="${esc(phone)}" inputmode="tel" aria-label="شماره تلفن">
         <button class="btn btn-primary" type="button" data-auth-start>ارسال کد ورود</button>
       </div>
-      <span class="hint">شماره را با ۰۹ یا +۹۸ وارد کنید. کد از پیامک یا خود بله می‌آید.</span>
+      <span class="hint">شماره را به همراه ۰۹ یا +۹۸ وارد کنید. کد تأیید از پیامک یا پیام‌رسان ارسال خواهد شد.</span>
     </div>
     <div class="auth-step" data-auth-step="code" hidden>
       <div class="auth-row">
-        <input class="input ltr-input" data-auth-code placeholder="کد ورود" inputmode="numeric" autocomplete="one-time-code" aria-label="کد ورود">
+        <input class="input ltr-input" data-auth-code placeholder="کد تأیید ورود" inputmode="numeric" autocomplete="one-time-code" aria-label="کد ورود">
         <button class="btn btn-primary" type="button" data-auth-verify-code>تأیید کد</button>
-        <button class="btn btn-quiet" type="button" data-auth-back>شماره را عوض می‌کنم</button>
+        <button class="btn btn-ghost" type="button" data-auth-back>تغییر شماره</button>
       </div>
       <span class="hint" data-auth-code-hint>کد فرستاده شد.</span>
     </div>
     <div class="auth-step" data-auth-step="password" hidden>
       <div class="auth-row">
-        <input class="input ltr-input" type="password" data-auth-password placeholder="رمز دومرحله‌ای" autocomplete="current-password" aria-label="رمز دومرحله‌ای">
+        <input class="input ltr-input" type="password" data-auth-password placeholder="رمز دومرحله‌ای حساب" autocomplete="current-password" aria-label="رمز دومرحله‌ای">
         <button class="btn btn-primary" type="button" data-auth-verify-password>تأیید رمز</button>
       </div>
-      <span class="hint">این حساب رمز دومرحله‌ای دارد.</span>
+      <span class="hint">این حساب دارای تأیید دو مرحله‌ای است. رمز را وارد کنید.</span>
     </div>
-    ${logged ? `<div class="prov-actions"><button class="btn btn-quiet btn-danger" type="button" data-auth-logout>خروج از حساب بله</button></div>` : ""}
+    ${logged ? `<div class="prov-actions" style="margin-top:10px"><button class="btn btn-ghost btn-danger" type="button" data-auth-logout>خروج از حساب کاربری</button></div>` : ""}
     <div class="test-out" data-auth-out></div>
   </div>`;
-}
-
-function provHtml(p) {
-  const open = state.openProv === p.id;
-  const fields = p.auth ? p.fields.filter((f) => f.key !== p.auth.sessionField) : p.fields;
-  return `<article class="prov${open ? " open" : ""}${p.ready ? " is-ready" : ""}" data-id="${p.id}">
-    <div class="prov-head">
-      <div class="disc" style="background:${p.color}">${esc(p.glyph)}</div>
-      <div class="prov-title"><b>${esc(p.nameFa)}</b><small class="ltr">${esc(p.name)}</small><p>${esc(p.description)}</p></div>
-      ${status(p)}
-      <label class="switch" title="روشن/خاموش"><input type="checkbox" data-toggle ${p.enabled ? "checked" : ""} aria-label="روشن کردن ${esc(p.nameFa)}"><span></span></label>
-      <button class="btn btn-icon btn-quiet" data-expand aria-expanded="${open}" aria-label="تنظیمات ${esc(p.nameFa)}" style="transform:rotate(${open ? 180 : 0}deg);transition:transform .3s">${icons.chevron}</button>
-    </div>
-    <div class="prov-body"><div><div class="prov-inner">
-      <form class="prov-form" data-form>
-        ${fields.map((f) => fieldHtml(p, f)).join("")}
-        <div class="prov-actions">
-          <button class="btn btn-primary" type="submit">ذخیره تنظیمات</button>
-          ${p.hasTest ? `<button class="btn" type="button" data-test>تست اتصال</button>` : ""}
-          ${p.hasTest ? `<button class="btn" type="button" data-selftest>تست کامل</button>` : ""}
-          ${!p.auth && p.fields.some((f) => f.type === "secret" && f.hasValue && !f.fromEnv) ? `<button class="btn btn-quiet btn-danger" type="button" data-clear>حذف توکن</button>` : ""}
-        </div>
-        <div class="test-out" data-out></div>
-      </form>
-      ${p.auth ? authHtml(p) : ""}
-      <div class="prov-tools">
-        <h3>${fa(p.tools.length)} ابزار در اختیار مدل</h3>
-        ${p.tools.map((t) => `<div class="tool-line"><a href="#/playground?tool=${t.name}">${esc(t.title)}</a><code>${esc(t.name)}</code></div>`).join("")}
-        ${p.docsUrl ? `<p class="note"><a href="${esc(p.docsUrl)}" target="_blank" rel="noopener">مستندات رسمی ${esc(p.nameFa)}</a></p>` : ""}
-      </div>
-    </div></div></div>
-  </article>`;
 }
 
 function selfTestHtml(r) {
@@ -367,9 +466,9 @@ function selfTestHtml(r) {
   const label = { ok: "موفق", fail: "ناموفق", skip: "رد شد" };
   const failed = r.steps.filter((x) => x.status === "fail").length;
   return `<div class="st-summary ${r.ok ? "is-ok" : "is-fail"}">
-      <b>${r.ok ? "همه‌ی قدم‌ها گذشت" : `${fa(failed)} قدم ناموفق`}</b>
+      <b>${r.ok ? "تمامی مراحل با موفقیت سپری شد" : `${fa(failed)} مرحله ناموفق بود`}</b>
       <span>شبکه: ${esc(r.proxy)}</span>
-      <button class="btn" type="button" data-st-copy>کپی گزارش</button>
+      <button class="btn btn-ghost btn-sm" type="button" data-st-copy>کپی گزارش</button>
     </div>
     <ol class="st-steps">
       ${r.steps.map((x) => `<li class="st-${x.status}">
@@ -383,64 +482,244 @@ function selfTestHtml(r) {
     </ol>`;
 }
 
+function renderProviderMode(p, role, plat) {
+  if (!p) {
+    return `<div class="empty"><b>این پیام‌رسان فاقد حالت ${role === "client" ? "حساب کاربری" : "ربات رسمی"} است.</b></div>`;
+  }
+  const fields = p.auth ? p.fields.filter((f) => f.key !== p.auth.sessionField) : p.fields;
+  const isClient = role === "client";
+  return `
+    <div class="prov-mode-container" data-id="${p.id}">
+      <div class="prov-mode-banner">
+        <div class="prov-mode-meta">
+          <span class="mode-tag ${isClient ? "mode-tag-client" : "mode-tag-bot"}">
+            ${isClient ? icons.user : icons.bot}
+            ${isClient ? "حساب کاربری (کلاینت)" : "ربات رسمی (Bot API)"}
+          </span>
+          <p class="prov-mode-desc">
+            ${isClient
+              ? "اتصال از طریق پروتکل وب؛ ارسال و دریافت دوطرفه پیام‌ها به عنوان کاربر واقعی با دسترسی به مخاطبان و گروه‌ها."
+              : "اتصال با توکن اختصاصی BotFather؛ ارسال پیام، محتوای چندرسانه‌ای و دکمه‌های شیشه‌ای برای کسب‌وکار."}
+          </p>
+        </div>
+        <div class="prov-mode-controls">
+          ${status(p)}
+          <label class="switch" title="روشن/خاموش کردن این بخش">
+            <input type="checkbox" data-toggle data-id="${p.id}" ${p.enabled ? "checked" : ""} aria-label="روشن کردن ${esc(p.nameFa)}">
+            <span></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="prov-inner">
+        <div class="prov-left-col">
+          ${p.auth ? authHtml(p) : ""}
+          <form class="prov-form" data-form data-id="${p.id}">
+            ${fields.map((f) => fieldHtml(p, f)).join("")}
+            <div class="prov-actions">
+              <button class="btn btn-primary" type="submit">ذخیره تنظیمات</button>
+              ${p.hasTest ? `<button class="btn btn-ghost" type="button" data-test data-id="${p.id}">تست اتصال</button>` : ""}
+              ${p.hasTest ? `<button class="btn btn-ghost" type="button" data-selftest data-id="${p.id}">تست کامل</button>` : ""}
+              ${!p.auth && p.fields.some((f) => f.type === "secret" && f.hasValue && !f.fromEnv) ? `<button class="btn btn-quiet btn-danger" type="button" data-clear data-id="${p.id}">حذف توکن</button>` : ""}
+            </div>
+            <div class="test-out" data-out></div>
+          </form>
+        </div>
+
+        <div class="prov-tools-col">
+          <div class="prov-tools-card">
+            <h3>
+              <span class="icon-inline">${icons.sparkles}</span>
+              ${fa(p.tools.length)} ابزار هوش مصنوعی در اختیار مدل
+            </h3>
+            <div class="tool-list-compact">
+              ${p.tools.map((t) => `<div class="tool-line"><a href="#/playground?tool=${t.name}">${esc(t.title)}</a><code>${esc(t.name)}</code></div>`).join("")}
+            </div>
+            ${p.docsUrl ? `<div class="prov-docs-link"><a href="${esc(p.docsUrl)}" target="_blank" rel="noopener">${icons.external} مستندات رسمی ${esc(p.nameFa)}</a></div>` : ""}
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function platformAccordionHtml(plat) {
+  const isOpen = state.openPlatform === plat.key;
+  // Default open tab is ALWAYS 'client'
+  const activeTab = state.activeTab[plat.key] || "client";
+  const hasBoth = Boolean(plat.client && plat.bot);
+  const isReady = (plat.client && plat.client.ready) || (plat.bot && plat.bot.ready);
+
+  return `
+  <article class="prov-card ${isOpen ? "open" : ""} ${isReady ? "is-ready" : ""}" data-plat="${plat.key}">
+    <div class="prov-card-header" data-plat-header="${plat.key}">
+      <div class="disc" style="background:${plat.color}">${esc(plat.glyph)}</div>
+      <div class="prov-info">
+        <div class="prov-info-top">
+          <b class="prov-name">${esc(plat.nameFa)}</b>
+          <span class="en-tag">${esc(plat.nameEn)}</span>
+        </div>
+        <p class="prov-desc">${esc(plat.description)}</p>
+      </div>
+
+      <div class="prov-summary-badges">
+        ${plat.client ? `<span class="mode-badge ${plat.client.ready ? "ready" : ""}">کلاینت: ${status(plat.client)}</span>` : ""}
+        ${plat.bot ? `<span class="mode-badge ${plat.bot.ready ? "ready" : ""}">ربات: ${status(plat.bot)}</span>` : ""}
+      </div>
+
+      <button type="button" class="btn btn-icon btn-quiet prov-toggle-btn" data-plat-expand="${plat.key}" aria-expanded="${isOpen}" aria-label="تنظیمات ${esc(plat.nameFa)}">
+        ${icons.chevron}
+      </button>
+    </div>
+
+    <div class="prov-card-body">
+      <div class="prov-card-content">
+        ${hasBoth ? `
+          <div class="plat-tabs-bar" role="tablist">
+            <button type="button" class="plat-tab ${activeTab === "client" ? "active" : ""}" data-plat-tab="client" data-plat="${plat.key}" role="tab" aria-selected="${activeTab === "client"}">
+              <span class="plat-tab-icon">${icons.user}</span>
+              <span class="plat-tab-title">حساب کاربری (کلاینت)</span>
+              ${status(plat.client)}
+            </button>
+            <button type="button" class="plat-tab ${activeTab === "bot" ? "active" : ""}" data-plat-tab="bot" data-plat="${plat.key}" role="tab" aria-selected="${activeTab === "bot"}">
+              <span class="plat-tab-icon">${icons.bot}</span>
+              <span class="plat-tab-title">ربات رسمی (Bot API)</span>
+              ${status(plat.bot)}
+            </button>
+          </div>
+        ` : ""}
+
+        <div class="plat-panels">
+          ${plat.client ? `
+            <div class="plat-panel ${activeTab === "client" ? "active" : ""}" data-plat-panel="client" data-plat="${plat.key}">
+              ${renderProviderMode(plat.client, "client", plat)}
+            </div>
+          ` : ""}
+          ${plat.bot ? `
+            <div class="plat-panel ${activeTab === "bot" ? "active" : ""}" data-plat-panel="bot" data-plat="${plat.key}">
+              ${renderProviderMode(plat.bot, "bot", plat)}
+            </div>
+          ` : ""}
+        </div>
+      </div>
+    </div>
+  </article>`;
+}
+
 async function pageProviders(main, q) {
   state.providers = await api("providers");
-  if (q.get("open")) state.openProv = q.get("open");
-  main.innerHTML = `${head("پیام‌رسان‌ها", "توکن ربات یا حساب کاربری هر پیام‌رسان را وصل کنید. توکن‌ها و نشست‌ها فقط روی همین سرور می‌مانند و کامل به مرورگر برنمی‌گردند.")}
-    <div class="providers" id="provs">${state.providers.map(provHtml).join("")}</div>`;
+  const platforms = groupProviders(state.providers);
+
+  if (q.get("open")) {
+    const target = q.get("open");
+    const { platformKey, isClient } = parseProvider({ id: target, auth: target.endsWith("_client") });
+    state.openPlatform = platformKey;
+    state.activeTab[platformKey] = isClient ? "client" : "bot";
+  }
+
+  main.innerHTML = `
+    ${head("پیام‌رسان‌ها", "مدیریت حساب‌های کاربری و ربات‌های رسمی پیام‌رسان‌ها در یک آکاردئون یکپارچه. تب کلاینت به‌صورت پیش‌فرض فعال است.", "مدیریت سرویس‌ها")}
+    <div class="providers-accordion-list" id="provs">
+      ${platforms.map(platformAccordionHtml).join("")}
+    </div>`;
+
   const list = document.getElementById("provs");
 
   const replace = (p) => {
     state.providers = state.providers.map((x) => (x.id === p.id ? p : x));
-    list.querySelector(`[data-id="${p.id}"]`).outerHTML = provHtml(p);
+    const { platformKey } = parseProvider(p);
+    const plat = groupProviders(state.providers).find((x) => x.key === platformKey);
+    const oldCard = list.querySelector(`[data-plat="${platformKey}"]`);
+    if (oldCard && plat) {
+      oldCard.outerHTML = platformAccordionHtml(plat);
+    }
   };
 
   list.addEventListener("click", async (e) => {
-    const card = e.target.closest(".prov");
-    if (!card) return;
-    const id = card.dataset.id;
-    const p = state.providers.find((x) => x.id === id);
-    if (e.target.closest("[data-expand]")) {
-      state.openProv = state.openProv === id ? null : id;
-      list.querySelectorAll(".prov").forEach((el) => {
-        const o = el.dataset.id === state.openProv;
-        el.classList.toggle("open", o);
-        const b = el.querySelector("[data-expand]");
-        b.setAttribute("aria-expanded", o);
-        b.style.transform = `rotate(${o ? 180 : 0}deg)`;
+    // 1. Accordion Header Click or Chevron
+    const header = e.target.closest("[data-plat-header]");
+    if (header && !e.target.closest("input, button.plat-tab, a, .switch")) {
+      const platKey = header.dataset.platHeader;
+      state.openPlatform = state.openPlatform === platKey ? null : platKey;
+      list.querySelectorAll(".prov-card").forEach((card) => {
+        const isOpen = card.dataset.plat === state.openPlatform;
+        card.classList.toggle("open", isOpen);
+        const btn = card.querySelector(".prov-toggle-btn");
+        if (btn) btn.setAttribute("aria-expanded", isOpen);
       });
+      return;
     }
+
+    // 2. Tab switching inside platform accordion (Client vs Bot)
+    const tabBtn = e.target.closest("[data-plat-tab]");
+    if (tabBtn) {
+      const platKey = tabBtn.dataset.plat;
+      const tabName = tabBtn.dataset.platTab;
+      state.activeTab[platKey] = tabName;
+      const card = list.querySelector(`[data-plat="${platKey}"]`);
+      if (card) {
+        card.querySelectorAll("[data-plat-tab]").forEach((btn) => {
+          const isActive = btn.dataset.platTab === tabName;
+          btn.classList.toggle("active", isActive);
+          btn.setAttribute("aria-selected", isActive);
+        });
+        card.querySelectorAll("[data-plat-panel]").forEach((panel) => {
+          panel.classList.toggle("active", panel.dataset.platPanel === tabName);
+        });
+      }
+      return;
+    }
+
+    // 3. Eye reveal for secrets
     const reveal = e.target.closest("[data-reveal]");
-    if (reveal) { const i = document.getElementById(reveal.dataset.reveal); i.type = i.type === "password" ? "text" : "password"; }
+    if (reveal) {
+      const inp = document.getElementById(reveal.dataset.reveal);
+      if (inp) inp.type = inp.type === "password" ? "text" : "password";
+      return;
+    }
+
+    // 4. Test connection
     const testBtn = e.target.closest("[data-test]");
     if (testBtn) {
-      const out = card.querySelector("[data-out]");
+      const id = testBtn.dataset.id;
+      const container = testBtn.closest(".prov-mode-container");
+      const out = container.querySelector("[data-out]");
       const r = await busy(testBtn, () => api(`providers/${id}/test`, { body: {} }));
       out.innerHTML = r.ok
         ? `<div class="result-head"><span class="pill pill-ok">اتصال برقرار است</span><span class="meta">${fa(r.ms)} میلی‌ثانیه</span></div><pre class="json">${jsonHtml(r.result)}</pre>`
         : `<div class="err-box">${esc(r.error)}</div>`;
+      return;
     }
-    if (e.target.closest("[data-selftest]")) {
-      const out = card.querySelector("[data-out]");
+
+    // 5. Self-test init
+    const selftestBtn = e.target.closest("[data-selftest]");
+    if (selftestBtn) {
+      const id = selftestBtn.dataset.id;
+      const p = state.providers.find((x) => x.id === id);
+      const container = selftestBtn.closest(".prov-mode-container");
+      const out = container.querySelector("[data-out]");
       const def = p.fields.find((f) => f.key === "defaultChatId")?.value || "";
       out.innerHTML = `<div class="selftest">
-        <div class="st-head"><b>تست کامل ${esc(p.nameFa)}</b><span class="hint">شبکه، توکن، چت، ارسال و دریافت را قدم‌به‌قدم بررسی می‌کند.</span></div>
+        <div class="st-head"><b>تست کامل ${esc(p.nameFa)}</b><span class="hint">بررسی سلامت شبکه، توکن، چت، ارسال و دریافت به صورت گام‌به‌گام.</span></div>
         <div class="st-opts">
-          <label class="st-send"><span class="switch"><input type="checkbox" data-st-send><span></span></span>پیام و عکس آزمایشی هم بفرستد</label>
-          <input class="input ltr-input" data-st-chat placeholder="${esc(def ? `${def} (default)` : "chat_id مقصد")}" aria-label="چت مقصد">
-          <button class="btn btn-primary" type="button" data-st-run>اجرای تست</button>
+          <label class="st-send"><span class="switch"><input type="checkbox" data-st-send><span></span></span>ارسال پیام و تصویر آزمایشی</label>
+          <input class="input ltr-input" data-st-chat placeholder="${esc(def ? `${def} (پیش‌فرض)` : "chat_id مقصد")}" aria-label="چت مقصد">
+          <button class="btn btn-primary" type="button" data-st-run data-id="${id}">اجرای تست جامع</button>
         </div>
         <div data-st-out></div>
       </div>`;
       out.querySelector("[data-st-run]").focus();
+      return;
     }
+
+    // 6. Run self-test
     const runBtn = e.target.closest("[data-st-run]");
     if (runBtn) {
-      const box = card.querySelector(".selftest");
+      const id = runBtn.dataset.id;
+      const box = runBtn.closest(".selftest");
       const stOut = box.querySelector("[data-st-out]");
       const send = box.querySelector("[data-st-send]").checked;
       const chatId = box.querySelector("[data-st-chat]").value.trim();
-      stOut.innerHTML = `<div class="st-running"><span class="boot-dot"></span>در حال اجرا… ممکن است تا یک دقیقه طول بکشد.</div>`;
+      stOut.innerHTML = `<div class="st-running"><span class="boot-dot"></span>در حال اجرای بررسی‌ها… این فرایند ممکن است تا یک دقیقه زمان ببرد.</div>`;
       try {
         const r = await busy(runBtn, () => api(`providers/${id}/selftest`, { body: { send, chatId: chatId || undefined } }));
         stOut.innerHTML = selfTestHtml(r);
@@ -448,17 +727,27 @@ async function pageProviders(main, q) {
       } catch (ex) {
         stOut.innerHTML = `<div class="err-box">${esc(ex.message)}</div>`;
       }
-    }
-    const clearBtn = e.target.closest("[data-clear]");
-    if (clearBtn && confirm(`توکن ${p.nameFa} حذف شود؟ ابزارهای این پیام‌رسان از مدل جدا می‌شوند.`)) {
-      const keys = p.fields.filter((f) => f.type === "secret").map((f) => f.key);
-      replace(await api(`providers/${id}`, { method: "PUT", body: { values: { __clear: keys } } }));
-      toast("توکن حذف شد");
+      return;
     }
 
-    // ---- ورود با حساب کاربری (کلاینت غیررسمی) ----
-    const authBox = card.querySelector("[data-auth]");
+    // 7. Clear token
+    const clearBtn = e.target.closest("[data-clear]");
+    if (clearBtn) {
+      const id = clearBtn.dataset.id;
+      const p = state.providers.find((x) => x.id === id);
+      if (confirm(`آیا توکن ذخیره‌شده برای ${p.nameFa} حذف شود؟ ارتباط هوش مصنوعی با این بخش قطع خواهد شد.`)) {
+        const keys = p.fields.filter((f) => f.type === "secret").map((f) => f.key);
+        replace(await api(`providers/${id}`, { method: "PUT", body: { values: { __clear: keys } } }));
+        toast("توکن با موفقیت حذف شد");
+      }
+      return;
+    }
+
+    // 8. Auth flow for unofficial clients
+    const authBox = e.target.closest("[data-auth]");
     if (!authBox) return;
+    const authId = authBox.dataset.id;
+    const p = state.providers.find((x) => x.id === authId);
     const authOut = authBox.querySelector("[data-auth-out]");
     const showStep = (step) => {
       authBox.querySelectorAll("[data-auth-step]").forEach((el) => (el.hidden = el.dataset.authStep !== step));
@@ -466,22 +755,24 @@ async function pageProviders(main, q) {
     const authFail = (msg) => {
       authOut.innerHTML = `<div class="err-box">${esc(msg)}</div>`;
     };
-    const refreshAuthCard = async () => {
+    const refreshAuth = async () => {
       state.providers = await api("providers");
-      const updated = state.providers.find((x) => x.id === id);
-      if (!updated) return;
-      state.openProv = id;
-      const el = list.querySelector(`[data-id="${id}"]`);
-      if (el) el.outerHTML = provHtml(updated);
+      const updated = state.providers.find((x) => x.id === authId);
+      if (updated) replace(updated);
     };
 
     if (e.target.closest("[data-auth-start]")) {
       const phone = authBox.querySelector("[data-auth-phone]").value.trim();
       authOut.innerHTML = "";
       try {
-        const r = await busy(e.target.closest("[data-auth-start]"), () => api(`providers/${id}/auth/start`, { body: { phone } }));
+        const r = await busy(e.target.closest("[data-auth-start]"), () => api(`providers/${authId}/auth/start`, { body: { phone } }));
         if (!r.ok) return authFail(r.error);
-        state.authTx[id] = r.result.transactionHash;
+        state.authTx[authId] = r.result.transactionHash;
+        if (r.result.step === "password") {
+          showStep("password");
+          authBox.querySelector("[data-auth-password]").focus();
+          return;
+        }
         showStep("code");
         authBox.querySelector("[data-auth-code-hint]").textContent = r.result.hint || "کد فرستاده شد.";
         authBox.querySelector("[data-auth-code]").focus();
@@ -491,7 +782,7 @@ async function pageProviders(main, q) {
     }
 
     if (e.target.closest("[data-auth-back]")) {
-      delete state.authTx[id];
+      delete state.authTx[authId];
       authOut.innerHTML = "";
       showStep("phone");
     }
@@ -501,7 +792,7 @@ async function pageProviders(main, q) {
       authOut.innerHTML = "";
       try {
         const r = await busy(e.target.closest("[data-auth-verify-code]"), () =>
-          api(`providers/${id}/auth/code`, { body: { transactionHash: state.authTx[id], code } }),
+          api(`providers/${authId}/auth/code`, { body: { transactionHash: state.authTx[authId], code } }),
         );
         if (!r.ok) return authFail(r.error);
         if (r.result.step === "password") {
@@ -509,9 +800,9 @@ async function pageProviders(main, q) {
           authBox.querySelector("[data-auth-password]").focus();
           return;
         }
-        delete state.authTx[id];
-        await refreshAuthCard();
-        toast(`ورود به ${p.nameFa} انجام شد`);
+        delete state.authTx[authId];
+        await refreshAuth();
+        toast(`ورود به حساب ${p.nameFa} با موفقیت انجام شد`);
       } catch (ex) {
         authFail(ex.message);
       }
@@ -522,23 +813,30 @@ async function pageProviders(main, q) {
       authOut.innerHTML = "";
       try {
         const r = await busy(e.target.closest("[data-auth-verify-password]"), () =>
-          api(`providers/${id}/auth/password`, { body: { transactionHash: state.authTx[id], password } }),
+          api(`providers/${authId}/auth/password`, { body: { transactionHash: state.authTx[authId], password } }),
         );
         if (!r.ok) return authFail(r.error);
-        delete state.authTx[id];
-        await refreshAuthCard();
-        toast(`ورود به ${p.nameFa} انجام شد`);
+        if (r.result.step === "code") {
+          state.authTx[authId] = r.result.transactionHash || state.authTx[authId];
+          showStep("code");
+          authBox.querySelector("[data-auth-code-hint]").textContent = r.result.hint || "کد فرستاده شد.";
+          authBox.querySelector("[data-auth-code]").focus();
+          return;
+        }
+        delete state.authTx[authId];
+        await refreshAuth();
+        toast(`ورود به حساب ${p.nameFa} با موفقیت انجام شد`);
       } catch (ex) {
         authFail(ex.message);
       }
     }
 
-    if (e.target.closest("[data-auth-logout]") && confirm("از حساب بله خارج شوید؟ ابزارهای این سرویس تا ورود بعدی کار نمی‌کنند.")) {
+    if (e.target.closest("[data-auth-logout]") && confirm(`آیا از حساب کاربری ${p.nameFa} خارج می‌شوید؟ ابزارهای این بخش تا ورود مجدد غیرفعال خواهند شد.`)) {
       try {
-        const r = await api(`providers/${id}/auth/logout`, { body: {} });
+        const r = await api(`providers/${authId}/auth/logout`, { body: {} });
         if (!r.ok) return authFail(r.error);
-        await refreshAuthCard();
-        toast("از حساب بله خارج شدید");
+        await refreshAuth();
+        toast(`از حساب ${p.nameFa} خارج شدید`);
       } catch (ex) {
         authFail(ex.message);
       }
@@ -547,26 +845,31 @@ async function pageProviders(main, q) {
 
   list.addEventListener("change", async (e) => {
     if (!e.target.matches("[data-toggle]")) return;
-    const id = e.target.closest(".prov").dataset.id;
+    const id = e.target.dataset.id;
     try {
       const p = await api(`providers/${id}`, { method: "PUT", body: { enabled: e.target.checked } });
       replace(p);
-      toast(p.enabled ? (p.ready ? `${p.nameFa} روشن شد` : `${p.nameFa} روشن شد؛ توکن را هم ثبت کنید`) : `${p.nameFa} خاموش شد`);
-    } catch (ex) { toast(ex.message, true); e.target.checked = !e.target.checked; }
+      toast(p.enabled ? (p.ready ? `${p.nameFa} روشن شد و آماده کار است` : `${p.nameFa} روشن شد؛ تنظیمات را تکمیل کنید`) : `${p.nameFa} خاموش شد`);
+    } catch (ex) {
+      toast(ex.message, true);
+      e.target.checked = !e.target.checked;
+    }
   });
 
   list.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const form = e.target;
-    const id = form.closest(".prov").dataset.id;
+    const form = e.target.closest("[data-form]");
+    if (!form) return;
+    const id = form.dataset.id;
     const values = {};
     form.querySelectorAll("input[name]:not(:disabled)").forEach((i) => (values[i.name] = i.value.trim()));
     try {
       const p = await busy(form.querySelector("[type=submit]"), () => api(`providers/${id}`, { method: "PUT", body: { values } }));
-      state.openProv = id;
       replace(p);
-      toast(p.ready ? `تنظیمات ${p.nameFa} ذخیره شد و آماده است` : p.enabled ? `ذخیره شد؛ هنوز کامل نیست` : `ذخیره شد؛ برای استفاده روشنش کنید`);
-    } catch (ex) { toast(ex.message, true); }
+      toast(p.ready ? `تنظیمات ${p.nameFa} ذخیره شد و آماده استفاده است` : p.enabled ? `تنظیمات ذخیره شد اما هنوز کامل نیست` : `تنظیمات ذخیره شد؛ برای استفاده روشنش کنید`);
+    } catch (ex) {
+      toast(ex.message, true);
+    }
   });
 }
 
@@ -583,13 +886,12 @@ function inputFor(name, prop, required, p) {
     return `<div class="field">${label}<input id="${id}" class="input ltr-input" type="number" step="${type === "integer" ? 1 : "any"}" data-arg="${name}" data-type="number" ${prop.minimum !== undefined ? `min="${prop.minimum}"` : ""} ${prop.maximum !== undefined ? `max="${prop.maximum}"` : ""}>${desc}</div>`;
   const long = ["text", "caption"].includes(name);
   const defChat = name === "chat_id" ? p.fields.find((f) => f.key === "defaultChatId")?.value : "";
-  const ph = defChat ? `${defChat} (default)` : "";
+  const ph = defChat ? `${defChat} (پیش‌فرض)` : "";
   return long
     ? `<div class="field wide">${label}<textarea id="${id}" class="textarea" data-arg="${name}" dir="auto"></textarea>${desc}</div>`
     : `<div class="field">${label}<input id="${id}" class="input${/(_id|url|photo)$/.test(name) ? " ltr-input" : ""}" dir="auto" data-arg="${name}" placeholder="${esc(ph)}">${desc}</div>`;
 }
 
-// ---------- فیلد رسانه: لینک، file_id یا انتخاب فایل از دستگاه ----------
 const MAX_UPLOAD = 20 * 1024 * 1024;
 const humanSize = (n) => (n < 1024 * 1024 ? `${fa(Math.max(1, Math.round(n / 1024)))} کیلوبایت` : `${fa((n / 1048576).toFixed(1))} مگابایت`);
 
@@ -600,11 +902,11 @@ function mediaInput(id, name, label, kind, description) {
       <div class="media-preview" aria-hidden="true">${isImage ? icons.image : icons.file}</div>
       <div class="media-body">
         <div class="media-row">
-          <input id="${id}" class="input ltr-input" data-arg="${name}" data-type="media" placeholder="https://…  یا  file_id" autocomplete="off">
-          <button type="button" class="btn" data-pick>${isImage ? "انتخاب عکس" : "انتخاب فایل"}</button>
+          <input id="${id}" class="input ltr-input" data-arg="${name}" data-type="media" placeholder="https://…  یا  شناسه فایل" autocomplete="off">
+          <button type="button" class="btn btn-ghost" data-pick>${isImage ? "انتخاب عکس" : "انتخاب فایل"}</button>
           <button type="button" class="btn btn-icon btn-quiet" data-clear-media hidden aria-label="حذف فایل">✕</button>
         </div>
-        <span class="hint">لینک بدهید، فایل را انتخاب کنید، یا آن را هر جای صفحه بکشید و رها کنید${isImage ? " (Ctrl+V هم کار می‌کند)" : ""}. حداکثر ۲۰ مگابایت.</span>
+        <span class="hint">آدرس اینترنتی وارد کنید یا فایل را بکشید و در صفحه رها کنید${isImage ? " (پشتیبانی از Ctrl+V)" : ""}. حداکثر ۲۰ مگابایت.</span>
       </div>
       <input type="file" hidden data-file ${isImage ? 'accept="image/*"' : ""}>
     </div>
@@ -650,7 +952,7 @@ function bindMediaFields(root) {
     const useFile = async (file) => {
       if (!file) return;
       if (file.size > MAX_UPLOAD) return toast(`حجم «${file.name}» بیشتر از ۲۰ مگابایت است`, true);
-      if (isImage && !file.type.startsWith("image/")) return toast("این فایل عکس نیست", true);
+      if (isImage && !file.type.startsWith("image/")) return toast("این فایل تصویر معتبر نیست", true);
       reset();
       input.dataset.dataUrl = await fileToDataUrl(file);
       input.value = `${file.name} — ${humanSize(file.size)}`;
@@ -674,9 +976,6 @@ function bindMediaFields(root) {
   });
 }
 
-// ---------- کشیدن و رها کردن / چسباندن در کل صفحه ----------
-// فایل در هر جای صفحه رها شود به فیلد رسانه‌ی ابزار باز می‌رود، و مرورگر هیچ‌وقت
-// به‌جای ارسال، خود فایل را باز نمی‌کند.
 const draggingFiles = (e) => [...(e.dataTransfer?.types ?? [])].includes("Files");
 let dragDepth = 0;
 const endDrag = () => { dragDepth = 0; document.body.classList.remove("file-drag"); };
@@ -703,10 +1002,9 @@ window.addEventListener("drop", (e) => {
   if (file) {
     e.preventDefault();
     if (box?._useFile) box._useFile(file);
-    else toast("برای ارسال فایل، اول در «آزمایش ابزارها» یک ابزار ارسال عکس یا فایل را باز کنید", true);
+    else toast("برای ارسال فایل ابتدا در بخش «آزمایش ابزارها» یک ابزار ارسال فایل یا عکس را باز کنید", true);
     return;
   }
-  // لینک یا عکسی که از یک سایت دیگر کشیده شده
   if (e.target.closest?.(".media-box") && box?._useUrl) {
     const url = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
     if (url && /^https?:\/\//i.test(url.trim())) { e.preventDefault(); box._useUrl(url); }
@@ -725,7 +1023,6 @@ document.addEventListener("paste", (e) => {
   box._useFile(generic ? new File([f], `clipboard-${Date.now()}.${(f.type.split("/")[1] || "png").replace("jpeg", "jpg")}`, { type: f.type }) : f);
 });
 
-/** برای نمایش «ورودی JSON»: data URLها کوتاه نشان داده می‌شوند */
 function shortenDataUrls(args) {
   return Object.fromEntries(Object.entries(args).map(([k, v]) => [k, typeof v === "string" && v.startsWith("data:") ? `${v.slice(0, v.indexOf(","))},… (${humanSize(v.length * 0.75)})` : v]));
 }
@@ -734,9 +1031,9 @@ async function pagePlayground(main, q) {
   state.providers = await api("providers");
   const all = state.providers.flatMap((p) => p.tools.map((t) => ({ ...t, p })));
   const selected = all.find((t) => t.name === q.get("tool")) ?? all.find((t) => t.p.ready) ?? all[0];
-  main.innerHTML = `${head("آزمایش ابزارها", "هر ابزار را همان‌طور که مدل صدا می‌زند اجرا کنید و پاسخ خام سرویس را ببینید.")}
+  main.innerHTML = `${head("آزمایش ابزارها", "اجرای مستقیم ابزارهای MCP توسط مدل‌های هوش مصنوعی با بازخورد و پاسخ زنده سرور.", "محیط آزمایش")}
     <div class="play">
-      <nav class="tool-list" aria-label="ابزارها">
+      <nav class="tool-list" aria-label="فهرست ابزارها">
         ${state.providers.map((p) => `
           <div class="tool-group"><i style="background:${p.color}"></i>${esc(p.nameFa)}${status(p)}</div>
           ${p.tools.map((t) => `<button class="tool-btn" data-tool="${t.name}" aria-pressed="${t.name === selected?.name}">${esc(t.title)}<small>${esc(t.name)}</small></button>`).join("")}`).join("")}
@@ -760,10 +1057,10 @@ async function pagePlayground(main, q) {
       <p class="desc">${esc(t.description)}</p>
       ${p.ready ? "" : `<div class="err-box" style="margin-bottom:18px">${esc(p.nameFa)} هنوز آماده نیست. <a href="#/providers?open=${p.id}">توکن را ثبت و روشنش کنید</a>.</div>`}
       <form id="tool-form">
-        <div class="tool-form">${Object.keys(props).length ? Object.entries(props).map(([k, v]) => inputFor(k, v, req.includes(k), p)).join("") : '<p class="hint wide">این ابزار ورودی ندارد.</p>'}</div>
+        <div class="tool-form">${Object.keys(props).length ? Object.entries(props).map(([k, v]) => inputFor(k, v, req.includes(k), p)).join("") : '<p class="hint wide">این ابزار پارامتر ورودی ندارد.</p>'}</div>
         <div class="prov-actions" style="margin-top:20px">
           <button class="btn btn-primary" type="submit" ${p.ready ? "" : "disabled"}>اجرای ابزار</button>
-          <button class="btn btn-quiet" type="button" id="show-args">ورودی JSON</button>
+          <button class="btn btn-ghost" type="button" id="show-args">مشاهده ساختار JSON</button>
         </div>
       </form>
     </section>
@@ -784,16 +1081,16 @@ async function pagePlayground(main, q) {
   const result = document.getElementById("result");
   document.getElementById("show-args").onclick = () => {
     result.hidden = false;
-    result.innerHTML = `<div class="result-head"><h2>ورودی</h2></div><pre class="json">${jsonHtml(shortenDataUrls(collect()))}</pre>`;
+    result.innerHTML = `<div class="result-head"><h2>ورودی ارسال‌شده به ابزار</h2></div><pre class="json">${jsonHtml(shortenDataUrls(collect()))}</pre>`;
   };
   bindMediaFields(pane);
   document.getElementById("tool-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector("[type=submit]");
-    if (!t.annotations.readOnlyHint && !confirm(`این ابزار واقعاً در ${p.nameFa} ارسال انجام می‌دهد. ادامه می‌دهید؟`)) return;
+    if (!t.annotations.readOnlyHint && !confirm(`این ابزار پیام واقعی به حساب ${p.nameFa} ارسال خواهد کرد. آیا مایل به ادامه هستید؟`)) return;
     const r = await busy(btn, () => api(`tools/${t.name}/call`, { body: { args: collect() } }));
     result.hidden = false;
-    result.innerHTML = `<div class="result-head"><h2>پاسخ</h2>${r.ok ? '<span class="pill pill-ok">موفق</span>' : '<span class="pill pill-err">ناموفق</span>'}<span class="meta">${fa(r.ms)} میلی‌ثانیه</span></div>
+    result.innerHTML = `<div class="result-head"><h2>نتیجه بازگشتی از سرویس</h2>${r.ok ? '<span class="pill pill-ok">موفق</span>' : '<span class="pill pill-err">ناموفق</span>'}<span class="meta">${fa(r.ms)} میلی‌ثانیه</span></div>
       ${r.ok ? `<pre class="json">${jsonHtml(r.result)}</pre>` : `<div class="err-box">${esc(r.error)}</div>`}`;
     result.scrollIntoView({ behavior: "smooth", block: "nearest" });
   });
@@ -801,16 +1098,17 @@ async function pagePlayground(main, q) {
 
 // ---------------------------------------------------------------- inbox
 const chatTypeFa = { private: "خصوصی", group: "گروه", channel: "کانال", unknown: "" };
-const kindFa = { photo: "عکس", file: "فایل", video: "ویدیو", voice: "صوت", location: "موقعیت", button: "دکمه", other: "" };
+const kindFa = { photo: "تصویر", file: "فایل", video: "ویدیو", voice: "صدا", location: "موقعیت", button: "کلیک دکمه", other: "" };
 
 function receiverHtml(p, st) {
+  if (!p) return "";
   if (!st.supported)
-    return `<div class="rcv off"><div class="disc sm" style="background:${p.color}">${esc(p.glyph)}</div><div class="rcv-body"><b>${esc(p.nameFa)}</b><span class="hint">ایتایار دریافت پیام ندارد؛ فقط ارسال به کانال و گروه.</span></div></div>`;
+    return `<div class="rcv off"><div class="disc sm" style="background:${p.color}">${esc(p.glyph)}</div><div class="rcv-body"><b>${esc(p.nameFa)}</b><span class="hint">ایتایار فقط ارسال پیام دارد؛ دریافت در نسخه کلاینت پشتیبانی می‌شود.</span></div></div>`;
   const ready = p.ready;
   let pill, info = "";
   if (!ready) { pill = `<span class="pill pill-off">${p.auth ? "وارد نشده" : "توکن ثبت نشده"}</span>`; info = `<a href="#/providers?open=${p.id}">${p.auth ? "ورود به حساب" : "ثبت توکن"}</a>`; }
-  else if (st.lastError) { pill = '<span class="pill pill-err">خطا</span>'; info = `<span class="err" title="${esc(st.lastError)}">${esc(st.lastError)}</span>`; }
-  else if (st.running) { pill = '<span class="pill pill-ok">در حال دریافت</span>'; info = st.lastPollAt ? `آخرین بررسی ${ago(st.lastPollAt)}` : "در حال اتصال…"; }
+  else if (st.lastError) { pill = '<span class="pill pill-err">خطا در دریافت</span>'; info = `<span class="err" title="${esc(st.lastError)}">${esc(st.lastError)}</span>`; }
+  else if (st.running) { pill = '<span class="pill pill-ok">در حال دریافت</span>'; info = st.lastPollAt ? `آخرین بررسی ${ago(st.lastPollAt)}` : "در حال اتصال به سرور…"; }
   else pill = '<span class="pill pill-off">خاموش</span>';
   const webhook = /webhook/i.test(st.lastError || "");
   return `<div class="rcv${st.lastError ? " has-err" : ""}" data-rcv="${p.id}">
@@ -821,9 +1119,9 @@ function receiverHtml(p, st) {
       ${st.hint ? `<span class="st-hint">${esc(st.hint)}</span>` : ""}
     </div>
     <div class="rcv-actions">
-      ${webhook ? `<button class="btn btn-danger" data-action="deleteWebhook">حذف وبهوک</button>` : ""}
-      <button class="btn" data-fetch ${ready ? "" : "disabled"}>بررسی الان</button>
-      <label class="switch" title="دریافت خودکار"><input type="checkbox" data-receive ${st.enabled ? "checked" : ""} ${ready && !p.receive.fromEnv ? "" : "disabled"} aria-label="دریافت خودکار ${esc(p.nameFa)}"><span></span></label>
+      ${webhook ? `<button class="btn btn-ghost btn-danger btn-sm" data-action="deleteWebhook">حذف وبهوک</button>` : ""}
+      <button class="btn btn-ghost btn-sm" data-fetch ${ready ? "" : "disabled"}>بررسی الان</button>
+      <label class="switch" title="دریافت خودکار پیام‌ها"><input type="checkbox" data-receive ${st.enabled ? "checked" : ""} ${ready && !p.receive.fromEnv ? "" : "disabled"} aria-label="دریافت خودکار ${esc(p.nameFa)}"><span></span></label>
     </div>
   </div>`;
 }
@@ -834,9 +1132,9 @@ async function pageInbox(main, q) {
   let data = { statuses: [], chats: [], messages: [] };
   let lastSig = "";
 
-  main.innerHTML = `${head("پیام‌های دریافتی", "گفتگوهای ربات‌ها و حساب‌های کاربری: پیام‌هایی که طرف مقابل می‌دهد و پیام‌هایی که خودتان می‌فرستید. از اینجا شناسه‌ی چت‌ها را پیدا کنید، چت پیش‌فرض را تعیین کنید و جواب بدهید.")}
+  main.innerHTML = `${head("پیام‌های دریافتی", "گفتگوهای زنده ربات‌ها و حساب‌های کاربری متصل به هوش مصنوعی. شناسایی شناسه چت و ارسال پاسخ مستقیم.", "صندوق پیام‌ها")}
     <section class="receivers" id="rcv"></section>
-    <p class="note rcv-note">«دریافت خودکار» پیام‌های هر سرویس را مرتب می‌خواند و ابزار get_updates مدل هم از همین صندوق جواب می‌دهد. اگر برنامه‌ی دیگری (وبهوک یا نسخه‌ی دیگر) هم پیام‌های همان ربات/حساب را می‌خواند، روشنش نکنید؛ «بررسی الان» هم پیام‌ها را برمی‌دارد.</p>
+    <p class="note rcv-note">«دریافت خودکار» به طور مداوم پیام‌ها را همگام می‌کند تا ابزار get_updates در دسترس مدل قرار گیرد.</p>
     <section class="inbox">
       <nav class="chat-list" id="chats" aria-label="چت‌ها"></nav>
       <div class="convo" id="convo"></div>
@@ -852,7 +1150,7 @@ async function pageInbox(main, q) {
   const drawChats = () => {
     const el = document.getElementById("chats");
     if (!data.chats.length) {
-      el.innerHTML = `<div class="empty"><b>هنوز پیامی نیامده</b>دریافت خودکار را روشن کنید یا «بررسی الان» را بزنید، بعد از گوشی یک پیام به ربات یا حساب بدهید.</div>`;
+      el.innerHTML = `<div class="empty"><b>پیامی دریافت نشده است</b>دریافت خودکار را روشن کنید یا «بررسی الان» را انتخاب نمایید.</div>`;
       return;
     }
     el.innerHTML = data.chats.map((c) => {
@@ -860,7 +1158,7 @@ async function pageInbox(main, q) {
       const active = c.provider === sel.p && c.chatId === sel.c;
       const isDef = defaultChat(c.provider) === c.chatId;
       return `<button class="chat-item" data-p="${c.provider}" data-c="${esc(c.chatId)}" aria-current="${active}">
-        <span class="disc xs" style="background:${p.color}">${esc(p.glyph)}</span>
+        <span class="disc xs" style="background:${p?.color || "var(--brand)"}">${esc(p?.glyph || "•")}</span>
         <span class="ci-body">
           <span class="ci-top"><b dir="auto">${esc(c.title || c.chatId)}</b><span class="meta">${ago(c.lastDate)}</span></span>
           <span class="ci-sub">${c.lastDirection === "out" ? '<span class="ci-you">شما: </span>' : ""}<span dir="auto">${esc(kindFa[c.lastText] ?? c.lastText ?? "—")}</span></span>
@@ -874,7 +1172,7 @@ async function pageInbox(main, q) {
     const el = document.getElementById("convo");
     const chat = data.chats.find((c) => c.provider === sel.p && c.chatId === sel.c);
     if (!chat) {
-      el.innerHTML = `<div class="empty convo-empty">${icons.inbox}<b>یک چت را انتخاب کنید</b>شناسه‌ی چت، پیام‌ها و ارسال جواب اینجا نمایش داده می‌شود.</div>`;
+      el.innerHTML = `<div class="empty convo-empty">${icons.inbox}<b>یک گفتگو را انتخاب کنید</b>پیام‌های دریافتی، شناسه چت و ارسال پاسخ مستقیم در این بخش نمایش داده می‌شوند.</div>`;
       return;
     }
     const p = provOf(chat.provider);
@@ -883,32 +1181,32 @@ async function pageInbox(main, q) {
     el.innerHTML = `
       <header class="convo-head">
         <div><b dir="auto">${esc(chat.title || chat.chatId)}</b>
-          <div class="convo-id"><span class="meta">${esc(p.nameFa)}${chatTypeFa[chat.type] ? ` · ${chatTypeFa[chat.type]}` : ""} · chat_id</span>
+          <div class="convo-id"><span class="meta">${esc(p?.nameFa || "")}${chatTypeFa[chat.type] ? ` · ${chatTypeFa[chat.type]}` : ""} · شناسه چت:</span>
           <code class="ltr">${esc(chat.chatId)}</code><button class="btn btn-quiet btn-sm" data-copy-id>کپی</button></div>
         </div>
-        ${isDef ? `<span class="pill pill-ok">چت پیش‌فرض ${esc(p.nameFa)}</span>` : `<button class="btn" data-set-default>تنظیم به‌عنوان چت پیش‌فرض</button>`}
+        ${isDef ? `<span class="pill pill-ok">چت پیش‌فرض ${esc(p?.nameFa || "")}</span>` : `<button class="btn btn-ghost btn-sm" data-set-default>تنظیم به عنوان چت پیش‌فرض</button>`}
       </header>
       <ol class="msgs" id="msgs">
         ${data.messages.slice().reverse().map((m) => {
-          const out = m.direction === "out";
-          const time = new Date(m.date).toLocaleString("fa-IR", { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" });
-          const who = out
-            ? m.source === "account"
-              ? `<b>شما</b><span>از حساب بله</span>`
-              : `<b>ربات</b><span>${m.source === "mcp" ? "از طرف هوش مصنوعی" : "از داشبورد"}</span>`
-            : `${m.from?.name ? `<b dir="auto">${esc(m.from.name)}</b>` : ""}${m.from?.username ? `<span class="ltr">@${esc(m.from.username)}</span>` : ""}`;
-          const img = out && m.kind === "photo" && m.mediaUrl ? `<img class="msg-img" src="${esc(m.mediaUrl)}" alt="" loading="lazy" onerror="this.remove()">` : "";
-          return `<li class="msg${out ? " out" : ""}">
+      const out = m.direction === "out";
+      const time = new Date(m.date).toLocaleString("fa-IR", { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" });
+      const who = out
+        ? m.source === "account"
+          ? `<b>شما</b><span>از طریق حساب کاربر</span>`
+          : `<b>ربات</b><span>${m.source === "mcp" ? "از طرف هوش مصنوعی" : "از داشبورد"}</span>`
+        : `${m.from?.name ? `<b dir="auto">${esc(m.from.name)}</b>` : ""}${m.from?.username ? `<span class="ltr">@${esc(m.from.username)}</span>` : ""}`;
+      const img = out && m.kind === "photo" && m.mediaUrl ? `<img class="msg-img" src="${esc(m.mediaUrl)}" alt="" loading="lazy" onerror="this.remove()">` : "";
+      return `<li class="msg${out ? " out" : ""}">
             <div class="msg-meta">${who}<span>${time}</span></div>
             ${img}
             ${kindFa[m.kind] ? `<span class="msg-kind">${kindFa[m.kind]}${m.buttonId ? `: <code class="ltr">${esc(m.buttonId)}</code>` : ""}</span>` : ""}
             ${m.text ? `<p dir="auto">${esc(m.text)}</p>` : ""}
           </li>`;
-        }).join("")}
+    }).join("")}
       </ol>
       <form class="composer" data-reply>
-        <textarea class="textarea" data-draft rows="2" dir="auto" placeholder="جواب به ${esc(chat.title || chat.chatId)}…" aria-label="متن جواب"></textarea>
-        <button class="btn btn-primary" type="submit" ${p.ready ? "" : "disabled"}>${icons.send}ارسال</button>
+        <textarea class="textarea" data-draft rows="2" dir="auto" placeholder="پاسخ مستقیم به ${esc(chat.title || chat.chatId)}…" aria-label="متن جواب"></textarea>
+        <button class="btn btn-primary" type="submit" ${p?.ready ? "" : "disabled"}>${icons.send}ارسال پیام</button>
       </form>`;
     el.querySelector("[data-draft]").value = keepDraft;
     const list = document.getElementById("msgs");
@@ -924,7 +1222,7 @@ async function pageInbox(main, q) {
     lastSig = sig;
   };
   await load(true);
-  state.timer = setInterval(() => { if (!document.hidden) load().catch(() => {}); }, 4000);
+  state.timer = setInterval(() => { if (!document.hidden) load().catch(() => { }); }, 4000);
 
   main.addEventListener("click", async (e) => {
     const item = e.target.closest(".chat-item");
@@ -937,20 +1235,20 @@ async function pageInbox(main, q) {
     const rcv = e.target.closest("[data-rcv]");
     if (rcv && e.target.closest("[data-fetch]")) {
       const r = await busy(e.target.closest("[data-fetch]"), () => api(`inbox/${rcv.dataset.rcv}/fetch`, { body: {} }));
-      r.ok ? toast(r.added ? `${fa(r.added)} پیام جدید` : "پیام جدیدی نبود") : toast(r.error, true);
+      r.ok ? toast(r.added ? `${fa(r.added)} پیام جدید دریافت شد` : "پیام جدیدی وجود نداشت") : toast(r.error, true);
       return load(true);
     }
     const act = e.target.closest("[data-action]");
     if (rcv && act) {
       const r = await busy(act, () => api(`providers/${rcv.dataset.rcv}/actions/${act.dataset.action}`, { body: {} }));
-      r.ok ? toast("وبهوک حذف شد؛ دریافت دوباره امتحان می‌شود") : toast(r.error, true);
+      r.ok ? toast("وبهوک حذف شد؛ دریافت پیام مجدداً بررسی می‌شود") : toast(r.error, true);
       return load(true);
     }
     if (e.target.closest("[data-copy-id]")) return copy(sel.c);
     if (e.target.closest("[data-set-default]")) {
       const updated = await api(`providers/${sel.p}`, { method: "PUT", body: { values: { defaultChatId: sel.c } } });
       state.providers = state.providers.map((x) => (x.id === updated.id ? updated : x));
-      toast(`چت پیش‌فرض ${updated.nameFa} تعیین شد`);
+      toast(`چت پیش‌فرض ${updated.nameFa} با موفقیت تنظیم شد`);
       return load(true);
     }
   });
@@ -961,7 +1259,7 @@ async function pageInbox(main, q) {
     const id = sw.closest("[data-rcv]").dataset.rcv;
     try {
       await api(`inbox/${id}/receive`, { body: { enabled: sw.checked } });
-      toast(sw.checked ? `دریافت خودکار ${provOf(id).nameFa} روشن شد` : `دریافت خودکار ${provOf(id).nameFa} خاموش شد`);
+      toast(sw.checked ? `دریافت خودکار ${provOf(id)?.nameFa} فعال شد` : `دریافت خودکار ${provOf(id)?.nameFa} غیرفعال شد`);
     } catch (ex) { sw.checked = !sw.checked; toast(ex.message, true); }
     setTimeout(() => load(true), 600);
   });
@@ -984,15 +1282,16 @@ async function pageInbox(main, q) {
 // ---------------------------------------------------------------- logs
 async function pageLogs(main) {
   if (!state.providers.length) state.providers = await api("providers");
-  main.innerHTML = `${head("گزارش فراخوانی‌ها", "سیصد فراخوانی آخر، چه از طرف مدل و چه از داشبورد. همه‌ی فراخوانی‌ها در پوشه‌ی data/logs هم ذخیره می‌شوند.",
+  main.innerHTML = `${head("گزارش فراخوانی‌ها", "گزارش کامل ۳۰۰ فراخوانی اخیر مدل‌های هوش مصنوعی و داشبورد به تفکیک پیام‌رسان و وضعیت.", "رویدادها و لاگ‌ها",
     `<div class="toolbar" style="margin:0">
-      <button class="btn btn-icon" id="reload" aria-label="به‌روزرسانی">${icons.refresh}</button>
-      <button class="btn btn-quiet btn-danger" id="clear">پاک کردن گزارش‌ها</button></div>`)}
+      <button class="btn btn-icon btn-ghost" id="reload" aria-label="به‌روزرسانی">${icons.refresh}</button>
+      <button class="btn btn-ghost btn-danger btn-sm" id="clear">پاک کردن گزارش‌ها</button>
+    </div>`)}
     <div class="toolbar">
-      <div class="seg" role="group" aria-label="وضعیت">
+      <div class="seg" role="group" aria-label="فیلتر وضعیت">
         ${[["all", "همه"], ["ok", "موفق"], ["fail", "ناموفق"]].map(([v, l]) => `<button data-ok="${v}" aria-pressed="${state.logFilter.ok === v}">${l}</button>`).join("")}
       </div>
-      <select class="select" id="pf" aria-label="پیام‌رسان">
+      <select class="select" id="pf" aria-label="فیلتر پیام‌رسان">
         <option value="">همه‌ی پیام‌رسان‌ها</option>
         ${state.providers.map((p) => `<option value="${p.id}" ${state.logFilter.provider === p.id ? "selected" : ""}>${esc(p.nameFa)}</option>`).join("")}
       </select>
@@ -1006,14 +1305,14 @@ async function pageLogs(main) {
     const rows = state.logs.filter((l) => (f.ok === "all" || (f.ok === "ok") === l.ok) && (!f.provider || l.provider === f.provider));
     list.innerHTML = rows.length
       ? rows.map((l) => callRow(l, true) + (l.id === openId ? `<div class="call-detail"><div class="tool-form" style="padding-top:14px">
-          <div><div class="hint">ورودی</div><pre class="json">${jsonHtml(l.args)}</pre></div>
-          <div><div class="hint">${l.ok ? "پاسخ" : "خطا"}</div>${l.ok ? `<pre class="json">${l.result ? jsonHtml(JSON.parse(l.result)) : ""}</pre>` : `<div class="err-box">${esc(l.error)}</div>`}</div>
+          <div><div class="hint">آرگومان‌های ورودی به مدل</div><pre class="json">${jsonHtml(l.args)}</pre></div>
+          <div><div class="hint">${l.ok ? "خروجی موفق" : "پیام خطا"}</div>${l.ok ? `<pre class="json">${l.result ? jsonHtml(JSON.parse(l.result)) : ""}</pre>` : `<div class="err-box">${esc(l.error)}</div>`}</div>
         </div></div>` : "")).join("")
-      : `<div class="empty"><b>گزارشی با این فیلتر نیست</b>فیلترها را عوض کنید یا یک ابزار اجرا کنید.</div>`;
+      : `<div class="empty"><b>گزارشی با این مشخصات یافت نشد</b>فیلترها را تغییر داده یا ابزاری را فراخوانی کنید.</div>`;
   };
   const load = async () => { state.logs = await api("logs?limit=300"); draw(); };
   await load();
-  state.timer = setInterval(() => { if (!openId) load().catch(() => {}); }, 5000);
+  state.timer = setInterval(() => { if (!openId) load().catch(() => { }); }, 5000);
 
   list.addEventListener("click", (e) => {
     const r = e.target.closest("[data-log]");
@@ -1030,10 +1329,10 @@ async function pageLogs(main) {
   document.getElementById("pf").onchange = (e) => { state.logFilter.provider = e.target.value; draw(); };
   document.getElementById("reload").onclick = (e) => busy(e.currentTarget, load);
   document.getElementById("clear").onclick = async () => {
-    if (!confirm("همه‌ی گزارش‌ها، از جمله فایل‌های ذخیره‌شده، پاک شود؟")) return;
+    if (!confirm("آیا تمامی گزارش‌ها و فایل‌های لاگ پاک شوند؟")) return;
     await api("logs", { method: "DELETE" });
     await load();
-    toast("گزارش‌ها پاک شد");
+    toast("تمام گزارش‌ها پاک شدند");
   };
 }
 
@@ -1048,33 +1347,33 @@ async function pageConnect(main) {
     "Claude Desktop (stdio)": {
       lang: "json",
       code: JSON.stringify({ mcpServers: { "diba-mcp": { command: "npx", args: ["-y", "diba-mcp", "stdio"] } } }, null, 2),
-      note: "در حالت stdio سرور روی همان کامپیوتر اجرا می‌شود و تنظیمات را از ~/.diba-mcp می‌خواند (همان پوشه‌ای که npx diba-mcp برای داشبورد استفاده می‌کند)؛ توکن MCP لازم نیست. پوشه‌ی دیگر: \"--data\", \"/path\" را به args اضافه کنید.",
+      note: "در حالت stdio سرور روی سیستم شما اجرا شده و تنظیمات را مستقیماً از پوشه ~/.diba-mcp می‌خواند؛ نیازی به توکن نیست.",
     },
-    "الحاق به پروژه‌ی Express": {
+    "اسکریپت Express / Node.js": {
       lang: "js",
-      code: `import express from "express";\nimport { createDibaMcp } from "diba-mcp";\n\nconst app = express();\nconst dibaMcp = createDibaMcp({ dataDir: "./data/diba-mcp" });\n\n// داشبورد در /diba-mcp/ و اندپوینت در /diba-mcp/mcp\napp.use("/diba-mcp", dibaMcp.router());\n\n// یا فراخوانی مستقیم از کد خودتان\nawait dibaMcp.engine.callTool("bale_send_message", { text: "سفارش جدید ثبت شد" }, "dashboard");`,
+      code: `import express from "express";\nimport { createDibaMcp } from "diba-mcp";\n\nconst app = express();\nconst dibaMcp = createDibaMcp({ dataDir: "./data/diba-mcp" });\n\n// اتصال داشبورد و اندپوینت MCP به پروژه اکسپرس شما\napp.use("/diba-mcp", dibaMcp.router());\n\n// یا فراخوانی مستقیم بدون هوش مصنوعی:\nawait dibaMcp.engine.callTool("bale_send_message", { text: "سفارش جدید ثبت شد" }, "dashboard");`,
     },
-    "تست با curl": {
+    "تست دستی با curl": {
       lang: "bash",
       code: `curl -s ${url} \\\n  -H "Authorization: Bearer ${c.token}" \\\n  -H "Content-Type: application/json" \\\n  -H "Accept: application/json, text/event-stream" \\\n  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`,
     },
   };
   let tab = Object.keys(snippets)[0];
 
-  main.innerHTML = `${head("اتصال به هوش مصنوعی", "این آدرس و توکن را به هر کلاینتی که MCP را پشتیبانی می‌کند بدهید.")}
+  main.innerHTML = `${head("اتصال به هوش مصنوعی", "این آدرس و توکن را به Claude Code، Cursor یا هر کلاینت سازگار با پروتکل MCP متصل نمایید.", "راهنمای اتصال")}
     <div class="conn-grid">
       <section class="panel">
-        <div class="field"><label for="ep">آدرس اندپوینت MCP</label>
-          <div class="endpoint"><input id="ep" class="input ltr-input" readonly value="${esc(url)}"><button class="btn" data-copy="${esc(url)}">کپی</button></div>
-          <span class="hint">انتقال: Streamable HTTP، بدون نشست. فقط درخواست POST.</span></div>
-        <div class="field" style="margin-top:18px"><label for="tk">توکن دسترسی${c.fromEnv ? '<span class="env-badge">از env</span>' : ""}</label>
+        <div class="field"><label for="ep">آدرس اندپوینت Streamable HTTP</label>
+          <div class="endpoint"><input id="ep" class="input ltr-input" readonly value="${esc(url)}"><button class="btn btn-ghost" data-copy="${esc(url)}">کپی آدرس</button></div>
+          <span class="hint">پروتکل انتقال: HTTP POST بدون نشست با پشتیبانی از SSE.</span></div>
+        <div class="field" style="margin-top:18px"><label for="tk">توکن دسترسی Bearer Token${c.fromEnv ? '<span class="env-badge">از env</span>' : ""}</label>
           <div class="endpoint">
-            <div class="input-wrap"><input id="tk" type="password" class="input ltr-input" readonly value="${esc(c.token)}"><button class="btn btn-icon btn-quiet" data-reveal="tk" aria-label="نمایش">${icons.eye}</button></div>
-            <button class="btn" data-copy="${esc(c.token)}">کپی</button>
+            <div class="input-wrap"><input id="tk" type="password" class="input ltr-input" readonly value="${esc(c.token)}"><button class="btn btn-icon btn-quiet" data-reveal="tk" aria-label="نمایش توکن">${icons.eye}</button></div>
+            <button class="btn btn-ghost" data-copy="${esc(c.token)}">کپی توکن</button>
           </div>
-          <span class="hint">در هدر <code class="ltr">Authorization: Bearer …</code> فرستاده می‌شود. هر کسی این توکن را داشته باشد می‌تواند از طرف ربات‌های شما پیام بفرستد.</span>
+          <span class="hint">این توکن در هدر <code class="ltr">Authorization: Bearer …</code> ارسال می‌شود و ابزارهای پیام‌رسان‌ها را در دسترس قرار می‌دهد.</span>
         </div>
-        ${c.fromEnv ? "" : `<div class="prov-actions" style="margin-top:16px"><button class="btn btn-danger" id="rotate">ساخت توکن جدید</button></div>`}
+        ${c.fromEnv ? "" : `<div class="prov-actions" style="margin-top:16px"><button class="btn btn-ghost btn-danger btn-sm" id="rotate">ساخت توکن جدید (ابطال توکن قبلی)</button></div>`}
       </section>
       <section class="panel">
         <div class="tabs" role="tablist">${Object.keys(snippets).map((k) => `<button role="tab" data-tab="${esc(k)}" aria-selected="${k === tab}">${esc(k)}</button>`).join("")}</div>
@@ -1084,7 +1383,7 @@ async function pageConnect(main) {
 
   const drawSnip = () => {
     const s = snippets[tab];
-    document.getElementById("snip").innerHTML = `<div class="snippet"><pre class="json">${esc(s.code)}</pre><button class="btn" data-copy-snip>کپی</button></div>${s.note ? `<p class="note">${esc(s.note)}</p>` : ""}`;
+    document.getElementById("snip").innerHTML = `<div class="snippet"><pre class="json">${esc(s.code)}</pre><button class="btn btn-ghost btn-sm" data-copy-snip>کپی قطعه‌کد</button></div>${s.note ? `<p class="note">${esc(s.note)}</p>` : ""}`;
   };
   drawSnip();
   main.querySelector(".conn-grid").addEventListener("click", async (e) => {
@@ -1095,7 +1394,7 @@ async function pageConnect(main) {
     if (rv) { const i = document.getElementById(rv.dataset.reveal); i.type = i.type === "password" ? "text" : "password"; }
     const tb = e.target.closest("[data-tab]");
     if (tb) { tab = tb.dataset.tab; main.querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-selected", b === tb)); drawSnip(); }
-    if (e.target.closest("#rotate") && confirm("توکن فعلی باطل می‌شود و همه‌ی کلاینت‌ها باید توکن جدید بگیرند. ادامه می‌دهید؟")) {
+    if (e.target.closest("#rotate") && confirm("آیا توکن دسترسی کنونی باطل شود؟ تمام کلاینت‌های متصل باید با توکن جدید تنظیم شوند.")) {
       await api("connection/rotate", { body: {} });
       toast("توکن جدید ساخته شد");
       pageConnect(main);
@@ -1108,7 +1407,7 @@ async function boot() {
   clearInterval(state.timer);
   let s;
   try { s = await api("auth/status"); }
-  catch { $app.innerHTML = `<div class="boot"><div class="err-box">به سرور وصل نشد. مطمئن شوید diba-mcp در حال اجراست و صفحه را دوباره باز کنید.</div></div>`; return; }
+  catch { $app.innerHTML = `<div class="boot"><div class="err-box">امکان اتصال به سرور diba-mcp وجود ندارد. از روشن بودن سرور اطمینان حاصل کرده و صفحه را تازه کنید.</div></div>`; return; }
   if (!s.authenticated) return renderAuth(s.needsSetup);
   renderShell();
   document.getElementById("ver").textContent = `نسخه ${s.version}`;

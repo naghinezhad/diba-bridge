@@ -27,10 +27,13 @@ export async function probe(url: string, timeoutMs: number) {
  * هر پاسخ HTTP (حتی 404) یعنی مسیر شبکه باز است.
  */
 export async function runNetcheck(engine: DibaMcpEngine, timeoutMs = 10_000) {
-  const targets = engine.providers.map((p) => {
-    const base = engine.store.resolve(p).values.baseUrl || p.fields.find((f) => f.key === "baseUrl")?.default || "";
-    return { id: p.id, name: p.nameFa, url: base };
-  });
+  const targets = engine.providers
+    .map((p) => {
+      const base = engine.store.resolve(p).values.baseUrl || p.fields.find((f) => f.key === "baseUrl")?.default || "";
+      return { id: p.id, name: p.nameFa, url: base };
+    })
+    // بعضی کلاینت‌های حساب کاربری (مثل روبیکا) URL ثابت ندارند و آدرس را از سرور می‌گیرند
+    .filter((t) => Boolean(t.url));
 
   const [ip, ...results] = await Promise.all([
     netFetch("https://api.ipify.org?format=json", { signal: AbortSignal.timeout(timeoutMs) })
