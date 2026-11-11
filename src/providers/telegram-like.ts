@@ -19,6 +19,8 @@ export interface TelegramLikeOptions {
   docsUrl: string;
   botfather: string;
   description: string;
+  /** Bot API chat-management actions (title, description, members, ban, pin). */
+  management?: boolean;
 }
 
 export function chatIdOf(ctx: ProviderContext, chatId?: string): string {
@@ -237,6 +239,95 @@ export function createTelegramLikeProvider(o: TelegramLikeOptions): ProviderDef 
           return { source: "api", messages };
         },
       }),
+      ...(o.management ? [
+        defineTool({
+          name: `${p}_get_chat_member_count`,
+          title: "تعداد اعضای گروه/کانال",
+          description: `Get the member count of a ${o.name} group or channel.`,
+          input: { chat_id: chatId },
+          annotations: { readOnlyHint: true, openWorldHint: true },
+          handler: (a, ctx) => call(ctx, "getChatMemberCount", { chat_id: chatIdOf(ctx, a.chat_id) }),
+        }),
+        defineTool({
+          name: `${p}_get_chat_administrators`,
+          title: "مدیران گروه/کانال",
+          description: `List administrators of a ${o.name} group or channel.`,
+          input: { chat_id: chatId },
+          annotations: { readOnlyHint: true, openWorldHint: true },
+          handler: (a, ctx) => call(ctx, "getChatAdministrators", { chat_id: chatIdOf(ctx, a.chat_id) }),
+        }),
+        defineTool({
+          name: `${p}_get_chat_member`,
+          title: "اطلاعات عضو گروه/کانال",
+          description: `Get membership status of one user in a ${o.name} group or channel.`,
+          input: {
+            chat_id: chatId,
+            user_id: z.number().int().describe("Numeric Telegram user id"),
+          },
+          annotations: { readOnlyHint: true, openWorldHint: true },
+          handler: (a, ctx) => call(ctx, "getChatMember", { chat_id: chatIdOf(ctx, a.chat_id), user_id: a.user_id }),
+        }),
+        defineTool({
+          name: `${p}_set_chat_title`,
+          title: "تغییر عنوان گروه/کانال",
+          description: `Change the title of a ${o.name} group or channel. The bot must be an administrator.`,
+          input: { chat_id: chatId, title: z.string().min(1).max(128) },
+          annotations: { openWorldHint: true },
+          handler: (a, ctx) => call(ctx, "setChatTitle", { chat_id: chatIdOf(ctx, a.chat_id), title: a.title }),
+        }),
+        defineTool({
+          name: `${p}_set_chat_description`,
+          title: "تغییر توضیحات گروه/کانال",
+          description: `Change the description of a ${o.name} group or channel. The bot must be an administrator.`,
+          input: { chat_id: chatId, description: z.string().max(512) },
+          annotations: { openWorldHint: true },
+          handler: (a, ctx) => call(ctx, "setChatDescription", { chat_id: chatIdOf(ctx, a.chat_id), description: a.description }),
+        }),
+        defineTool({
+          name: `${p}_leave_chat`,
+          title: "خروج ربات از گروه/کانال",
+          description: `Make the bot leave a ${o.name} group or channel.`,
+          input: { chat_id: chatId },
+          annotations: { openWorldHint: true },
+          handler: (a, ctx) => call(ctx, "leaveChat", { chat_id: chatIdOf(ctx, a.chat_id) }),
+        }),
+        defineTool({
+          name: `${p}_ban_chat_member`,
+          title: "حذف/مسدودسازی عضو",
+          description: `Ban a user from a ${o.name} group or channel. The bot must be an administrator.`,
+          input: {
+            chat_id: chatId,
+            user_id: z.number().int(),
+            revoke_messages: z.boolean().optional(),
+          },
+          annotations: { openWorldHint: true },
+          handler: (a, ctx) => call(ctx, "banChatMember", { chat_id: chatIdOf(ctx, a.chat_id), user_id: a.user_id, revoke_messages: a.revoke_messages }),
+        }),
+        defineTool({
+          name: `${p}_unban_chat_member`,
+          title: "رفع مسدودی عضو",
+          description: `Unban a user in a ${o.name} group or channel.`,
+          input: { chat_id: chatId, user_id: z.number().int(), only_if_banned: z.boolean().optional() },
+          annotations: { openWorldHint: true },
+          handler: (a, ctx) => call(ctx, "unbanChatMember", { chat_id: chatIdOf(ctx, a.chat_id), user_id: a.user_id, only_if_banned: a.only_if_banned }),
+        }),
+        defineTool({
+          name: `${p}_pin_chat_message`,
+          title: "سنجاق پیام",
+          description: `Pin a message in a ${o.name} group or channel.`,
+          input: { chat_id: chatId, message_id: z.number().int(), disable_notification: z.boolean().optional() },
+          annotations: { openWorldHint: true },
+          handler: (a, ctx) => call(ctx, "pinChatMessage", { chat_id: chatIdOf(ctx, a.chat_id), message_id: a.message_id, disable_notification: a.disable_notification }),
+        }),
+        defineTool({
+          name: `${p}_unpin_chat_message`,
+          title: "برداشتن سنجاق پیام",
+          description: `Unpin a message in a ${o.name} group or channel.`,
+          input: { chat_id: chatId, message_id: z.number().int().optional() },
+          annotations: { openWorldHint: true },
+          handler: (a, ctx) => call(ctx, "unpinChatMessage", { chat_id: chatIdOf(ctx, a.chat_id), message_id: a.message_id }),
+        }),
+      ] : []),
     ],
   };
 }

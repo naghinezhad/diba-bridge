@@ -49,7 +49,7 @@ export { startHttp, startStdio, printNetcheck } from "./server.js";
 export { defineTool, ProviderError } from "./core/types.js";
 export type { ProviderDef, ToolDef, ProviderField, ProviderContext, ProviderAuthDef, AuthStep, AuthUser } from "./core/types.js";
 export { createTelegramLikeProvider } from "./providers/telegram-like.js";
-export { builtinProviders, baleClient, eitaaClient, rubikaClient, soroushClient } from "./providers/index.js";
+export { builtinProviders, baleClient, eitaaClient, instagram, linkedinProvider, rubikaClient, soroushClient, telegram, telegramClient, whatsapp, x } from "./providers/index.js";
 export { createDibaMcpRouter } from "./http/router.js";
 export { configureProxy, proxyMode } from "./core/net.js";
 export { runNetcheck } from "./core/netcheck.js";

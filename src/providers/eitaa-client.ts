@@ -696,5 +696,176 @@ export const eitaaClient: ProviderDef = {
         return { source: "chats", dialogs: await loadDialogs(ctx, state, a.limit ?? 20) };
       },
     }),
+    defineTool({
+      name: "eitaa_client_list_groups",
+      title: "فهرست گروه‌های ایتا",
+      description: "List Eitaa groups from recent dialogs.",
+      input: { limit: z.number().int().min(1).max(100).optional() },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const state = await getState(ctx);
+        const dialogs = (await loadDialogs(ctx, state, a.limit ?? 50)).filter((d) => d.type === "chat");
+        return { groups: dialogs };
+      },
+    }),
+    defineTool({
+      name: "eitaa_client_list_channels",
+      title: "فهرست کانال‌های ایتا",
+      description: "List Eitaa channels from recent dialogs.",
+      input: { limit: z.number().int().min(1).max(100).optional() },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const state = await getState(ctx);
+        const dialogs = (await loadDialogs(ctx, state, a.limit ?? 50)).filter((d) => d.type === "channel");
+        return { channels: dialogs };
+      },
+    }),
+    defineTool({
+      name: "eitaa_client_create_group",
+      title: "ساخت گروه ایتا",
+      description: "Create a new Eitaa group with an initial list of member user ids.",
+      input: {
+        title: z.string().min(1).max(128),
+        member_ids: z.array(z.union([z.string(), z.number()])).min(1).max(100).describe("Numeric Eitaa user ids"),
+      },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const state = await getState(ctx);
+        const data = await bridgeCall(ctx, "groups/create", {
+          phone: state.session.phone,
+          title: a.title,
+          ids: a.member_ids.map((id) => String(id)),
+        }, 60_000);
+        return { ok: true, group: data };
+      },
+    }),
+    defineTool({
+      name: "eitaa_client_get_chat_members",
+      title: "اعضای گروه یا کانال ایتا",
+      description: "List members of an Eitaa group/channel. Run get_chats first so the bridge learns its access hash.",
+      input: {
+        chat_id: z.string(),
+        start: z.number().int().min(0).optional(),
+        limit: z.number().int().min(1).max(200).optional(),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const state = await getState(ctx);
+        const entity = await resolveEntity(ctx, state, a.chat_id.trim());
+        const data = await bridgeCall(ctx, "groups/getMembers", {
+          phone: state.session.phone,
+          id: entity.id,
+          start: a.start ?? 0,
+          size: a.limit ?? 100,
+        }, 45_000);
+        return { chat_id: entity.id, members: data?.participants ?? data };
+      },
+    }),
+    defineTool({
+      name: "eitaa_client_add_chat_member",
+      title: "افزودن عضو به گروه ایتا",
+      description: "Add one user to an Eitaa group/channel. The user's access_hash is returned by get_chat_members.",
+      input: {
+        chat_id: z.string(),
+        user_id: z.string(),
+        access_hash: z.string(),
+      },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const state = await getState(ctx);
+        const entity = await resolveEntity(ctx, state, a.chat_id.trim());
+        const data = await bridgeCall(ctx, "groups/addMember", {
+          phone: state.session.phone,
+          id: entity.id,
+          uid: a.user_id,
+          access_hash: a.access_hash,
+        }, 45_000);
+        return { ok: true, chat_id: entity.id, result: data };
+      },
+    }),
+    defineTool({
+      name: "eitaa_client_remove_chat_member",
+      title: "حذف عضو از گروه ایتا",
+      description: "Remove one user from an Eitaa group/channel.",
+      input: {
+        chat_id: z.string(),
+        user_id: z.string(),
+        access_hash: z.string(),
+      },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const state = await getState(ctx);
+        const entity = await resolveEntity(ctx, state, a.chat_id.trim());
+        const data = await bridgeCall(ctx, "groups/deleteMember", {
+          phone: state.session.phone,
+          id: entity.id,
+          uid: a.user_id,
+          access_hash: a.access_hash,
+        }, 45_000);
+        return { ok: true, chat_id: entity.id, result: data };
+      },
+    }),
+    defineTool({
+      name: "eitaa_client_edit_chat",
+      title: "ویرایش گروه یا کانال ایتا",
+      description: "Change the title and/or description of an Eitaa group/channel.",
+      input: {
+        chat_id: z.string(),
+        title: z.string().min(1).max(128).optional(),
+        description: z.string().max(512).optional(),
+      },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        if (!a.title && !a.description) throw new ProviderError("عنوان یا توضیحات را وارد کنید.");
+        const state = await getState(ctx);
+        const entity = await resolveEntity(ctx, state, a.chat_id.trim());
+        const data = await bridgeCall(ctx, "groups/change", {
+          phone: state.session.phone,
+          id: entity.id,
+          title: a.title,
+          description: a.description,
+        }, 45_000);
+        return { ok: true, chat_id: entity.id, result: data };
+      },
+    }),
+    defineTool({
+      name: "eitaa_client_leave_chat",
+      title: "خروج از گروه یا کانال ایتا",
+      description: "Leave an Eitaa group/channel.",
+      input: { chat_id: z.string() },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const state = await getState(ctx);
+        const entity = await resolveEntity(ctx, state, a.chat_id.trim());
+        const data = await bridgeCall(ctx, "groups/leave", { phone: state.session.phone, id: entity.id }, 45_000);
+        return { ok: true, chat_id: entity.id, result: data };
+      },
+    }),
+    defineTool({
+      name: "eitaa_client_delete_chat",
+      title: "حذف گروه یا کانال ایتا",
+      description: "Delete an Eitaa group/channel where the account is the owner.",
+      input: { chat_id: z.string() },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const state = await getState(ctx);
+        const entity = await resolveEntity(ctx, state, a.chat_id.trim());
+        const data = await bridgeCall(ctx, "groups/delete", { phone: state.session.phone, id: entity.id }, 60_000);
+        return { ok: true, chat_id: entity.id, result: data };
+      },
+    }),
+    defineTool({
+      name: "eitaa_client_get_chat_link",
+      title: "لینک دعوت گروه ایتا",
+      description: "Get the invite link of an Eitaa group/channel.",
+      input: { chat_id: z.string() },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const state = await getState(ctx);
+        const entity = await resolveEntity(ctx, state, a.chat_id.trim());
+        const data = await bridgeCall(ctx, "groups/getLink", { phone: state.session.phone, id: entity.id }, 45_000);
+        return { chat_id: entity.id, link: data?.link };
+      },
+    }),
   ],
 };

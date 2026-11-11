@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { hashPassword, RateLimiter, safeEqual, SignedSessions, verifyPassword } from "../core/auth.js";
-import { dibaRouterChat, dibaRouterModels, dibaRouterTest } from "../core/dibarouter.js";
+import { dibaRouterChat, dibaRouterModels, dibaRouterTest, type DibaRouterMessage, type DibaRouterTool } from "../core/dibarouter.js";
 import { SERVER_VERSION, type DibaMcpEngine } from "../core/engine.js";
 import { runNetcheck } from "../core/netcheck.js";
 import { hintFor, runSelfTest } from "../core/selftest.js";
@@ -45,6 +45,11 @@ function agentSystemPrompt(engine: DibaMcpEngine): string {
 قواعد:
 - فارسی، کوتاه، دقیق و عملی جواب بده. اگر مشکل کاربر با یک کلیک حل می‌شود، مسیر همان صفحه را بگو.
 - هیچ توکن، کلید API، رمز یا نشستی را حدس نزن و تکرار نکن؛ فقط بگو در کدام بخش داشبورد ثبت می‌شود.
+- ابزارهای MCP همین سرور در اختیار تو هستند. اگر کاربر درباره‌ی اطلاعات زنده یا انجام کاری پرسید، می‌توانی ابزار مناسب را مستقیماً فراخوانی کنی و نتیجه را خلاصه کنی.
+- ابزارهای نوشتنی (ارسال پیام، حذف، تغییر گروه/کانال و…) را فقط وقتی کاربر صریحاً درخواست کرده اجرا کن. اگر درخواست مبهم است، اول توضیح بده و تأیید بگیر.
+- اگر کاربر گفته «پیام بفرست» اما مقصد را نگفته، اول با ابزارهای get_chats/get_updates مقصد را پیدا کن؛ اگر پیدا نشد یک سؤال کوتاه بپرس. اگر مقصد «خودم» است، از شناسه‌ی حساب خودِ کاربر استفاده کن.
+- اگر کاربر قبلاً درخواست را تأیید کرده یا گفته «بفرست»، دوباره تأیید نگیر و ابزار نوشتنی مناسب را اجرا کن. بعد از اجرا، شناسه‌ی پیام و مقصد را کوتاه گزارش بده.
+- بعد از فراخوانی ابزار، نتیجه‌ی خام را کامل نریز؛ خلاصه‌ی فارسی و اقدام بعدی را بگو.
 - اگر اطلاعات کافی نیست، یک سؤال روشن‌کننده بپرس. اگر پاسخ در سیستم نیست، صادقانه بگو و به مستندات ارجاع بده.
 - صفحه‌های داشبورد: نمای کلی (#/overview)، پیام‌رسان‌ها (#/providers)، پیام‌های دریافتی (#/inbox)، آزمایش ابزارها (#/playground)، گزارش‌ها (#/logs)، اتصال به هوش مصنوعی (#/connect)، دیبا روتر (#/dibarouter).
 - API دیبا روتر سازگار با OpenAI است؛ آدرس پایه https://dibarouter.ir/api/v1 و مستندات https://dibarouter.ir/docs
@@ -57,6 +62,46 @@ ${providers.join("\n") || "- هنوز سرویسی ثبت نشده"}
 ${inbox || "- وضعیتی ثبت نشده"}`;
 }
 
+
+/**
+ * ابزارهای آماده‌ی MCP را به شکل function tools برای دیبا روتر آماده می‌کند.
+ * فقط سرویس‌های ready و ابزارهای فعال وارد می‌شوند و سقف تعداد رعایت می‌شود
+ * تا context مدل‌های کوچک بی‌دلیل پر نشود.
+ */
+function assistantFallback(trace: Array<{ name: string; ok: boolean }>): string {
+  if (!trace.length) {
+    return "مدل پاسخی برنگرداند. لطفاً دوباره بپرسید؛ اگر تکرار شد، مدل دیگری را در تب «دیبا روتر» انتخاب کنید.";
+  }
+  const ok = trace.filter((t) => t.ok).length;
+  return [
+    `درخواست اجرا شد (${ok} از ${trace.length} ابزار موفق)، اما مدل پاسخی برای جمع‌بندی برنگرداند.`,
+    ...trace.map((t) => `- ${t.ok ? "✓" : "✗"} ${t.name}`),
+    "",
+    "نتیجه‌ی کامل در صفحه‌ی «گزارش فراخوانی‌ها» ثبت شده است.",
+  ].join("\n");
+}
+
+function agentTools(engine: DibaMcpEngine, maxTools = 160): DibaRouterTool[] {
+  const out: DibaRouterTool[] = [];
+  for (const provider of engine.describeProviders()) {
+    if (!provider.ready) continue;
+    for (const tool of provider.tools) {
+      const schema = JSON.parse(JSON.stringify(tool.schema ?? { type: "object", properties: {} }));
+      delete schema.$schema;
+      delete schema.$id;
+      out.push({
+        type: "function",
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: schema,
+        },
+      });
+      if (out.length >= maxTools) return out;
+    }
+  }
+  return out;
+}
 
 /**
  * یک express.Router کامل:
@@ -275,12 +320,88 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     if (total > 16_000) return void res.status(400).json({ error: "گفتگو طولانی شده؛ یک گفتگوی تازه شروع کنید" });
     const c = engine.store.dibarouter();
     if (!c.apiKey) return void res.status(400).json({ error: "برای استفاده از دستیار، ابتدا دیبا روتر را در تب «دیبا روتر» وصل کنید" });
+    const tools = agentTools(engine);
+    const messages: DibaRouterMessage[] = [
+      { role: "system", content: agentSystemPrompt(engine) },
+      ...history.map((m: { role: "user" | "assistant"; content: string }) => ({ role: m.role, content: m.content })),
+    ];
+    const toolTrace: Array<{ name: string; args: unknown; ok: boolean; ms?: number; error?: string }> = [];
+    let lastReply = "";
     try {
-      const out = await dibaRouterChat(c, [{ role: "system", content: agentSystemPrompt(engine) }, ...history], {
-        maxTokens: 900,
-        temperature: 0.35,
+      for (let round = 0; round < 5; round++) {
+        let out;
+        try {
+          out = await dibaRouterChat(c, messages, {
+            maxTokens: 1400,
+            temperature: 0.35,
+            tools: tools.length ? tools : undefined,
+            toolChoice: tools.length ? "auto" : "none",
+          });
+        } catch (err: any) {
+          // بعضی مدل‌های رایگان tool calling را پشتیبانی نمی‌کنند؛ یک‌بار بدون ابزار تلاش می‌کنیم.
+          if (round === 0 && tools.length && /tool|function|support|unsupported/i.test(String(err?.message ?? err))) {
+            out = await dibaRouterChat(c, messages, { maxTokens: 1400, temperature: 0.35 });
+          } else {
+            throw err;
+          }
+        }
+        lastReply = out.reply || lastReply;
+        if (!out.reply && !out.toolCalls?.length) {
+          // Some models occasionally return an empty content after a tool round.
+          // Retry once without tools and ask for a short final summary.
+          try {
+            const retryMessages = toolTrace.length
+              ? [...messages, { role: "user" as const, content: "نتیجه‌ی ابزارهای بالا را به فارسی و کوتاه جمع‌بندی کن." }]
+              : messages;
+            const retry = await dibaRouterChat(c, retryMessages, { maxTokens: 900, temperature: 0.25 });
+            if (retry.reply) {
+              res.json({ ok: true, ...retry, toolTrace });
+              return;
+            }
+          } catch {
+            // Fall through to a readable local summary rather than an empty-response error.
+          }
+          res.json({ ok: true, reply: assistantFallback(toolTrace), model: c.model, toolTrace });
+          return;
+        }
+        if (!out.toolCalls?.length) {
+          res.json({ ok: true, ...out, reply: lastReply, toolTrace });
+          return;
+        }
+        messages.push({
+          role: "assistant",
+          content: out.reply || "",
+          tool_calls: out.toolCalls,
+        });
+        for (const call of out.toolCalls) {
+          const name = call.function.name;
+          let args: Record<string, unknown> = {};
+          try {
+            const parsed = JSON.parse(call.function.arguments || "{}");
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) args = parsed;
+          } catch {
+            // آرگومان نامعتبر را به موتور می‌فرستیم تا خطای خوانا برگرداند.
+          }
+          const result = await engine.callTool(name, args, "mcp");
+          toolTrace.push({ name, args, ok: result.ok, ms: result.ms, error: result.error });
+          const content = result.ok
+            ? JSON.stringify(result.result ?? null).slice(0, 12_000)
+            : `ERROR: ${result.error ?? "اجرای ابزار ناموفق بود"}`;
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            name,
+            content,
+          });
+        }
+      }
+      res.json({
+        ok: true,
+        reply: lastReply || "ابزارها اجرا شدند، اما مدل پاسخی برای جمع‌بندی برنگرداند. نتیجه را در گزارش‌ها ببینید.",
+        model: c.model,
+        toolTrace,
+        truncated: true,
       });
-      res.json({ ok: true, ...out });
     } catch (err: any) {
       res.status(err?.status && err.status < 500 ? 400 : 502).json({ error: String(err?.message ?? err) });
     }

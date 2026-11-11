@@ -747,6 +747,133 @@ export const baleClient: ProviderDef = {
         return { source: "dialogs", dialogs: dialogs.dialogs };
       },
     }),
+    defineTool({
+      name: "bale_client_list_groups",
+      title: "فهرست گروه‌های بله",
+      description: "List Bale groups from the logged-in account's recent dialogs.",
+      input: { limit: z.number().int().min(1).max(100).optional() },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        const dialogs = (await dialogsOf(m, a.limit ?? 50)).dialogs;
+        return { groups: dialogs.filter((d: any) => d.type === "group") };
+      },
+    }),
+    defineTool({
+      name: "bale_client_list_channels",
+      title: "فهرست کانال‌های بله",
+      description: "List Bale channels from the logged-in account's recent dialogs.",
+      input: { limit: z.number().int().min(1).max(100).optional() },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        const dialogs = (await dialogsOf(m, a.limit ?? 50)).dialogs;
+        return { channels: dialogs.filter((d: any) => d.type === "channel") };
+      },
+    }),
+    defineTool({
+      name: "bale_client_get_chat_members",
+      title: "اعضای گروه یا کانال بله",
+      description: "List members of a Bale group or channel where the account is a member/admin.",
+      input: {
+        chat_id: z.string().describe("Bale peer id like \"12345|2\""),
+        limit: z.number().int().min(1).max(200).optional(),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        try {
+          const peerId = await resolvePeerId(m.client, a.chat_id.trim());
+          return { chat_id: peerId, members: await m.client.load_members(peerId, a.limit ?? 100) };
+        } catch (err) { throw friendlyError(err, "دریافت اعضای گروه"); }
+      },
+    }),
+    defineTool({
+      name: "bale_client_add_chat_members",
+      title: "افزودن عضو به گروه بله",
+      description: "Invite Bale users to a group by numeric user ids.",
+      input: {
+        chat_id: z.string().describe("Bale group peer id like \"12345|2\""),
+        user_ids: z.array(z.number().int().positive()).min(1).max(50),
+      },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        try {
+          const peerId = await resolvePeerId(m.client, a.chat_id.trim());
+          return { ok: true, chat_id: peerId, result: await m.client.invite_users(peerId, a.user_ids) };
+        } catch (err) { throw friendlyError(err, "افزودن عضو"); }
+      },
+    }),
+    defineTool({
+      name: "bale_client_edit_chat",
+      title: "ویرایش گروه یا کانال بله",
+      description: "Change the title and/or description of a Bale group where the account is an admin.",
+      input: {
+        chat_id: z.string().describe("Bale group peer id like \"12345|2\""),
+        title: z.string().min(1).max(128).optional(),
+        about: z.string().max(512).optional(),
+      },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        if (!a.title && !a.about) throw new ProviderError("عنوان یا توضیحات را وارد کنید.");
+        const m = await getManaged(ctx);
+        try {
+          const peerId = await resolvePeerId(m.client, a.chat_id.trim());
+          if (a.title) await m.client.edit_group_title(peerId, a.title);
+          if (a.about) await m.client.edit_group_about(peerId, a.about);
+          return { ok: true, chat_id: peerId };
+        } catch (err) { throw friendlyError(err, "ویرایش گروه"); }
+      },
+    }),
+    defineTool({
+      name: "bale_client_leave_chat",
+      title: "خروج از گروه یا کانال بله",
+      description: "Leave a Bale group or channel.",
+      input: { chat_id: z.string().describe("Bale peer id like \"12345|2\"") },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        try {
+          const peerId = await resolvePeerId(m.client, a.chat_id.trim());
+          return { ok: true, chat_id: peerId, result: await m.client.leave_chat(peerId) };
+        } catch (err) { throw friendlyError(err, "خروج از گروه"); }
+      },
+    }),
+    defineTool({
+      name: "bale_client_get_chat_link",
+      title: "لینک دعوت گروه بله",
+      description: "Get or revoke the invite link of a Bale group.",
+      input: {
+        chat_id: z.string().describe("Bale group peer id like \"12345|2\""),
+        revoke: z.boolean().optional().describe("Revoke the current link and create a new one"),
+      },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        try {
+          const peerId = await resolvePeerId(m.client, a.chat_id.trim());
+          return { chat_id: peerId, link: a.revoke ? await m.client.revoke_group_link(peerId) : await m.client.get_group_link(peerId) };
+        } catch (err) { throw friendlyError(err, "لینک گروه"); }
+      },
+    }),
+    defineTool({
+      name: "bale_client_join_chat",
+      title: "ورود به گروه یا کانال بله",
+      description: "Join a Bale group/channel via an invite link or public username.",
+      input: { link_or_username: z.string().min(1).describe("Invite link, token, or @username") },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const m = await getManaged(ctx);
+        try {
+          const raw = a.link_or_username.trim();
+          const chat = raw.startsWith("@")
+            ? await m.client.join_public_chat(raw.replace(/^@/, ""))
+            : await m.client.join_chat(raw);
+          return { ok: true, chat: publicChat(chat) };
+        } catch (err) { throw friendlyError(err, "ورود به گروه"); }
+      },
+    }),
   ],
 };
 
