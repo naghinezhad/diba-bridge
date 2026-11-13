@@ -2949,6 +2949,12 @@ const trgSamples = [
 
 async function pageTriggers(main, q) {
   let data = await api("triggers");
+  let triggerProviders = [];
+  try {
+    triggerProviders = state.providers.length ? state.providers : await api("providers");
+    state.providers = triggerProviders;
+  } catch { /* keep * option available */ }
+  const providerOptions = [["*", "همه‌ی پیام‌رسان‌ها"], ...triggerProviders.map((p) => [p.id, p.nameFa || p.id])];
   let filterCat = "all";
   let query = "";
   let mode = q?.get("new") === "1" ? "create" : "list"; // list | create | edit
@@ -3013,7 +3019,9 @@ async function pageTriggers(main, q) {
           <label><span>توضیح کوتاه</span><input class="input" name="description" value="${esc(t.description || "")}" placeholder="توضیح کاربرد این اتوماسیون"></label>
 
           <div class="trg-grid" id="trg-cond-incoming" ${isIncoming ? "" : "hidden"}>
-            <label><span>پیام‌رسان</span><input class="input ltr-input" name="provider" value="${esc(t.match?.provider || "*")}" placeholder="* یا bale / telegram / instagram"></label>
+            <label><span>پیام‌رسان</span>
+              ${selectControl("provider", providerOptions, t.match?.provider || "*", "", "پیام‌رسان")}
+            </label>
             <label><span>نوع گفتگو</span>
               ${selectControl("chatType", Object.entries(trgChatTypeFa), t.match?.chatType || "*", "", "نوع گفتگو")}
             </label>
