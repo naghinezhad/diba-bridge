@@ -51,6 +51,8 @@ export class Inbox {
   /** فاصله‌ی پیش‌فرض بین pollهای خالی؛ اگر تنظیم شود بر مقدار هر پیام‌رسان غلبه می‌کند (برای تست) */
   idleMs?: number;
   longPollSec = 20;
+  /** قلاب رویداد هنگام دریافت پیام جدید (برای موتور تریگرها) */
+  onIncoming?: (msg: IncomingMessage) => void;
 
   constructor(
     dataDir: string,
@@ -110,6 +112,9 @@ export class Inbox {
     const fresh = messages.filter((m) => !known.has(m.key));
     if (fresh.length) {
       d.messages = [...fresh.reverse(), ...d.messages].slice(0, MAX_MESSAGES);
+      for (const m of fresh) {
+        if (m.direction !== "out") this.onIncoming?.(m);
+      }
     }
     if (cursor !== undefined) d.cursor = cursor;
     if (fresh.length || cursor !== undefined) this.save(id);

@@ -20,7 +20,7 @@ import { x } from "./x.js";
  *   ۱. یک فایل در همین پوشه بسازید که ProviderDef برگرداند
  *   ۲. اینجا به آرایه اضافه‌اش کنید
  */
-export const builtinProviders: ProviderDef[] = [bale, baleClient, eitaa, eitaaClient, rubika, rubikaClient, soroush, soroushClient, telegram, telegramClient, instagram, linkedinProvider, whatsapp, x];
+export const builtinProviders: ProviderDef[] = [baleClient, eitaaClient, rubikaClient, soroushClient, telegramClient, instagram, linkedinProvider, whatsapp, x];
 
 export { bale, baleClient, eitaa, eitaaClient, instagram, linkedinProvider, rubika, rubikaClient, soroush, soroushClient, telegram, telegramClient, whatsapp, x };
 

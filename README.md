@@ -39,18 +39,20 @@
 
 **دیبا پل (Diba Bridge)** یک سرور قدرتمند، امن و استاندارد بر پایه پروتکل **Model Context Protocol (MCP)** است که امکان اتصال پیام‌رسان‌های ایرانی (**بله**، **ایتا**، **روبیکا** و **سروش‌پلاس**) را به دستیارها و کلاینت‌های هوش مصنوعی نظیر **Claude Code**، **Cursor**، **Claude Desktop** و سایر ابزارهای متصل به LLM فراهم می‌سازد.
 
-این پروژه به همراه یک **داشبورد مدیریتی مدرن فارسی** ارائه می‌شود که بر اساس **سیستم طراحی اختصاصی دیباچین** پیاده‌سازی شده است و مدیریت یکپارچه حساب‌های کاربری و ربات‌ها، خواندن و پاسخ‌گویی به پیام‌های زنده، تست اتصال و آزمایش ابزارها را بسیار ساده و کارآمد می‌کند.
+این پروژه به همراه یک **داشبورد مدیریتی مدرن فارسی** ارائه می‌شود که بر اساس **سیستم طراحی اختصاصی دیباچین** پیاده‌سازی شده است و مدیریت یکپارچه حساب‌های کاربری، خواندن و پاسخ‌گویی به پیام‌های زنده، تست اتصال و آزمایش ابزارها را بسیار ساده و کارآمد می‌کند.
 
 ---
 
 ### قابلیت‌های اصلی دیبا پل
 
-- 🤖 **پشتیبانی دوگانه از ربات رسمی و حساب کاربری (Client):**
-  - **بله (Bale):** ربات رسمی Bot API + حساب کاربری (پروتکل وب، WebSocket و Protobuf)
-  - **ایتا (Eitaa):** ربات رسمی ایتایار + حساب کاربری (پروتکل MTProto با پل محلی EitaaBun)
-  - **روبیکا (Rubika):** ربات رسمی + حساب کاربری (پروتکل کلاینت وب با تبادل کلید RSA/AES)
-  - **سروش‌پلاس (Soroush+):** ربات رسمی Bot API + حساب کاربری (پروتکل تلگرامی MTProto)
+- 🔐 **اتصال با حساب کاربری (بدون ربات):**
+  - **بله (Bale):** حساب کاربری (پروتکل وب، WebSocket و Protobuf)
+  - **ایتا (Eitaa):** حساب کاربری (پروتکل MTProto با پل محلی EitaaBun)
+  - **روبیکا (Rubika):** حساب کاربری (پروتکل کلاینت وب با تبادل کلید RSA/AES)
+  - **سروش‌پلاس (Soroush+):** حساب کاربری (پروتکل تلگرامی MTProto)
+  - **تلگرام:** حساب کاربری (MTProto)
 - 📬 **صندوق پیام‌های دریافتی یکپارچه (Shared Inbox):** مشاهده پیام‌های دریافتی، تفکیک پیام‌های ورودی و خروجی، امکان پاسخ‌گویی مستقیم و استفاده هوش مصنوعی از ابزار `get_updates`.
+- ⚡ **تریگرها و اتوماسیون (Automation Triggers):** صفحه‌ی `#/triggers` با ۳۸ قانون آماده‌ی ویرایش‌پذیر؛ پاسخ خودکار، پاسخ هوشمند دیبا روتر، فوروارد بین پیام‌رسان‌ها، اجرای ابزار MCP و ارسال به Webhook (n8n / Make / CRM). هر تریگر شرط (پیام‌رسان، نوع چت، کلمه‌ی کلیدی، ابزار) و اقدام دارد و با یک کلیک روشن، تست یا خاموش می‌شود. تاریخچه‌ی اجرا در `data/triggers.json` ذخیره می‌شود.
 - 🎨 **داشبورد اختصاصی با زبان طراحی دیباچین:** رابط کاربری مدرن، تفکیک آکاردئونی پیام‌رسان‌ها با تب پیش‌فرض حساب کاربری، تم تاریک/روشن و واکنش‌گرایی کامل.
 - 🧪 **محیط آزمایش زنده (Playground):** تست دستی ابزارها، ارسال متن، تصویر و فایل با قابلیت Drag & Drop یا Paste (Ctrl+V) و مشاهده پاسخ JSON سرور.
 - 🔒 **امنیت در سطح سازمانی:** استفاده از توکن‌های Bearer، محدودکننده نرخ درخواست (Rate Limiting) و ذخیره‌سازی نشست‌ها روی سرور محلی با مجوز امنیتی ۶۰۰.
@@ -192,13 +194,16 @@ Developed by **[Dibachain](https://dibachain.ir)**, the dashboard and API strict
 
 ### Key Features
 
-- ⚡ **Dual Provider Architecture (Official Bot API & User Accounts):**
-  - **Bale:** Official Bot API + Personal User Account (internal Web client protocol via gRPC-Web, WebSocket, and Protobuf).
-  - **Eitaa:** Official Eitaayar API + Personal User Account (MTProto protocol powered by the EitaaBun local bridge).
-  - **Rubika:** Official Bot API + Personal User Account (Web client protocol with RSA/AES key exchange).
-  - **Soroush Plus:** Official Bot API + Personal User Account (Telegram-compatible MTProto client protocol).
-- 💬 **Integrated Live Inbox:** Synchronize real-time conversations across both bot and personal accounts, allowing two-way responses from either the dashboard or the AI agent (`get_updates`).
-- 🎨 **Dibachain Design System:** Production-grade UI featuring unified messenger accordions, default Client account tabs, Dark/Light modes, and accessible RTL typography.
+- ⚡ **User-account architecture (no bots):**
+  - **Bale:** Personal User Account (internal Web client protocol via gRPC-Web, WebSocket, and Protobuf).
+  - **Eitaa:** Personal User Account (MTProto protocol powered by the EitaaBun local bridge).
+  - **Rubika:** Personal User Account (Web client protocol with RSA/AES key exchange).
+  - **Soroush Plus:** Personal User Account (Telegram-compatible MTProto client protocol).
+  - **Telegram:** Personal User Account (MTProto via GramJS).
+  - **WhatsApp:** Personal account via QR multi-device login (Baileys).
+- 💬 **Integrated Live Inbox:** Synchronize real-time conversations across personal accounts, allowing two-way responses from either the dashboard or the AI agent (`get_updates`).
+- ⚡ **Automation Triggers:** A dedicated `#/triggers` page ships with 38 editable presets — auto-replies, DibaRouter AI answers, cross-messenger forwarding, MCP tool calls and outbound webhooks (n8n / Make / CRM). Each rule has a condition (provider, chat type, keywords, tool) and an action, and can be toggled, tested or deleted in one click; run history lives in `data/triggers.json`.
+- 🎨 **Dibachain Design System:** Production-grade UI featuring unified messenger accordions, default account tabs, Dark/Light modes, and accessible RTL typography.
 - 🧪 **Live Tool Playground:** Execute tools interactively, upload images or files via drag & drop or clipboard paste (Ctrl+V), and inspect raw JSON payloads.
 - 🛡️ **Robust Security:** Authenticated Bearer tokens, granular rate limiting, brute-force protection, and secure local session credential storage (POSIX permissions 600).
 - 🌍 **Network Diagnostics:** Built-in `netcheck` and automated `selftest` suites with SOCKS5 and HTTP proxy support.

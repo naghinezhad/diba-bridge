@@ -100,12 +100,14 @@ const icons = {
   shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
 };
 // کلید منو با شناسه‌ی صفحه یکی است
+icons.triggers = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
 icons.dibarouter = icons.router;
 
 const pages = [
   { id: "overview", title: "نمای کلی" },
   { id: "providers", title: "پیام‌رسان‌ها", submenu: true },
   { id: "inbox", title: "پیام‌های دریافتی" },
+  { id: "triggers", title: "تریگرها و اتوماسیون" },
   { id: "playground", title: "آزمایش ابزارها" },
   { id: "logs", title: "گزارش فراخوانی‌ها" },
   { id: "dibarouter", title: "دیبا روتر" },
@@ -191,19 +193,21 @@ const providerTutorials = {
     ],
   },
   whatsapp: {
-    bot: [
-      "سرویس OpenWA را اجرا و یک نشست واتس‌اپ ایجاد/لینک کنید.",
-      "آدرس پل (پیش‌فرض http://127.0.0.1:2785/api) و API Key را وارد کنید.",
-      "Session ID را از پنل OpenWA کپی و در فیلد مربوطه ذخیره کنید.",
-      "برای دریافت و ارسال پیام، نشست باید متصل و فعال بماند.",
+    client: [
+      "در داشبورد روی «نمایش QR ورود» بزنید.",
+      "در گوشی، WhatsApp → Linked devices → Link a device را باز کنید.",
+      "کد QR نمایش‌داده‌شده را با دوربین گوشی اسکن کنید.",
+      "بعد از اتصال در گوشی، در داشبورد «بررسی اتصال» را بزنید.",
+      "نشست روی همین سرور ذخیره می‌شود؛ نیازی به API Token یا OpenWA نیست.",
     ],
   },
   x: {
-    bot: [
-      "در X Developer Portal یک Project/App بسازید.",
-      "Bearer Token را برای خواندن کپی و در فیلد مربوطه وارد کنید.",
-      "برای انتشار توییت، User Access Token با دسترسی write بگیرید.",
-      "در صورت نیاز یوزرنیم پیش‌فرض را هم تنظیم کنید.",
+    client: [
+      "نام کاربری X (بدون @) را در فرم ورود وارد کنید و «ادامه» را بزنید.",
+      "رمز عبور حساب را وارد کنید؛ در صورت نیاز ایمیل و Two-Factor Secret را از قبل در تنظیمات ذخیره کنید.",
+      "پس از ورود، پروفایل، جستجو، تایم‌لاین و انتشار توییت در دسترس هستند.",
+      "این روش از حساب واقعی و کوکی نشست استفاده می‌کند و به API Key نیاز ندارد.",
+      "اگر X خطای 399 یا تأیید suspicious داد، ایمیل/2FA یا اتصال شبکه را بررسی کنید.",
     ],
   },
   linkedin: {
@@ -253,7 +257,7 @@ const platformMeta = {
     logo: "assets/bale.png",
     glyph: '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 10.5C7 9.12 8.12 8 9.5 8h5c1.38 0 2.5 1.12 2.5 2.5v2c0 1.38-1.12 2.5-2.5 2.5h-2.5l-3 2v-2.5H9.5C8.12 14.5 7 13.38 7 12v-1.5z" fill="white"/></svg>',
     color: "#1fb486",
-    description: "پیام‌رسان بانکی و ارتباطی بله — اتصال حساب کاربری و ربات رسمی Bot API",
+    description: "پیام‌رسان بانکی و ارتباطی بله — اتصال با حساب کاربری",
     docsUrl: "https://docs.bale.ai/",
   },
   eitaa: {
@@ -263,7 +267,7 @@ const platformMeta = {
     logo: "assets/eitaa.png",
     glyph: '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 8.5c0-.83.67-1.5 1.5-1.5h9c.83 0 1.5.67 1.5 1.5v7c0 .83-.67 1.5-1.5 1.5h-9c-.83 0-1.5-.67-1.5-1.5v-7zm1.5 0L12 12l4.5-3.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     color: "#f08a24",
-    description: "پیام‌رسان ابری ایتا — پشتیبانی از حساب کاربری و ارسال با ایتایار",
+    description: "پیام‌رسان ابری ایتا — اتصال با حساب کاربری",
     docsUrl: "https://eitaayar.ir/",
   },
   rubika: {
@@ -273,7 +277,7 @@ const platformMeta = {
     logo: "assets/rubika.png",
     glyph: '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 7.5l7 4.5-7 4.5v-9z" fill="white"/>',
     color: "#8b5cf6",
-    description: "سوپراپلیکیشن روبیکا — اتصال حساب کاربری برای گروه‌ها و ربات رسمی",
+    description: "سوپراپلیکیشن روبیکا — اتصال با حساب کاربری برای گروه‌ها و کانال‌ها",
     docsUrl: "https://rubika.ir/",
   },
   soroush: {
@@ -283,7 +287,7 @@ const platformMeta = {
     logo: "assets/soroush.png",
     glyph: '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 9.5A2.5 2.5 0 019.5 7h5A2.5 2.5 0 0117 9.5v2a2.5 2.5 0 01-2.5 2.5H13l-2.5 2v-2H9.5A2.5 2.5 0 017 11.5v-2z" fill="white"/><circle cx="10" cy="11" r=".8" fill="#2563eb"/><circle cx="12" cy="11" r=".8" fill="#2563eb"/><circle cx="14" cy="11" r=".8" fill="#2563eb"/></svg>',
     color: "#2563eb",
-    description: "پیام‌رسان سروش‌پلاس — بات‌های تعاملی رسمی و مدیریت حساب کاربری",
+    description: "پیام‌رسان سروش‌پلاس — اتصال با حساب کاربری",
     docsUrl: "https://soroush-app.ir/",
   },
   telegram: {
@@ -292,8 +296,8 @@ const platformMeta = {
     nameEn: "Telegram",
     logo: "assets/telegram.svg",
     color: "#229ED9",
-    description: "حساب کاربری و ربات رسمی تلگرام — گفتگوها، گروه‌ها، کانال‌ها و دریافت پیام",
-    docsUrl: "https://core.telegram.org/bots/api",
+    description: "تلگرام با حساب کاربری — گفتگوها، گروه‌ها، کانال‌ها و دریافت پیام",
+    docsUrl: "https://core.telegram.org/api",
   },
   instagram: {
     key: "instagram",
@@ -308,10 +312,10 @@ const platformMeta = {
     key: "whatsapp",
     nameFa: "واتس‌اپ",
     nameEn: "WhatsApp",
-    logo: "assets/whatsapp.svg",
+    logo: "assets/whatsapp.svg?v=2",
     color: "#25D366",
-    description: "واتس‌اپ از طریق OpenWA — پیام، عکس، فایل و فهرست چت‌ها",
-    docsUrl: "https://docs.open-wa.org/",
+    description: "ورود با QR واتس‌اپ — ارسال پیام، عکس و فایل بدون API Token",
+    docsUrl: "https://github.com/WhiskeySockets/Baileys",
   },
   x: {
     key: "x",
@@ -319,8 +323,8 @@ const platformMeta = {
     nameEn: "X",
     logo: "assets/x.svg",
     color: "#0f1419",
-    description: "API رسمی X — پروفایل، جستجو، تایم‌لاین و انتشار توییت",
-    docsUrl: "https://docs.x.com/x-api",
+    description: "ورود با نام کاربری و رمز X — پروفایل، جستجو، تایم‌لاین و انتشار توییت بدون API Key",
+    docsUrl: "https://x.com/",
   },
   linkedin: {
     key: "linkedin",
@@ -490,9 +494,21 @@ function agentDockHtml() {
 function renderAgentMessages() {
   const box = document.getElementById("agent-messages");
   if (!box) return;
+  const hasStreaming = state.agent.messages.some((m) => m.streaming);
   box.innerHTML =
     state.agent.messages
-      .map((m) => `<div class="agent-msg ${m.role === "user" ? "is-user" : "is-bot"}"><div class="agent-bubble">${esc(m.content).replace(/\n/g, "<br>")}${Array.isArray(m.toolTrace) && m.toolTrace.length ? `<div class="agent-tool-trace">${m.toolTrace.map((t) => `<span class="${t.ok ? "ok" : "fail"}">${t.ok ? icons.check : "!"} ${esc(t.name)}</span>`).join("")}</div>` : ""}</div></div>`)
+      .map((m) => {
+        const body = m.content
+          ? esc(m.content).replace(/\n/g, "<br>") + (m.streaming ? '<span class="agent-cursor" aria-hidden="true"></span>' : "")
+          : m.streaming
+            ? `<span class="agent-stream-status">${esc(m.status || "در حال فکر کردن…")}</span>`
+            : "";
+        const statusLine = m.streaming && m.content && m.status ? `<div class="agent-stream-status">${esc(m.status)}</div>` : "";
+        const trace = Array.isArray(m.toolTrace) && m.toolTrace.length
+          ? `<div class="agent-tool-trace">${m.toolTrace.map((t) => `<span class="${t.ok ? "ok" : "fail"}">${t.ok ? icons.check : "!"} ${esc(t.name)}</span>`).join("")}</div>`
+          : "";
+        return `<div class="agent-msg ${m.role === "user" ? "is-user" : "is-bot"}"><div class="agent-bubble">${body}${statusLine}${trace}</div></div>`;
+      })
       .join("") +
     (state.agent.messages.length <= 1 && !state.agent.busy
       ? `<div class="agent-suggestions">
@@ -501,7 +517,7 @@ function renderAgentMessages() {
             .join("")}
         </div>`
       : "") +
-    (state.agent.busy ? `<div class="agent-msg is-bot"><div class="agent-bubble agent-typing"><i></i><i></i><i></i></div></div>` : "");
+    (state.agent.busy && !hasStreaming ? `<div class="agent-msg is-bot"><div class="agent-bubble agent-typing"><i></i><i></i><i></i></div></div>` : "");
   box.scrollTop = box.scrollHeight;
 }
 
@@ -558,20 +574,87 @@ function initAgent() {
     input.value = "";
     input.style.height = "40px";
     state.agent.messages.push({ role: "user", content: text });
+    const historyToSend = state.agent.messages.slice(-20);
+    const botMsg = { role: "assistant", content: "", streaming: true, status: "در حال اتصال…", toolTrace: [] };
+    state.agent.messages.push(botMsg);
     state.agent.busy = true;
     renderAgentMessages();
     try {
-      const r = await api("agent/chat", { body: { messages: state.agent.messages.slice(-20) } });
-      state.agent.messages.push({ role: "assistant", content: r.reply || "پاسخی دریافت نشد.", toolTrace: r.toolTrace });
+      const res = await fetch("/api/agent/chat", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ messages: historyToSend, stream: true }),
+      });
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error || `HTTP ${res.status}`);
+      }
+      if (!ct.includes("text/event-stream") || !res.body) {
+        const r = await res.json();
+        botMsg.streaming = false;
+        botMsg.content = r.reply || "پاسخی دریافت نشد.";
+        botMsg.toolTrace = r.toolTrace || [];
+      } else {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        const handleEvent = (rawBlock) => {
+          let ev = "message";
+          let dataLines = [];
+          for (const line of rawBlock.split(/\r?\n/)) {
+            if (line.startsWith("event:")) ev = line.slice(6).trim();
+            else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+          }
+          if (!dataLines.length) return;
+          let payload;
+          try { payload = JSON.parse(dataLines.join("\n")); } catch { return; }
+          if (ev === "status") {
+            botMsg.status = payload.text || "";
+          } else if (ev === "delta") {
+            botMsg.status = "";
+            botMsg.content += payload.delta || "";
+          } else if (ev === "tool") {
+            botMsg.toolTrace.push(payload);
+          } else if (ev === "done") {
+            botMsg.streaming = false;
+            botMsg.status = "";
+            if (payload.reply) botMsg.content = payload.reply;
+            if (Array.isArray(payload.toolTrace)) botMsg.toolTrace = payload.toolTrace;
+            if (!botMsg.content) botMsg.content = "پاسخی دریافت نشد.";
+          } else if (ev === "error") {
+            throw new Error(payload.error || "خطا در دریافت پاسخ");
+          }
+          renderAgentMessages();
+        };
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          let sep = buf.indexOf("\n\n");
+          while (sep >= 0) {
+            handleEvent(buf.slice(0, sep));
+            buf = buf.slice(sep + 2);
+            sep = buf.indexOf("\n\n");
+          }
+        }
+        if (buf.trim()) handleEvent(buf);
+        botMsg.streaming = false;
+        botMsg.status = "";
+        if (!botMsg.content) botMsg.content = "پاسخی دریافت نشد.";
+      }
     } catch (err) {
+      botMsg.streaming = false;
+      botMsg.status = "";
       const hint = /دیبا روتر|کلید/.test(err.message) ? "\n\nاز تب «دیبا روتر» اتصال را تنظیم کنید." : "";
-      state.agent.messages.push({ role: "assistant", content: `⚠️ ${err.message}${hint}` });
+      botMsg.content = `⚠️ ${err.message}${hint}`;
     } finally {
       state.agent.busy = false;
       renderAgentMessages();
     }
   };
-  input.addEventListener("input", () => {
+    input.addEventListener("input", () => {
     input.style.height = "auto";
     input.style.height = `${Math.min(92, input.scrollHeight)}px`;
   });
@@ -643,8 +726,17 @@ function renderShell() {
   initAgent();
 }
 
+// شنونده‌های صفحه‌ای که به #main وصل شده‌اند با هر بار رندر آزاد می‌شوند
+let pageDispose = null;
+function disposePage() {
+  if (!pageDispose) return;
+  try { pageDispose(); } catch { /* نادیده */ }
+  pageDispose = null;
+}
+
 async function render() {
   clearInterval(state.timer);
+  disposePage();
   const { page, q } = route();
   // Update nav active state
   document.querySelectorAll(".nav a").forEach((a) => {
@@ -664,7 +756,7 @@ async function render() {
   document.title = `${pages.find((p) => p.id === page).title} — Diba Bridge (دیبا پل) | دیباچین`;
   const main = document.getElementById("main");
   try {
-    await ({ overview: pageOverview, providers: pageProviders, playground: pagePlayground, inbox: pageInbox, logs: pageLogs, dibarouter: pageDibaRouter, connect: pageConnect })[page](main, q);
+    await ({ overview: pageOverview, providers: pageProviders, playground: pagePlayground, inbox: pageInbox, triggers: pageTriggers, logs: pageLogs, dibarouter: pageDibaRouter, connect: pageConnect })[page](main, q);
   } catch (e) {
     if (!(e instanceof AuthError)) main.innerHTML = `<div class="err-box">${esc(e.message)}</div>`;
   }
@@ -706,7 +798,7 @@ async function pageOverview(main) {
               <span class="ov-prov-glyph" style="background:${p.color}">${providerLogo(p)}</span>
               <span class="ov-prov-text">
                 <b>${esc(p.nameFa)}</b>
-                <small>${p.ready ? `${fa(p.toolCount)} ابزار` : p.enabled ? "نیاز به تنظیم" : "خاموش"}</small>
+                <small>${p.ready ? `${fa(p.toolCount)} ابزار` : p.enabled ? "نیاز به تنظیم" : 'خاموش · <span class="dev-inline">در حال توسعه</span>'}</small>
               </span>
               <span class="ov-dot" aria-hidden="true"></span>
             </a>`).join("")}
@@ -799,16 +891,33 @@ function authHtml(p) {
       <span class="pill ${logged ? "pill-ok" : "pill-off"}">${logged ? "وارد شده" : "وارد نشده"}</span>
     </div>
     <div class="auth-step" data-auth-step="phone" ${logged ? "hidden" : ""}>
-      <div class="auth-row">
-        <input class="input ltr-input" data-auth-phone placeholder="09121234567" value="${esc(phone)}" inputmode="tel" aria-label="شماره تلفن">
-        <button class="btn btn-primary" type="button" data-auth-start>ارسال کد ورود</button>
+      ${a.qr ? `
+        <div class="auth-row">
+          <button class="btn btn-primary" type="button" data-auth-start>نمایش QR ورود</button>
+        </div>
+        <span class="hint">QR را با WhatsApp → Linked devices → Link a device اسکن کنید.</span>
+      ` : `
+        <div class="auth-row">
+          <input class="input ltr-input" data-auth-phone placeholder="${esc(a.inputPlaceholder || "09121234567")}" value="${esc(phone)}" inputmode="text" aria-label="${esc(a.inputLabel || "شماره تلفن")}">
+          <button class="btn btn-primary" type="button" data-auth-start>${esc(a.startLabel || "ارسال کد ورود")}</button>
+        </div>
+        <span class="hint">${a.credentials === "username" ? "نام کاربری را بدون @ وارد کنید؛ سپس رمز عبور را در مرحله بعد وارد کنید." : /واتس/.test(a.title) ? "کد لینک را در گوشی (Linked devices) وارد کنید؛ سپس همین‌جا «تأیید کد» را بزنید." : "شماره را به همراه ۰۹ یا +۹۸ وارد کنید. کد تأیید از پیامک یا پیام‌رسان ارسال خواهد شد."}</span>
+      `}
+    </div>
+    <div class="auth-step" data-auth-step="qr" hidden>
+      <div class="auth-qr-wrap">
+        <img data-auth-qr alt="کد QR ورود واتس‌اپ" width="240" height="240">
       </div>
-      <span class="hint">شماره را به همراه ۰۹ یا +۹۸ وارد کنید. کد تأیید از پیامک یا پیام‌رسان ارسال خواهد شد.</span>
+      <div class="auth-row">
+        <button class="btn btn-primary" type="button" data-auth-verify-code>بررسی اتصال</button>
+        <button class="btn btn-ghost" type="button" data-auth-resend>QR جدید</button>
+      </div>
+      <span class="hint" data-auth-qr-hint>QR را اسکن کنید؛ سپس «بررسی اتصال» را بزنید.</span>
     </div>
     <div class="auth-step" data-auth-step="code" hidden>
       <div class="auth-row">
-        <input class="input ltr-input" data-auth-code placeholder="کد تأیید ورود" inputmode="numeric" autocomplete="one-time-code" aria-label="کد ورود">
-        <button class="btn btn-primary" type="button" data-auth-verify-code>تأیید کد</button>
+        ${a.codeInput === false ? "" : `<input class="input ltr-input" data-auth-code placeholder="کد تأیید ورود" inputmode="numeric" autocomplete="one-time-code" aria-label="کد ورود">`}
+        <button class="btn btn-primary" type="button" data-auth-verify-code>${a.codeInput === false ? "بررسی اتصال" : "تأیید کد"}</button>
         <button class="btn btn-ghost" type="button" data-auth-resend>ارسال دوباره کد</button>
         <button class="btn btn-ghost" type="button" data-auth-back>تغییر شماره</button>
       </div>
@@ -816,10 +925,10 @@ function authHtml(p) {
     </div>
     <div class="auth-step" data-auth-step="password" hidden>
       <div class="auth-row">
-        <input class="input ltr-input" type="password" data-auth-password placeholder="رمز دومرحله‌ای حساب" autocomplete="current-password" aria-label="رمز دومرحله‌ای">
-        <button class="btn btn-primary" type="button" data-auth-verify-password>تأیید رمز</button>
+        <input class="input ltr-input" type="password" data-auth-password placeholder="${a.credentials === "username" ? "رمز عبور حساب" : "رمز دومرحله‌ای حساب"}" autocomplete="current-password" aria-label="رمز عبور">
+        <button class="btn btn-primary" type="button" data-auth-verify-password>${a.credentials === "username" ? "ورود" : "تأیید رمز"}</button>
       </div>
-      <span class="hint">این حساب دارای تأیید دو مرحله‌ای است. رمز را وارد کنید.</span>
+      <span class="hint">${esc(a.passwordHint || "این حساب دارای تأیید دو مرحله‌ای است. رمز را وارد کنید.")}</span>
     </div>
     ${logged ? `<div class="prov-actions" style="margin-top:10px"><button class="btn btn-ghost btn-danger" type="button" data-auth-logout>خروج از حساب کاربری</button></div>` : ""}
     <div class="test-out" data-auth-out></div>
@@ -873,6 +982,7 @@ function renderProviderMode(p, role, plat) {
         </div>
         <div class="prov-mode-controls">
           ${status(p)}
+          ${!p.enabled ? `<span class="dev-badge">در حال توسعه</span>` : ""}
           <label class="switch" title="${p.enabledFromEnv ? "از env کنترل می‌شود" : "روشن/خاموش کردن این بخش"}">
             <input type="checkbox" data-toggle data-id="${p.id}" ${p.enabled ? "checked" : ""} ${p.enabledFromEnv ? "disabled" : ""} aria-label="روشن کردن ${esc(p.nameFa)}">
             <span></span>
@@ -965,6 +1075,7 @@ function platformAccordionHtml(plat) {
       <div class="prov-summary-badges">
         ${plat.client ? `<span class="mode-badge ${plat.client.ready ? "ready" : ""}">کلاینت: ${status(plat.client)}</span>` : ""}
         ${plat.bot ? `<span class="mode-badge ${plat.bot.ready ? "ready" : ""}">${isBotFatherPlatform(plat.key) ? "ربات" : "API"}: ${status(plat.bot)}</span>` : ""}
+        ${!plat.client?.enabled && !plat.bot?.enabled ? `<span class="dev-badge">در حال توسعه</span>` : ""}
       </div>
 
       <button type="button" class="btn btn-icon btn-quiet prov-toggle-btn" data-plat-expand="${plat.key}" aria-expanded="${isOpen}" aria-label="تنظیمات ${esc(plat.nameFa)}">
@@ -1181,9 +1292,16 @@ async function pageProviders(main, q) {
       const updated = state.providers.find((x) => x.id === authId);
       if (updated) replace(updated);
     };
+    const showQr = (r) => {
+      const img = authBox.querySelector("[data-auth-qr]");
+      if (img && r.result?.qr) img.src = r.result.qr;
+      showStep("qr");
+      const hint = authBox.querySelector("[data-auth-qr-hint]");
+      if (hint) hint.textContent = r.result?.hint || "QR را اسکن کنید؛ سپس «بررسی اتصال» را بزنید.";
+    };
 
     if (e.target.closest("[data-auth-start]")) {
-      const phone = authBox.querySelector("[data-auth-phone]").value.trim();
+      const phone = authBox.querySelector("[data-auth-phone]")?.value.trim() ?? "";
       authOut.innerHTML = "";
       try {
         const r = await busy(e.target.closest("[data-auth-start]"), () => api(`providers/${authId}/auth/start`, { body: { phone } }));
@@ -1194,21 +1312,30 @@ async function pageProviders(main, q) {
           authBox.querySelector("[data-auth-password]").focus();
           return;
         }
+        if (r.result.qr) {
+          showQr(r);
+          return;
+        }
         showStep("code");
-        authBox.querySelector("[data-auth-code-hint]").textContent = r.result.hint || "کد فرستاده شد.";
-        authBox.querySelector("[data-auth-code]").focus();
+        if (r.result.hint && authBox.querySelector("[data-auth-code-hint]")) authBox.querySelector("[data-auth-code-hint]").textContent = r.result.hint;
+        authBox.querySelector("[data-auth-code]")?.focus();
       } catch (ex) {
         authFail(ex.message);
       }
     }
 
     if (e.target.closest("[data-auth-resend]")) {
-      const phone = authBox.querySelector("[data-auth-phone]").value.trim();
+      const phone = authBox.querySelector("[data-auth-phone]")?.value.trim() ?? "";
       try {
         const r = await busy(e.target.closest("[data-auth-resend]"), () => api(`providers/${authId}/auth/start`, { body: { phone } }));
         if (!r.ok) return authFail(r.error);
         state.authTx[authId] = r.result.transactionHash;
-        authBox.querySelector("[data-auth-code-hint]").textContent = r.result.hint || "کد دوباره ارسال شد.";
+        if (r.result.qr) {
+          showQr(r);
+          toast("QR جدید ساخته شد");
+          return;
+        }
+        if (r.result.hint && authBox.querySelector("[data-auth-code-hint]")) authBox.querySelector("[data-auth-code-hint]").textContent = r.result.hint;
         toast("کد ورود دوباره ارسال شد");
       } catch (ex) {
         authFail(ex.message);
@@ -1223,7 +1350,7 @@ async function pageProviders(main, q) {
     }
 
     if (e.target.closest("[data-auth-verify-code]")) {
-      const code = authBox.querySelector("[data-auth-code]").value.trim();
+      const code = authBox.querySelector("[data-auth-code]")?.value.trim() ?? "";
       authOut.innerHTML = "";
       try {
         const r = await busy(e.target.closest("[data-auth-verify-code]"), () =>
@@ -1255,7 +1382,7 @@ async function pageProviders(main, q) {
           state.authTx[authId] = r.result.transactionHash || state.authTx[authId];
           showStep("code");
           authBox.querySelector("[data-auth-code-hint]").textContent = r.result.hint || "کد فرستاده شد.";
-          authBox.querySelector("[data-auth-code]").focus();
+          authBox.querySelector("[data-auth-code]")?.focus();
           return;
         }
         delete state.authTx[authId];
@@ -1590,10 +1717,21 @@ async function pagePlayground(main, q) {
 const chatTypeFa = { private: "خصوصی", group: "گروه", channel: "کانال", unknown: "" };
 const kindFa = { photo: "تصویر", file: "فایل", video: "ویدیو", voice: "صدا", location: "موقعیت", button: "کلیک دکمه", other: "" };
 
+function dayLabelFa(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  if (sameDay(d, now)) return "امروز";
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (sameDay(d, yesterday)) return "دیروز";
+  return d.toLocaleDateString("fa-IR", { year: "numeric", month: "short", day: "numeric" });
+}
+
 function receiverHtml(p, st) {
   if (!p) return "";
   if (!st.supported)
-    return `<div class="rcv off"><div class="disc sm" style="background:${p.color}">${providerLogo(p)}</div><div class="rcv-body"><b>${esc(p.nameFa)}</b><span class="hint">ایتایار فقط ارسال پیام دارد؛ دریافت در نسخه کلاینت پشتیبانی می‌شود.</span></div></div>`;
+    return `<div class="rcv off"><div class="disc sm" style="background:${p.color}">${providerLogo(p)}</div><div class="rcv-body"><b>${esc(p.nameFa)}</b><span class="hint">این سرویس فقط ارسال پیام دارد؛ دریافت در نسخه کلاینت پشتیبانی می‌شود.</span></div></div>`;
   const ready = p.ready;
   let pill, info = "";
   if (!ready) { pill = `<span class="pill pill-off">${p.auth ? "وارد نشده" : "توکن ثبت نشده"}</span>`; info = `<a href="#/providers?open=${p.id}">${p.auth ? "ورود به حساب" : "ثبت توکن"}</a>`; }
@@ -1609,8 +1747,9 @@ function receiverHtml(p, st) {
       ${st.hint ? `<span class="st-hint">${esc(st.hint)}</span>` : ""}
     </div>
     <div class="rcv-actions">
-      ${webhook ? `<button class="btn btn-ghost btn-danger btn-sm" data-action="deleteWebhook">حذف وبهوک</button>` : ""}
-      <button class="btn btn-ghost btn-sm" data-fetch ${ready ? "" : "disabled"}>بررسی الان</button>
+      ${webhook ? `<button class="btn btn-ghost btn-danger btn-sm" type="button" data-action="deleteWebhook">حذف وبهوک</button>` : ""}
+      <button class="btn btn-ghost btn-sm" type="button" data-clear-inbox title="پاک کردن پیام‌های ذخیره‌شده این سرویس">پاک کردن</button>
+      <button class="btn btn-ghost btn-sm" type="button" data-fetch ${ready ? "" : "disabled"}>بررسی الان</button>
       <label class="switch" title="دریافت خودکار پیام‌ها"><input type="checkbox" data-receive ${st.enabled ? "checked" : ""} ${ready && !p.receive.fromEnv ? "" : "disabled"} aria-label="دریافت خودکار ${esc(p.nameFa)}"><span></span></label>
     </div>
   </div>`;
@@ -1622,29 +1761,45 @@ async function pageInbox(main, q) {
   let data = { statuses: [], chats: [], messages: [] };
   let lastSig = "";
   let filterProvider = "";
+  let filterScope = "all";
   let chatQuery = "";
+  let msgQuery = "";
+  let msgSearchOpen = false;
+  let rcvOpen = false;
+  let rcvAutoChecked = false;
 
-  main.innerHTML = `${head("پیام‌های دریافتی", "همه‌ی گفتگوهای زنده‌ی ربات‌ها و حساب‌های کاربری، در یک فضای کاری متمرکز.", "صندوق پیام‌ها",
-    `<button class="btn btn-ghost btn-sm" id="inbox-refresh">${icons.refresh} به‌روزرسانی</button>`)}
-    <section class="inbox-kpis">
-      <div class="inbox-kpi"><span class="ik-icon">${icons.inbox}</span><div><b id="stat-chats">۰</b><span>گفتگو</span></div></div>
-      <div class="inbox-kpi"><span class="ik-icon">${icons.send}</span><div><b id="stat-messages">۰</b><span>پیام</span></div></div>
-      <div class="inbox-kpi"><span class="ik-icon">${icons.providers}</span><div><b id="stat-receivers">۰</b><span>دریافت فعال</span></div></div>
+  main.innerHTML = `${head("صندوق پیام‌ها", "گفتگوهای زنده، فیلتر پیام‌های منتظر پاسخ و ارسال جواب مستقیم از یک فضای کاری.", "پیام‌های دریافتی",
+    `<div class="inbox-head-actions">
+      <span class="inbox-live-badge" id="inbox-live-badge">در حال بارگذاری…</span>
+      <button class="btn btn-ghost btn-sm" type="button" id="inbox-toggle-rcv" aria-expanded="false">${icons.providers} <span>دریافت‌کننده‌ها</span><i class="rcv-err-dot" id="rcv-err-dot" hidden></i></button>
+      <button class="btn btn-ghost btn-sm" type="button" id="inbox-fetch-all">${icons.refresh} <span>بررسی همه</span></button>
+      <button class="btn btn-ghost btn-sm" type="button" id="inbox-refresh" aria-label="به‌روزرسانی">${icons.refresh} <span>به‌روزرسانی</span></button>
+    </div>`)}
+
+    <section class="rcv-panel" id="rcv-panel" hidden>
+      <div class="rcv-panel-head">
+        <div>
+          <b>مدیریت دریافت خودکار پیام‌ها</b>
+          <span class="hint" id="rcv-summary"></span>
+        </div>
+        <button class="btn btn-quiet btn-sm" type="button" id="rcv-close">بستن</button>
+      </div>
+      <section class="receivers" id="rcv"></section>
     </section>
 
-    <details class="rcv-drawer">
-      <summary><span>${icons.sparkles} وضعیت دریافت پیام‌ها</span><span id="rcv-summary" class="meta"></span>${icons.chevron}</summary>
-      <section class="receivers" id="rcv"></section>
-    </details>
-
-    <section class="inbox">
-      <nav class="chat-list" aria-label="چت‌ها">
+    <section class="inbox${sel.p && sel.c ? " has-chat" : ""}" id="inbox-shell">
+      <nav class="chat-list" aria-label="فهرست گفتگوها">
         <div class="chat-list-head">
-          <div class="chat-list-title"><b>گفتگوها</b><span id="chat-count" class="meta"></span></div>
+          <div class="chat-list-title">
+            <b>گفتگوها</b>
+            <span id="chat-count" class="meta">۰ گفتگو</span>
+          </div>
           <div class="chat-search">
             ${icons.search}
-            <input class="input" id="chat-search" placeholder="جستجوی نام یا شناسه…" aria-label="جستجوی گفتگو">
+            <input class="input" id="chat-search" placeholder="جستجوی نام، شناسه یا متن پیام…" aria-label="جستجوی گفتگو">
+            <button class="chat-search-clear" type="button" id="chat-search-clear" hidden aria-label="پاک کردن جستجو">${icons.cross}</button>
           </div>
+          <div class="inbox-scopes" id="inbox-scopes" role="tablist" aria-label="فیلتر وضعیت گفتگو"></div>
           <div class="inbox-providers" id="inbox-providers"></div>
         </div>
         <div class="chat-list-body" id="chats"></div>
@@ -1654,24 +1809,53 @@ async function pageInbox(main, q) {
 
   const provOf = (id) => state.providers.find((x) => x.id === id);
   const defaultChat = (id) => provOf(id)?.fields.find((f) => f.key === "defaultChatId")?.value || "";
+  const canSendOf = (p) => Boolean(p?.tools?.some((t) => t.name === `${p.id}_send_message`));
+
+  const setRcvOpen = (open) => {
+    rcvOpen = open;
+    const panel = document.getElementById("rcv-panel");
+    const btn = document.getElementById("inbox-toggle-rcv");
+    if (panel) panel.hidden = !open;
+    if (btn) {
+      btn.setAttribute("aria-expanded", String(open));
+      btn.classList.toggle("is-open", open);
+    }
+  };
 
   const drawReceivers = () => {
     document.getElementById("rcv").innerHTML = data.statuses.map((st) => receiverHtml(provOf(st.provider), st)).join("");
     const active = data.statuses.filter((s) => s.enabled && s.running).length;
+    const errors = data.statuses.filter((s) => s.lastError).length;
     const summary = document.getElementById("rcv-summary");
-    if (summary) summary.textContent = `${fa(active)} از ${fa(data.statuses.length)} فعال`;
+    if (summary) summary.textContent = `${fa(active)} از ${fa(data.statuses.length)} سرویس فعال${errors ? ` · ${fa(errors)} خطا` : ""}`;
+    const errDot = document.getElementById("rcv-err-dot");
+    if (errDot) errDot.hidden = errors === 0;
   };
 
-  const drawStats = () => {
-    const messages = data.chats.reduce((n, c) => n + (Number(c.count) || 0), 0);
+  const drawHeaderStats = () => {
     const active = data.statuses.filter((s) => s.enabled && s.running).length;
-    const set = (id, value) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = fa(value);
-    };
-    set("stat-chats", data.chats.length);
-    set("stat-messages", messages);
-    set("stat-receivers", active);
+    const unanswered = data.chats.filter((c) => c.lastDirection !== "out").length;
+    const badge = document.getElementById("inbox-live-badge");
+    if (!badge) return;
+    badge.innerHTML = `<i class="${active ? "on" : "off"}"></i><span>${fa(active)} دریافت فعال · ${fa(data.chats.length)} گفتگو${unanswered ? ` · ${fa(unanswered)} منتظر پاسخ` : ""}</span>`;
+  };
+
+  const drawScopes = () => {
+    const wrap = document.getElementById("inbox-scopes");
+    if (!wrap) return;
+    const baseChats = filterProvider ? data.chats.filter((c) => c.provider === filterProvider) : data.chats;
+    const unansweredCount = baseChats.filter((c) => c.lastDirection !== "out").length;
+    const scopes = [
+      { id: "all", label: "همه", count: baseChats.length },
+      { id: "unanswered", label: "منتظر پاسخ", count: unansweredCount },
+      { id: "private", label: "خصوصی" },
+      { id: "group", label: "گروه و کانال" },
+    ];
+    wrap.innerHTML = scopes
+      .map((s) => `<button class="inbox-scope${filterScope === s.id ? " active" : ""}" type="button" role="tab" aria-selected="${filterScope === s.id}" data-inbox-scope="${s.id}">
+        <span>${s.label}</span>${s.count !== undefined ? `<b class="scope-count">${fa(s.count)}</b>` : ""}
+      </button>`)
+      .join("");
   };
 
   const drawProviders = () => {
@@ -1680,10 +1864,10 @@ async function pageInbox(main, q) {
     const list = data.statuses.map((st) => provOf(st.provider)).filter(Boolean);
     if (filterProvider && !list.some((p) => p.id === filterProvider)) filterProvider = "";
     wrap.innerHTML = [
-      `<button class="inbox-provider${filterProvider === "" ? " active" : ""}" data-inbox-provider="">همه</button>`,
+      `<button class="inbox-provider${filterProvider === "" ? " active" : ""}" type="button" data-inbox-provider="">همه</button>`,
       ...list.map((p) => {
         const st = data.statuses.find((s) => s.provider === p.id);
-        return `<button class="inbox-provider${filterProvider === p.id ? " active" : ""}" data-inbox-provider="${p.id}" title="${esc(p.nameFa)}">
+        return `<button class="inbox-provider${filterProvider === p.id ? " active" : ""}" type="button" data-inbox-provider="${p.id}" title="${esc(p.nameFa)}">
           <span class="ip-logo">${providerLogo(p)}</span><span>${esc(p.nameFa.replace(/\s*\(.*?\)/g, ""))}</span>
           <i class="${st?.lastError ? "err" : st?.enabled && st?.running ? "on" : "off"}"></i>
         </button>`;
@@ -1692,11 +1876,18 @@ async function pageInbox(main, q) {
   };
 
   const visibleChats = () => {
-    const q = chatQuery.trim().toLowerCase();
+    const query = chatQuery.trim().toLowerCase();
     return data.chats.filter((c) => {
       if (filterProvider && c.provider !== filterProvider) return false;
-      if (!q) return true;
-      return String(c.title || "").toLowerCase().includes(q) || String(c.chatId).toLowerCase().includes(q);
+      if (filterScope === "unanswered" && c.lastDirection === "out") return false;
+      if (filterScope === "private" && c.type !== "private") return false;
+      if (filterScope === "group" && c.type !== "group" && c.type !== "channel") return false;
+      if (!query) return true;
+      return (
+        String(c.title || "").toLowerCase().includes(query) ||
+        String(c.chatId).toLowerCase().includes(query) ||
+        String(c.lastText || "").toLowerCase().includes(query)
+      );
     });
   };
 
@@ -1706,86 +1897,150 @@ async function pageInbox(main, q) {
     const chats = visibleChats();
     if (count) count.textContent = `${fa(chats.length)} گفتگو`;
     if (!chats.length) {
-      el.innerHTML = `<div class="empty chat-empty">${icons.inbox}<b>${data.chats.length ? "گفتگویی با این فیلتر پیدا نشد" : "هنوز پیامی دریافت نشده"}</b>${data.chats.length ? "فیلتر یا جستجو را تغییر دهید." : "دریافت خودکار را روشن کنید یا «بررسی الان» را بزنید."}</div>`;
+      const hasAny = data.chats.length > 0;
+      el.innerHTML = `<div class="empty chat-empty">${icons.inbox}<b>${hasAny ? "گفتگویی با این فیلتر پیدا نشد" : "هنوز پیامی دریافت نشده"}</b><p>${hasAny ? "فیلتر یا عبارت جستجو را تغییر دهید." : "از دکمه‌ی «دریافت‌کننده‌ها» دریافت خودکار را روشن کنید یا «بررسی همه» را بزنید."}</p></div>`;
       return;
     }
     el.innerHTML = chats.map((c) => {
       const p = provOf(c.provider);
       const active = c.provider === sel.p && c.chatId === sel.c;
       const isDef = defaultChat(c.provider) === c.chatId;
-      return `<button class="chat-item" data-p="${c.provider}" data-c="${esc(c.chatId)}" aria-current="${active}">
+      const waiting = c.lastDirection !== "out";
+      return `<button class="chat-item${waiting ? " is-waiting" : ""}" type="button" data-p="${c.provider}" data-c="${esc(c.chatId)}" aria-current="${active}">
         <span class="disc sm" style="background:${p?.color || "var(--brand)"}">${providerLogo(p)}</span>
         <span class="ci-body">
           <span class="ci-top"><b dir="auto">${esc(c.title || c.chatId)}</b><span class="meta">${ago(c.lastDate)}</span></span>
           <span class="ci-sub">${c.lastDirection === "out" ? '<span class="ci-you">شما: </span>' : ""}<span dir="auto">${esc(kindFa[c.lastText] ?? c.lastText ?? "—")}</span></span>
-          <span class="ci-tags">${chatTypeFa[c.type] ? `<i>${chatTypeFa[c.type]}</i>` : ""}${isDef ? "<i class='def'>پیش‌فرض</i>" : ""}<i>${fa(c.count)} پیام</i></span>
+          <span class="ci-tags">${waiting ? '<i class="wait">منتظر پاسخ</i>' : ""}${chatTypeFa[c.type] ? `<i>${chatTypeFa[c.type]}</i>` : ""}${isDef ? "<i class='def'>پیش‌فرض</i>" : ""}<i>${fa(c.count)} پیام</i></span>
         </span>
-        ${active ? `<span class="ci-active-dot" aria-hidden="true"></span>` : ""}
       </button>`;
     }).join("");
   };
 
-  const drawConvo = () => {
-    const el = document.getElementById("convo");
-    const chat = data.chats.find((c) => c.provider === sel.p && c.chatId === sel.c);
-    if (!chat) {
-      el.innerHTML = `<div class="empty convo-empty">${icons.inbox}<b>یک گفتگو را انتخاب کنید</b><p>پیام‌های دریافتی، شناسه چت و پاسخ مستقیم در این بخش نمایش داده می‌شوند.</p></div>`;
+  const renderMessages = () => {
+    const list = document.getElementById("msgs");
+    if (!list) return;
+    const wasNearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+    const qLower = msgQuery.trim().toLowerCase();
+    const ordered = data.messages.slice().reverse();
+    const filtered = qLower
+      ? ordered.filter((m) => String(m.text || "").toLowerCase().includes(qLower) || String(m.from?.name || "").toLowerCase().includes(qLower))
+      : ordered;
+
+    const matchBadge = document.getElementById("msg-search-count");
+    if (matchBadge) matchBadge.textContent = qLower ? `${fa(filtered.length)} نتیجه` : "";
+
+    if (!filtered.length) {
+      list.innerHTML = `<li class="msgs-empty">${qLower ? "پیامی با این عبارت در این گفتگو پیدا نشد." : "پیامی در این گفتگو ثبت نشده است."}</li>`;
       return;
     }
-    const p = provOf(chat.provider);
-    const isDef = defaultChat(chat.provider) === chat.chatId;
-    const keepDraft = el.querySelector("[data-draft]")?.value ?? "";
-    el.innerHTML = `
-      <header class="convo-head">
-        <div class="convo-title">
-          <span class="disc sm" style="background:${p?.color || "var(--brand)"}">${providerLogo(p)}</span>
-          <div class="convo-title-text">
-            <div class="convo-name-row"><b dir="auto">${esc(chat.title || chat.chatId)}</b>${chatTypeFa[chat.type] ? `<span class="pill pill-off">${chatTypeFa[chat.type]}</span>` : ""}</div>
-            <div class="convo-id"><span class="meta">${esc(p?.nameFa || "")} · شناسه:</span>
-              <code class="ltr">${esc(chat.chatId)}</code><button class="btn btn-quiet btn-sm" data-copy-id>کپی</button></div>
-          </div>
-        </div>
-        <div class="convo-actions">
-          ${isDef ? `<span class="pill pill-ok">پیش‌فرض</span>` : `<button class="btn btn-ghost btn-sm" data-set-default>تنظیم پیش‌فرض</button>`}
-        </div>
-      </header>
-      <ol class="msgs" id="msgs">
-        ${data.messages.slice().reverse().map((m) => {
+
+    let lastDay = "";
+    const html = [];
+    for (const m of filtered) {
+      const day = dayLabelFa(m.date);
+      if (day !== lastDay) {
+        lastDay = day;
+        html.push(`<li class="msg-day" aria-hidden="true"><span>${esc(day)}</span></li>`);
+      }
       const out = m.direction === "out";
       const time = new Date(m.date).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" });
-      const day = new Date(m.date).toLocaleDateString("fa-IR", { month: "short", day: "numeric" });
       const who = out
         ? m.source === "account"
           ? `<b>شما</b><span>از حساب کاربر</span>`
           : `<b>ربات</b><span>${m.source === "mcp" ? "منتقل‌شده به مدل" : "از داشبورد"}</span>`
         : `${m.from?.name ? `<b dir="auto">${esc(m.from.name)}</b>` : ""}${m.from?.username ? `<span class="ltr">@${esc(m.from.username)}</span>` : ""}`;
       const img = out && m.kind === "photo" && m.mediaUrl ? `<img class="msg-img" src="${esc(m.mediaUrl)}" alt="" loading="lazy" onerror="this.remove()">` : "";
-      return `<li class="msg${out ? " out" : ""}">
-            <div class="msg-meta">${who}<span>${time}</span><span>${esc(day)}</span></div>
-            ${img}
-            ${kindFa[m.kind] ? `<span class="msg-kind">${kindFa[m.kind]}${m.buttonId ? `: <code class="ltr">${esc(m.buttonId)}</code>` : ""}</span>` : ""}
-            ${m.text ? `<p dir="auto">${esc(m.text)}</p>` : ""}
-          </li>`;
-    }).join("")}
-      </ol>
+      html.push(`<li class="msg${out ? " out" : ""}">
+        <div class="msg-meta">${who}<span class="msg-time">${time}</span>${m.text ? `<button class="msg-copy" type="button" data-copy-msg="${esc(m.text)}" title="کپی متن پیام" aria-label="کپی متن پیام">کپی</button>` : ""}</div>
+        ${img}
+        ${kindFa[m.kind] ? `<span class="msg-kind">${kindFa[m.kind]}${m.buttonId ? `: <code class="ltr">${esc(m.buttonId)}</code>` : ""}</span>` : ""}
+        ${m.text ? `<p dir="auto">${esc(m.text)}</p>` : ""}
+      </li>`);
+    }
+    list.innerHTML = html.join("");
+    if (wasNearBottom || !qLower) list.scrollTop = list.scrollHeight;
+  };
+
+  const drawConvo = () => {
+    const el = document.getElementById("convo");
+    const shell = document.getElementById("inbox-shell");
+    const chat = data.chats.find((c) => c.provider === sel.p && c.chatId === sel.c);
+    if (shell) shell.classList.toggle("has-chat", Boolean(chat));
+    if (!chat) {
+      el.innerHTML = `<div class="empty convo-empty">${icons.inbox}<b>یک گفتگو را انتخاب کنید</b><p>برای خواندن پیام‌ها، جستجو در تاریخچه و ارسال پاسخ مستقیم، یکی از گفتگوها را انتخاب کنید.</p></div>`;
+      return;
+    }
+    const p = provOf(chat.provider);
+    const isDef = defaultChat(chat.provider) === chat.chatId;
+    const sendable = canSendOf(p);
+    const keepDraft = el.querySelector("[data-draft]")?.value ?? "";
+    el.innerHTML = `
+      <header class="convo-head">
+        <div class="convo-title">
+          <button class="btn btn-ghost btn-sm convo-back" type="button" data-convo-back aria-label="بازگشت به گفتگوها">بازگشت</button>
+          <span class="disc sm" style="background:${p?.color || "var(--brand)"}">${providerLogo(p)}</span>
+          <div class="convo-title-text">
+            <div class="convo-name-row"><b dir="auto">${esc(chat.title || chat.chatId)}</b>${chatTypeFa[chat.type] ? `<span class="pill pill-off">${chatTypeFa[chat.type]}</span>` : ""}</div>
+            <div class="convo-id"><span class="meta">${esc(p?.nameFa || "")} · شناسه:</span>
+              <code class="ltr">${esc(chat.chatId)}</code><button class="btn btn-quiet btn-sm" type="button" data-copy-id>کپی</button></div>
+          </div>
+        </div>
+        <div class="convo-actions">
+          <button class="btn btn-ghost btn-sm${msgSearchOpen ? " is-active" : ""}" type="button" data-toggle-msg-search aria-label="جستجو در پیام‌ها">${icons.search}<span>جستجو</span></button>
+          ${isDef ? `<span class="pill pill-ok">پیش‌فرض</span>` : `<button class="btn btn-ghost btn-sm" type="button" data-set-default>تنظیم پیش‌فرض</button>`}
+          <a class="btn btn-ghost btn-sm" href="#/playground?p=${encodeURIComponent(chat.provider)}" title="باز کردن ابزارهای ${esc(p?.nameFa || "")}">ابزارها</a>
+        </div>
+      </header>
+      <div class="convo-search" ${msgSearchOpen ? "" : "hidden"}>
+        ${icons.search}
+        <input class="input" type="search" id="msg-search-input" value="${esc(msgQuery)}" placeholder="جستجو در متن یا فرستنده پیام‌های این گفتگو…" aria-label="جستجو در پیام‌ها">
+        <span class="meta" id="msg-search-count"></span>
+      </div>
+      <div class="msgs-wrap">
+        <ol class="msgs" id="msgs"></ol>
+        <button class="msgs-jump" type="button" id="msgs-jump" hidden aria-label="رفتن به آخرین پیام">آخرین پیام ↓</button>
+      </div>
+      ${p?.ready && sendable ? `
       <form class="composer" data-reply>
-        <textarea class="textarea" data-draft rows="1" dir="auto" placeholder="پاسخ مستقیم به ${esc(chat.title || chat.chatId)}…" aria-label="متن جواب"></textarea>
-        <button class="btn btn-primary" type="submit" ${p?.ready ? "" : "disabled"}>${icons.send}<span>ارسال</span></button>
-      </form>`;
-    el.querySelector("[data-draft]").value = keepDraft;
+        <textarea class="textarea" data-draft rows="1" dir="auto" placeholder="پاسخ مستقیم به ${esc(chat.title || chat.chatId)}… (Ctrl+Enter برای ارسال)" aria-label="متن جواب"></textarea>
+        <button class="btn btn-primary" type="submit">${icons.send}<span>ارسال</span></button>
+      </form>` : `
+      <div class="composer-notice">
+        <span>${!p?.ready ? `برای ارسال پاسخ، ابتدا ${esc(p?.nameFa || "سرویس")} را متصل کنید.` : `ارسال پیام متنی مستقیم برای ${esc(p?.nameFa || "این سرویس")} پشتیبانی نمی‌شود.`}</span>
+        ${!p?.ready && p ? `<a class="btn btn-ghost btn-sm" href="#/providers?open=${encodeURIComponent(p.id)}">تنظیم سرویس</a>` : ""}
+      </div>`}`;
+
+    const draftEl = el.querySelector("[data-draft]");
+    if (draftEl) {
+      draftEl.value = keepDraft;
+      draftEl.style.height = "auto";
+      if (keepDraft) draftEl.style.height = `${Math.min(draftEl.scrollHeight, 140)}px`;
+    }
+    renderMessages();
     const list = document.getElementById("msgs");
-    list.scrollTop = list.scrollHeight;
+    const jump = document.getElementById("msgs-jump");
+    if (list && jump) {
+      list.addEventListener("scroll", () => {
+        jump.hidden = list.scrollHeight - list.scrollTop - list.clientHeight < 120;
+      });
+      jump.onclick = () => { list.scrollTop = list.scrollHeight; };
+    }
   };
 
   const load = async (force = false) => {
     const qs = sel.p && sel.c ? `?provider=${encodeURIComponent(sel.p)}&chat=${encodeURIComponent(sel.c)}` : "";
     data = await api(`inbox${qs}`);
-    const sig = JSON.stringify([data.statuses.map((s) => [s.enabled, s.running, s.lastError, s.received, s.lastPollAt && ago(s.lastPollAt)]), data.chats.map((c) => c.lastDate + c.count), data.messages.length, data.messages[0]?.key, sel]);
+    if (!rcvAutoChecked) {
+      rcvAutoChecked = true;
+      const activeCount = data.statuses.filter((s) => s.enabled && s.running).length;
+      if (data.chats.length === 0 && activeCount === 0) setRcvOpen(true);
+    }
+    const sig = JSON.stringify([data.statuses.map((s) => [s.enabled, s.running, s.lastError, s.received, s.lastPollAt && ago(s.lastPollAt)]), data.chats.map((c) => c.lastDate + c.count + c.lastDirection), data.messages.length, data.messages[0]?.key, sel]);
     if (force || sig !== lastSig) {
-      // اگر کاربر روی یک سوییچ فوکوس دارد، بازسازی DOM کلیکش را از بین می‌برد؛
-      // ولی بعد از یک تغییر عمدی (force) باید وضعیت تازه کشیده شود.
       if (force || !document.activeElement?.closest?.("[data-receive]")) drawReceivers();
-      drawStats();
+      drawHeaderStats();
+      drawScopes();
       drawProviders();
       drawChats();
       drawConvo();
@@ -1796,31 +2051,104 @@ async function pageInbox(main, q) {
   state.timer = setInterval(() => { if (!document.hidden) load().catch(() => { }); }, 4000);
 
   document.getElementById("inbox-refresh").onclick = (e) => busy(e.currentTarget, () => load(true));
-  document.getElementById("chat-search").addEventListener("input", (e) => {
+  document.getElementById("inbox-toggle-rcv").onclick = () => setRcvOpen(!rcvOpen);
+  document.getElementById("rcv-close").onclick = () => setRcvOpen(false);
+  document.getElementById("inbox-fetch-all").onclick = async (e) => {
+    const readyIds = data.statuses.filter((s) => s.supported && provOf(s.provider)?.ready).map((s) => s.provider);
+    if (!readyIds.length) {
+      setRcvOpen(true);
+      return toast("هیچ سرویس آماده‌ای برای بررسی وجود ندارد", true);
+    }
+    await busy(e.currentTarget, async () => {
+      const results = await Promise.allSettled(readyIds.map((id) => api(`inbox/${id}/fetch`, { body: {} })));
+      const added = results.reduce((sum, r) => sum + (r.status === "fulfilled" && r.value?.ok ? Number(r.value.added || 0) : 0), 0);
+      toast(added ? `${fa(added)} پیام جدید دریافت شد` : "پیام جدیدی وجود نداشت");
+      await load(true);
+    });
+  };
+
+  const searchInput = document.getElementById("chat-search");
+  const searchClear = document.getElementById("chat-search-clear");
+  searchInput.addEventListener("input", (e) => {
     chatQuery = e.target.value;
+    if (searchClear) searchClear.hidden = !chatQuery;
     drawChats();
+  });
+  searchClear.onclick = () => {
+    chatQuery = "";
+    searchInput.value = "";
+    searchClear.hidden = true;
+    drawChats();
+    searchInput.focus();
+  };
+
+  main.addEventListener("input", (e) => {
+    if (e.target.id === "msg-search-input") {
+      msgQuery = e.target.value;
+      renderMessages();
+    }
+    if (e.target.matches("[data-draft]")) {
+      e.target.style.height = "auto";
+      e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px`;
+    }
   });
 
   main.addEventListener("click", async (e) => {
+    const sc = e.target.closest("[data-inbox-scope]");
+    if (sc) {
+      filterScope = sc.dataset.inboxScope || "all";
+      drawScopes();
+      drawChats();
+      return;
+    }
     const pf = e.target.closest("[data-inbox-provider]");
     if (pf) {
       filterProvider = pf.dataset.inboxProvider || "";
       drawProviders();
+      drawScopes();
       drawChats();
       return;
     }
     const item = e.target.closest(".chat-item");
     if (item) {
       sel.p = item.dataset.p; sel.c = item.dataset.c;
+      msgQuery = "";
+      msgSearchOpen = false;
       history.replaceState(null, "", `#/inbox?p=${sel.p}&c=${encodeURIComponent(sel.c)}`);
       await load(true);
-      document.getElementById("convo")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       return;
     }
+    if (e.target.closest("[data-convo-back]")) {
+      sel.p = ""; sel.c = "";
+      msgQuery = "";
+      msgSearchOpen = false;
+      history.replaceState(null, "", "#/inbox");
+      drawChats();
+      drawConvo();
+      return;
+    }
+    if (e.target.closest("[data-toggle-msg-search]")) {
+      msgSearchOpen = !msgSearchOpen;
+      if (!msgSearchOpen) msgQuery = "";
+      drawConvo();
+      if (msgSearchOpen) document.getElementById("msg-search-input")?.focus();
+      return;
+    }
+    const copyMsgBtn = e.target.closest("[data-copy-msg]");
+    if (copyMsgBtn) return copy(copyMsgBtn.dataset.copyMsg);
+
     const rcv = e.target.closest("[data-rcv]");
     if (rcv && e.target.closest("[data-fetch]")) {
       const r = await busy(e.target.closest("[data-fetch]"), () => api(`inbox/${rcv.dataset.rcv}/fetch`, { body: {} }));
       r.ok ? toast(r.added ? `${fa(r.added)} پیام جدید دریافت شد` : "پیام جدیدی وجود نداشت") : toast(r.error, true);
+      return load(true);
+    }
+    if (rcv && e.target.closest("[data-clear-inbox]")) {
+      const pName = provOf(rcv.dataset.rcv)?.nameFa || rcv.dataset.rcv;
+      if (!confirm(`آیا پیام‌های ذخیره‌شده‌ی ${pName} از صندوق پاک شوند؟`)) return;
+      await busy(e.target.closest("[data-clear-inbox]"), () => api(`inbox/${rcv.dataset.rcv}`, { method: "DELETE" }));
+      if (sel.p === rcv.dataset.rcv) { sel.p = ""; sel.c = ""; history.replaceState(null, "", "#/inbox"); }
+      toast(`صندوق ${pName} پاک شد`);
       return load(true);
     }
     const act = e.target.closest("[data-action]");
@@ -1869,12 +2197,701 @@ async function pageInbox(main, q) {
     const text = draft.value.trim();
     if (!text) return draft.focus();
     const r = await busy(form.querySelector("[type=submit]"), () => api(`tools/${sel.p}_send_message/call`, { body: { args: { chat_id: sel.c, text } } }));
-    if (r.ok) { draft.value = ""; await load(true); } else toast(r.error, true);
+    if (r.ok) { draft.value = ""; draft.style.height = "auto"; await load(true); } else toast(r.error, true);
   });
   main.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && e.target.matches("[data-draft]")) e.target.closest("form").requestSubmit();
   });
 }
+
+// ---------------------------------------------------------------- triggers
+const trgCatFa = { social: "پیام‌رسان‌ها", ai: "هوش مصنوعی", mcp: "MCP", forward: "فوروارد", webhook: "وبهوک" };
+const trgEventFa = { incoming_message: "پیام ورودی", tool_called: "اجرای ابزار MCP", tool_error: "خطای ابزار MCP" };
+const trgActionFa = {
+  reply_template: "پاسخ آماده",
+  ai_reply: "پاسخ هوشمند AI",
+  forward: "فوروارد به سرویس دیگر",
+  call_tool: "اجرای ابزار MCP",
+  webhook: "ارسال Webhook",
+};
+const trgChatTypeFa = { "*": "همه", private: "خصوصی", group: "گروه", channel: "کانال" };
+
+// نمونه‌های آماده برای «ساخت اتوماسیون جدید» — با کلیک، فرم از همین داده پر می‌شود
+const trgSamples = [
+  {
+    id: "sample-welcome",
+    badge: "پیام‌رسان‌ها",
+    title: "خوش‌آمدگویی و راهنما",
+    sub: "پاسخ خودکار به /start و سلام",
+    data: {
+      name: "خوش‌آمدگویی خودکار مشتریان",
+      description: "وقتی کاربر در چت خصوصی سلام یا /start بفرستد، پیام خوش‌آمدگویی ارسال می‌شود.",
+      category: "social",
+      event: "incoming_message",
+      match: { provider: "*", chatType: "private", contains: "/start, سلام, درود, hi, hello", toolName: "*" },
+      action: {
+        type: "reply_template",
+        template: "سلام {{sender}} عزیز 👋\nبه پشتیبانی خوش آمدید. سوال یا درخواستتان را بنویسید تا راهنمایی‌تان کنیم.",
+      },
+    },
+  },
+  {
+    id: "sample-pricing",
+    badge: "پیام‌رسان‌ها",
+    title: "پاسخ تعرفه و قیمت",
+    sub: "کلمات قیمت / تعرفه / خرید",
+    data: {
+      name: "پاسخ خودکار تعرفه و قیمت",
+      description: "هر پرسش درباره‌ی قیمت، تعرفه یا خرید را با متن آماده پاسخ می‌دهد.",
+      category: "social",
+      event: "incoming_message",
+      match: { provider: "*", chatType: "*", contains: "قیمت, تعرفه, هزینه, خرید, اشتراک", toolName: "*" },
+      action: {
+        type: "reply_template",
+        template: "تعرفه‌ها 👇\n• پایه: ۴۹۰ هزار تومان / ماه\n• حرفه‌ای: ۹۹۰ هزار تومان / ماه\nبرای مشاوره‌ی رایگان شماره‌ی خود را بفرستید.",
+      },
+    },
+  },
+  {
+    id: "sample-support",
+    badge: "پیام‌رسان‌ها",
+    title: "ثبت تیکت پشتیبانی",
+    sub: "پاسخ فوری با شماره‌ی پیگیری",
+    data: {
+      name: "ثبت خودکار تیکت پشتیبانی",
+      description: "به پیام‌های حاوی مشکل یا خطا پاسخ می‌دهد و شماره‌ی پیگیری می‌سازد.",
+      category: "social",
+      event: "incoming_message",
+      match: { provider: "*", chatType: "*", contains: "پشتیبانی, تیکت, مشکل, خرابی, خطا", toolName: "*" },
+      action: {
+        type: "reply_template",
+        template: "درخواست پشتیبانی شما ثبت شد ✅\nشماره‌ی پیگیری: {{chatId}}-{{provider}}\nکارشناس تا ۲ ساعت کاری پاسخ می‌دهد.",
+      },
+    },
+  },
+  {
+    id: "sample-ai",
+    badge: "هوش مصنوعی",
+    title: "منشی هوشمند دیبا روتر",
+    sub: "پاسخ کوتاه AI به سوالات",
+    data: {
+      name: "پاسخگوی هوشمند سوالات",
+      description: "سوالات چت خصوصی را با دیبا روتر تحلیل و پاسخ کوتاه فارسی ارسال می‌کند.",
+      category: "ai",
+      event: "incoming_message",
+      match: { provider: "*", chatType: "private", contains: "؟, ?, چطور, قیمت, راهنما", toolName: "*" },
+      action: {
+        type: "ai_reply",
+        systemPrompt: "تو پشتیبان دقیق و محترمانه هستی. به سوال کاربر در حداکثر ۳ جمله‌ی کوتاه و کاربردی پاسخ بده.",
+      },
+    },
+  },
+  {
+    id: "sample-sentiment",
+    badge: "هوش مصنوعی",
+    title: "آرام‌سازی مشتری ناراضی",
+    sub: "تشخیص شکایت و ارجاع فوری",
+    data: {
+      name: "تشخیص نارضایتی و پاسخ آرام‌کننده",
+      description: "پیام‌های عصبانی یا شکایت را تشخیص می‌دهد و پاسخ رسمی آرام‌کننده می‌فرستد.",
+      category: "ai",
+      event: "incoming_message",
+      match: { provider: "*", chatType: "*", contains: "شکایت, افتضاح, عصبانی, پشیمون, کلاهبرداری", toolName: "*" },
+      action: {
+        type: "ai_reply",
+        systemPrompt:
+          "کاربر ناراضی است. با لحن آرام عذرخواهی کن، مشکل را در یک جمله جمع‌بندی کن و بگو کارشناس ارشد تا ۱۰ دقیقه پیگیری می‌کند. قول مالی نده.",
+      },
+    },
+  },
+  {
+    id: "sample-forward",
+    badge: "فوروارد",
+    title: "ارسال پیام‌های فوری به مدیر",
+    sub: "فوری / مهم ← چت پیش‌فرض بله",
+    data: {
+      name: "اطلاع‌رسانی پیام‌های فوری",
+      description: "هر پیام حاوی «فوری» یا «مهم» را از همه پیام‌رسان‌ها به چت پیش‌فرض بله می‌فرستد.",
+      category: "forward",
+      event: "incoming_message",
+      match: { provider: "*", chatType: "*", contains: "فوری, مهم, اضطراری, urgent", toolName: "*" },
+      action: {
+        type: "forward",
+        targetProvider: "bale",
+        targetChatId: "",
+        template: "🚨 پیام فوری از {{provider}} ({{sender}} | چت {{chatId}}):\n{{text}}",
+      },
+    },
+  },
+  {
+    id: "sample-bridge",
+    badge: "فوروارد",
+    title: "پل بله ← تلگرام",
+    sub: "همگام‌سازی دو پیام‌رسان",
+    data: {
+      name: "همگام‌سازی بله به تلگرام",
+      description: "همه‌ی پیام‌های ورودی بله را برای تیم فنی به چت پیش‌فرض تلگرام می‌فرستد.",
+      category: "forward",
+      event: "incoming_message",
+      match: { provider: "bale", chatType: "*", contains: "", toolName: "*" },
+      action: {
+        type: "forward",
+        targetProvider: "telegram",
+        targetChatId: "",
+        template: "📩 از بله ({{sender}}):\n{{text}}",
+      },
+    },
+  },
+  {
+    id: "sample-mcp-err",
+    badge: "MCP",
+    title: "هشدار خطای ابزار MCP",
+    sub: "گزارش خطای ابزارها به مدیر",
+    data: {
+      name: "گزارش خودکار خطاهای MCP",
+      description: "هنگام بروز خطا در هر ابزار MCP، جزئیات را به چت پیش‌فرض بله ارسال می‌کند.",
+      category: "mcp",
+      event: "tool_error",
+      match: { provider: "*", chatType: "*", contains: "", toolName: "*" },
+      action: {
+        type: "forward",
+        targetProvider: "bale",
+        targetChatId: "",
+        template: "⚠️ خطا در اجرای ابزار {{toolName}}:\n{{error}}",
+      },
+    },
+  },
+  {
+    id: "sample-tool",
+    badge: "اجرای ابزار",
+    title: "دستور /ping سلامت ربات",
+    sub: "فراخوانی ابزار با آرگومان JSON",
+    data: {
+      name: "پاسخ سلامت ربات با دستور /ping",
+      description: "با دریافت /ping ابزار ارسال پیام را صدا می‌زند و وضعیت را تایید می‌کند.",
+      category: "mcp",
+      event: "incoming_message",
+      match: { provider: "*", chatType: "*", contains: "/ping, تست ربات", toolName: "*" },
+      action: {
+        type: "call_tool",
+        toolName: "bale_send_message",
+        toolArgs: '{"chat_id":"{{chatId}}","text":"✅ ربات فعال است — {{provider}} | {{sender}}"}',
+      },
+    },
+  },
+  {
+    id: "sample-webhook",
+    badge: "وبهوک",
+    title: "اتصال به n8n / Webhook",
+    sub: "ارسال JSON پیام‌ها به سرور بیرونی",
+    data: {
+      name: "ارسال پیام‌ها به n8n",
+      description: "تمامی پیام‌های ورودی را به شکل JSON به آدرس Webhook دلخواه می‌فرستد.",
+      category: "webhook",
+      event: "incoming_message",
+      match: { provider: "*", chatType: "*", contains: "", toolName: "*" },
+      action: {
+        type: "webhook",
+        webhookUrl: "https://example.com/webhook/diba-mcp",
+      },
+    },
+  },
+  {
+    id: "sample-crm",
+    badge: "وبهوک",
+    title: "ثبت لید در CRM",
+    sub: "قیمت / دمو / مشاوره ← CRM",
+    data: {
+      name: "ارسال لیدهای فروش به CRM",
+      description: "پیام‌های حاوی درخواست قیمت یا دمو را به وبهوک CRM می‌فرستد.",
+      category: "webhook",
+      event: "incoming_message",
+      match: { provider: "*", chatType: "private", contains: "قیمت, دمو, مشاوره, خرید", toolName: "*" },
+      action: {
+        type: "webhook",
+        webhookUrl: "https://hooks.example.com/crm/leads",
+      },
+    },
+  },
+];
+
+async function pageTriggers(main, q) {
+  let data = await api("triggers");
+  let filterCat = "all";
+  let query = "";
+  let mode = q?.get("new") === "1" ? "create" : "list"; // list | create | edit
+  let draft = null;
+
+  // شنونده‌های این صفحه با خروج از آن آزاد می‌شوند تا کلیک‌ها دوباره اجرا نشوند
+  const ac = new AbortController();
+  pageDispose = () => ac.abort();
+  const on = { signal: ac.signal };
+
+  const blankDraft = () => JSON.parse(JSON.stringify(trgSamples[0].data));
+
+  if (mode === "create") draft = blankDraft();
+
+  const renderCreatePage = () => {
+    const t = draft || blankDraft();
+    const ev = t.event || "incoming_message";
+    const ac2 = t.action?.type || "reply_template";
+    const isIncoming = ev === "incoming_message";
+    const vars = isIncoming
+      ? ["{{sender}}", "{{text}}", "{{provider}}", "{{chatId}}", "{{chatTitle}}"]
+      : ["{{toolName}}", "{{error}}", "{{args}}", "{{ms}}"];
+
+    main.innerHTML = `${head(
+      mode === "edit" ? `ویرایش اتوماسیون: ${esc(t.name)}` : "ساخت اتوماسیون جدید",
+      "یک قالب آماده را انتخاب کنید یا شرط و اقدام دلخواه خود را بسازید.",
+      "تریگرها و اتوماسیون",
+      `<button class="btn btn-ghost btn-sm" type="button" id="trg-back">بازگشت به فهرست تریگرها</button>`,
+    )}
+
+    ${mode === "create" ? `
+    <section class="trg-samples-wrap">
+      <div class="trg-samples-head">
+        <b>۱. انتخاب از نمونه‌های آماده (اختیاری)</b>
+        <span class="hint">${fa(trgSamples.length)} قالب پرشده؛ با یک کلیک فرم را پر می‌کند.</span>
+      </div>
+      <div class="trg-samples">
+        ${trgSamples.map((s) => `<button class="trg-sample${t.name === s.data.name ? " active" : ""}" type="button" data-trg-sample="${s.id}">
+          <span class="pill pill-off">${s.badge}</span>
+          <b>${esc(s.title)}</b>
+          <span>${esc(s.sub)}</span>
+        </button>`).join("")}
+      </div>
+    </section>` : ""}
+
+    <section class="trg-builder">
+      <div class="trg-preview" id="trg-preview" aria-live="polite"></div>
+
+      <form class="trg-form" id="trg-form">
+        <div class="trg-step">
+          <div class="trg-step-title"><b>۲. مشخصات و رویداد (When)</b></div>
+          <div class="trg-grid">
+            <label><span>نام اتوماسیون</span><input class="input" name="name" required value="${esc(t.name)}" placeholder="مثلاً پاسخ خودکار سلام"></label>
+            <label><span>دسته‌بندی</span>
+              <select class="select" name="category">
+                ${Object.entries(trgCatFa).map(([k, v]) => `<option value="${k}" ${t.category === k ? "selected" : ""}>${v}</option>`).join("")}
+              </select>
+            </label>
+            <label><span>رویداد (Trigger Event)</span>
+              <select class="select" name="event" id="trg-event">
+                ${Object.entries(trgEventFa).map(([k, v]) => `<option value="${k}" ${ev === k ? "selected" : ""}>${v}</option>`).join("")}
+              </select>
+            </label>
+          </div>
+          <label><span>توضیح کوتاه</span><input class="input" name="description" value="${esc(t.description || "")}" placeholder="توضیح کاربرد این اتوماسیون"></label>
+
+          <div class="trg-grid" id="trg-cond-incoming" ${isIncoming ? "" : "hidden"}>
+            <label><span>پیام‌رسان</span><input class="input ltr-input" name="provider" value="${esc(t.match?.provider || "*")}" placeholder="* یا bale / telegram / instagram"></label>
+            <label><span>نوع گفتگو</span>
+              <select class="select" name="chatType">
+                ${Object.entries(trgChatTypeFa).map(([k, v]) => `<option value="${k}" ${(t.match?.chatType || "*") === k ? "selected" : ""}>${v}</option>`).join("")}
+              </select>
+            </label>
+            <label><span>کلمات کلیدی (با کاما جدا کنید)</span><input class="input" name="contains" value="${esc(t.match?.contains || "")}" placeholder="مثلاً: سلام, /start, فوری (خالی = همه پیام‌ها)"></label>
+          </div>
+
+          <div class="trg-grid" id="trg-cond-mcp" ${!isIncoming ? "" : "hidden"}>
+            <label><span>الگوی نام ابزار MCP</span><input class="input ltr-input" name="matchToolName" value="${esc(t.match?.toolName || "*")}" placeholder="* یا *_send_* یا *_publish_*"></label>
+          </div>
+        </div>
+
+        <div class="trg-step">
+          <div class="trg-step-title">
+            <b>۳. اقدام (Then)</b>
+            <div class="trg-vars">
+              <span>متغیرهای قابل استفاده:</span>
+              ${vars.map((v) => `<button class="trg-var-chip" type="button" data-insert-var="${v}">${v}</button>`).join("")}
+            </div>
+          </div>
+          <div class="trg-grid">
+            <label><span>نوع اقدام (Action)</span>
+              <select class="select" name="actionType" id="trg-action-type">
+                ${Object.entries(trgActionFa).map(([k, v]) => `<option value="${k}" ${ac2 === k ? "selected" : ""}>${v}</option>`).join("")}
+              </select>
+            </label>
+          </div>
+
+          <div class="trg-action-fields" data-ac-group="reply_template" ${ac2 === "reply_template" ? "" : "hidden"}>
+            <label><span>متن پاسخ خودکار</span><textarea class="textarea" name="template" rows="3" placeholder="سلام {{sender}} عزیز...">${esc(t.action?.template || "")}</textarea></label>
+          </div>
+
+          <div class="trg-action-fields" data-ac-group="ai_reply" ${ac2 === "ai_reply" ? "" : "hidden"}>
+            <label><span>دستورالعمل سیستم هوش مصنوعی (System Prompt)</span><textarea class="textarea" name="systemPrompt" rows="3" placeholder="تو پشتیبان فارسی هستی...">${esc(t.action?.systemPrompt || "")}</textarea></label>
+          </div>
+
+          <div class="trg-action-fields" data-ac-group="forward" ${ac2 === "forward" ? "" : "hidden"}>
+            <div class="trg-grid">
+              <label><span>سرویس مقصد</span><input class="input ltr-input" name="targetProvider" value="${esc(t.action?.targetProvider || "bale")}" placeholder="bale / telegram / rubika"></label>
+              <label><span>شناسه‌ی چت مقصد (اختیاری)</span><input class="input ltr-input" name="targetChatId" value="${esc(t.action?.targetChatId || "")}" placeholder="خالی = چت پیش‌فرض سرویس"></label>
+            </div>
+            <label><span>متن پیام فوروارد</span><textarea class="textarea" name="forwardTemplate" rows="3" placeholder="📩 از {{provider}}: {{text}}">${esc(t.action?.template || "")}</textarea></label>
+          </div>
+
+          <div class="trg-action-fields" data-ac-group="call_tool" ${ac2 === "call_tool" ? "" : "hidden"}>
+            <div class="trg-grid">
+              <label><span>نام ابزار MCP</span><input class="input ltr-input" name="actionToolName" value="${esc(t.action?.toolName || "")}" placeholder="bale_send_message"></label>
+              <label><span>آرگومان‌های JSON ابزار</span><textarea class="textarea ltr-input" name="toolArgs" rows="3" placeholder='{"chat_id":"{{chatId}}","text":"{{text}}"}'>${esc(t.action?.toolArgs || "")}</textarea></label>
+            </div>
+          </div>
+
+          <div class="trg-action-fields" data-ac-group="webhook" ${ac2 === "webhook" ? "" : "hidden"}>
+            <label><span>آدرس Webhook (POST JSON)</span><input class="input ltr-input" name="webhookUrl" value="${esc(t.action?.webhookUrl || "")}" placeholder="https://example.com/webhook"></label>
+          </div>
+        </div>
+
+        <div class="trg-form-foot">
+          <button class="btn btn-ghost" type="button" id="trg-cancel">انصراف</button>
+          <button class="btn btn-primary" type="submit">${mode === "edit" ? "ذخیره‌ی تغییرات" : "ایجاد و فعال‌سازی اتوماسیون"}</button>
+        </div>
+      </form>
+    </section>`;
+
+    updatePreview();
+  };
+
+  // پیش‌نمایش زنده‌ی قانون از روی همان فرم
+  const updatePreview = () => {
+    const box = main.querySelector("#trg-preview");
+    const form = main.querySelector("#trg-form");
+    if (!box || !form) return;
+    const fd = new FormData(form);
+    const ev = String(fd.get("event") || "incoming_message");
+    const act = String(fd.get("actionType") || "reply_template");
+    const keywords = String(fd.get("contains") || "").trim();
+    const cond =
+      ev === "incoming_message"
+        ? `وقتی پیام ورودی در «${String(fd.get("provider") || "*").trim() || "*"}» (${trgChatTypeFa[String(fd.get("chatType") || "*")] || "همه"})${keywords ? ` شامل (${keywords})` : ""} برسد`
+        : `وقتی رویداد «${trgEventFa[ev] || ev}» برای ابزار (${String(fd.get("matchToolName") || "*").trim() || "*"}) رخ دهد`;
+    box.innerHTML = `<span class="pill pill-ok">پیش‌نمایش قانون</span><span>${esc(cond)} ← <b>${trgActionFa[act] || act}</b></span>`;
+  };
+
+  const filteredTriggers = () => {
+    const triggers = data.triggers || [];
+    const needle = query.trim().toLowerCase();
+    return triggers.filter((t) => {
+      if (filterCat !== "all" && t.category !== filterCat) return false;
+      if (!needle) return true;
+      const hay = [t.name, t.description, t.match?.contains, t.match?.provider, t.match?.toolName, t.action?.type]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(needle);
+    });
+  };
+
+  const emptyState = () => `<div class="trg-empty">
+      <b>تریگری با این فیلتر پیدا نشد</b>
+      <span>عبارت جستجو را پاک کنید، دسته‌ی دیگری را انتخاب کنید یا یک اتوماسیون تازه بسازید.</span>
+    </div>`;
+
+  const cardHtml = (t) => {
+    const cond = t.event === "incoming_message"
+      ? `${t.match?.provider && t.match.provider !== "*" ? t.match.provider : "همه‌ی سرویس‌ها"}${t.match?.chatType && t.match.chatType !== "*" ? ` · ${trgChatTypeFa[t.match.chatType] || t.match.chatType}` : ""}${t.match?.contains ? ` · کلمات: ${t.match.contains}` : ""}`
+      : `ابزار: ${t.match?.toolName || "*"}`;
+    return `<article class="trg-card${t.enabled ? " is-on" : ""}" data-trg-id="${esc(t.id)}">
+      <div class="trg-card-top">
+        <div class="trg-title">
+          <span class="pill pill-off">${trgCatFa[t.category] || t.category}</span>
+          <b title="${esc(t.name)}">${esc(t.name)}</b>
+        </div>
+        <label class="switch" title="فعال/غیرفعال کردن تریگر"><input type="checkbox" data-trg-toggle ${t.enabled ? "checked" : ""} aria-label="فعال‌سازی ${esc(t.name)}"><span></span></label>
+      </div>
+      <p class="hint">${esc(t.description || "")}</p>
+      <div class="trg-meta">
+        <span><b>رویداد:</b> ${trgEventFa[t.event] || t.event} (${esc(cond)})</span>
+        <span><b>اقدام:</b> ${trgActionFa[t.action?.type] || t.action?.type}</span>
+        ${t.hitCount ? `<span><b>اجرا:</b> ${fa(t.hitCount)} بار${t.lastRunAt ? ` (${ago(t.lastRunAt)})` : ""}</span>` : `<span><b>اجرا:</b> هنوز اجرا نشده</span>`}
+      </div>
+      ${t.lastError ? `<div class="trg-err">آخرین خطا: ${esc(t.lastError)}</div>` : ""}
+      <div class="trg-actions">
+        <button class="btn btn-ghost btn-sm" type="button" data-trg-test>تست اجرا</button>
+        <button class="btn btn-ghost btn-sm" type="button" data-trg-edit>ویرایش</button>
+        <button class="btn btn-ghost btn-danger btn-sm" type="button" data-trg-del>حذف</button>
+      </div>
+    </article>`;
+  };
+
+  const listLogs = () => {
+    const logs = data.logs || [];
+    if (!logs.length) return `<p class="hint">هنوز تریگری اجرا نشده است. با دکمه‌ی «تست اجرا» اولین اجرای آزمایشی را ثبت کنید.</p>`;
+    return `<div class="trg-log-list">${logs.slice(0, 25).map((l) => `<div class="trg-log ${l.ok ? "ok" : "fail"}">
+        <span class="pill ${l.ok ? "pill-ok" : "pill-err"}">${l.ok ? "موفق" : "خطا"}</span>
+        ${l.demo ? `<span class="pill pill-warn">نمونه</span>` : ""}
+        <b>${esc(l.triggerName)}</b>
+        <span class="trg-log-detail">${esc(l.detail)}</span>
+        <span class="meta">${ago(l.at)}</span>
+      </div>`).join("")}</div>`;
+  };
+
+  const drawCards = () => {
+    const holder = main.querySelector("#trg-cards");
+    if (!holder) return;
+    const list = filteredTriggers();
+    holder.innerHTML = list.length ? list.map(cardHtml).join("") : emptyState();
+    const count = main.querySelector("#trg-result-count");
+    if (count) count.textContent = `${fa(list.length)} از ${fa((data.triggers || []).length)} اتوماسیون`;
+  };
+
+  const drawLogs = () => {
+    const holder = main.querySelector("#trg-logs-body");
+    if (holder) holder.innerHTML = listLogs();
+    const badge = main.querySelector("#trg-log-count");
+    if (badge) badge.textContent = fa((data.logs || []).length);
+  };
+
+  const renderListPage = () => {
+    const triggers = data.triggers || [];
+    const logs = data.logs || [];
+    const activeCount = triggers.filter((t) => t.enabled).length;
+    const dayAgo = Date.now() - 86400_000;
+    const dayLogs = logs.filter((l) => new Date(l.at).getTime() >= dayAgo);
+    const dayOk = dayLogs.filter((l) => l.ok).length;
+    const dayFail = dayLogs.length - dayOk;
+    const builtinCount = triggers.filter((t) => t.builtin).length;
+    const okRuns = logs.filter((l) => l.ok).length;
+
+    main.innerHTML = `${head("تریگرها و اتوماسیون", "اتصال خودکار پیام‌رسان‌ها، هوش مصنوعی دیبا روتر، ابزارهای MCP و Webhookها.", "اتوماسیون",
+      `<div class="inbox-head-actions">
+        <span class="inbox-live-badge"><i class="${activeCount ? "on" : "off"}"></i><span>${fa(activeCount)} از ${fa(triggers.length)} تریگر فعال</span></span>
+        <button class="btn btn-ghost btn-sm" type="button" id="trg-reset">بازنشانی پیش‌فرض‌ها</button>
+        <button class="btn btn-primary btn-sm" type="button" id="trg-new">+ ساخت اتوماسیون جدید</button>
+      </div>`)}
+
+      <section class="trg-stats">
+        <div class="trg-stat">
+          <span>کل اتوماسیون‌ها</span>
+          <b>${fa(triggers.length)}</b>
+          <span class="hint">${fa(builtinCount)} نمونه‌ی آماده + ${fa(triggers.length - builtinCount)} سفارشی</span>
+        </div>
+        <div class="trg-stat${activeCount ? " is-ok" : ""}">
+          <span>فعال</span>
+          <b>${fa(activeCount)}</b>
+          <span class="hint">${fa(triggers.length - activeCount)} خاموش</span>
+        </div>
+        <div class="trg-stat${dayFail ? " is-warn" : ""}">
+          <span>اجرا در ۲۴ ساعت</span>
+          <b>${fa(dayLogs.length)}</b>
+          <span class="hint">${fa(dayOk)} موفق · ${fa(dayFail)} خطا</span>
+        </div>
+        <div class="trg-stat">
+          <span>اجرای موفق</span>
+          <b>${fa(okRuns)}</b>
+          <span class="hint">از ${fa(logs.length)} اجرای ثبت‌شده</span>
+        </div>
+      </section>
+
+      <div class="trg-toolbar">
+        <div class="input-wrap trg-search">
+          <input class="input" id="trg-search" type="search" value="${esc(query)}" placeholder="جستجو در نام، توضیح، کلمه‌ی کلیدی یا ابزار…" aria-label="جستجوی اتوماسیون">
+          <span class="trg-search-icon">${icons.search}</span>
+        </div>
+        <span class="trg-count" id="trg-result-count"></span>
+      </div>
+
+      <div class="trg-cats" role="tablist">
+        <button class="inbox-scope${filterCat === "all" ? " active" : ""}" type="button" data-trg-cat="all">همه <b class="scope-count">${fa(triggers.length)}</b></button>
+        ${Object.entries(trgCatFa).map(([k, v]) => {
+          const c = triggers.filter((t) => t.category === k).length;
+          return `<button class="inbox-scope${filterCat === k ? " active" : ""}" type="button" data-trg-cat="${k}">${v} <b class="scope-count">${fa(c)}</b></button>`;
+        }).join("")}
+      </div>
+
+      <section class="trg-list" id="trg-cards"></section>
+
+      <section class="trg-logs">
+        <div class="trg-logs-head">
+          <b>گزارش اجرای تریگرها (<span id="trg-log-count">${fa(logs.length)}</span>)</b>
+          <span class="hint">ردیف‌های نشان‌دار «نمونه» فقط برای نمایش ساخته شده‌اند و اجرای واقعی نیستند.</span>
+          ${logs.length ? `<button class="btn btn-quiet btn-sm" type="button" id="trg-clear-logs">پاک کردن گزارش‌ها</button>` : ""}
+        </div>
+        <div id="trg-logs-body"></div>
+      </section>`;
+
+    drawCards();
+    drawLogs();
+  };
+
+  const render = () => (mode === "list" ? renderListPage() : renderCreatePage());
+  render();
+
+  let lastFocusedTextarea = null;
+  main.addEventListener("focusin", (e) => {
+    if (e.target.matches("#trg-form textarea")) lastFocusedTextarea = e.target;
+  }, on);
+
+  main.addEventListener("input", (e) => {
+    if (e.target.id === "trg-search") {
+      query = e.target.value;
+      drawCards();
+      return;
+    }
+    if (e.target.closest("#trg-form")) updatePreview();
+  }, on);
+
+  main.addEventListener("click", async (e) => {
+    const catBtn = e.target.closest("[data-trg-cat]");
+    if (catBtn) {
+      filterCat = catBtn.dataset.trgCat || "all";
+      main.querySelectorAll("[data-trg-cat]").forEach((b) => b.classList.toggle("active", b === catBtn));
+      drawCards();
+      return;
+    }
+    if (e.target.closest("#trg-new")) {
+      mode = "create";
+      draft = blankDraft();
+      history.replaceState(null, "", "#/triggers?new=1");
+      return render();
+    }
+    if (e.target.id === "trg-cancel" || e.target.id === "trg-back") {
+      mode = "list";
+      draft = null;
+      history.replaceState(null, "", "#/triggers");
+      return render();
+    }
+    const sampleBtn = e.target.closest("[data-trg-sample]");
+    if (sampleBtn) {
+      const sample = trgSamples.find((s) => s.id === sampleBtn.dataset.trgSample);
+      if (sample) {
+        draft = JSON.parse(JSON.stringify(sample.data));
+        render();
+      }
+      return;
+    }
+    const varChip = e.target.closest("[data-insert-var]");
+    if (varChip) {
+      const target = lastFocusedTextarea || main.querySelector("#trg-form .trg-action-fields:not([hidden]) textarea");
+      if (target) {
+        const v = varChip.dataset.insertVar;
+        const pos = target.selectionStart ?? target.value.length;
+        target.value = target.value.slice(0, pos) + v + target.value.slice(target.selectionEnd ?? pos);
+        target.focus();
+        updatePreview();
+      }
+      return;
+    }
+    if (e.target.closest("#trg-reset")) {
+      await busy(e.target.closest("#trg-reset"), async () => {
+        await api("triggers/reset-defaults", { body: {} });
+        data = await api("triggers");
+      });
+      toast("تریگرهای پیش‌فرض بازیابی شدند");
+      return render();
+    }
+    if (e.target.closest("#trg-clear-logs")) {
+      await api("triggers/logs", { method: "DELETE" });
+      data = await api("triggers");
+      toast("گزارش‌ها پاک شدند");
+      return render();
+    }
+    const card = e.target.closest("[data-trg-id]");
+    if (!card) return;
+    const id = card.dataset.trgId;
+    if (e.target.closest("[data-trg-edit]")) {
+      const found = (data.triggers || []).find((t) => t.id === id);
+      if (found) {
+        mode = "edit";
+        draft = JSON.parse(JSON.stringify(found));
+        render();
+      }
+      return;
+    }
+    if (e.target.closest("[data-trg-del]")) {
+      if (!confirm("این تریگر حذف شود؟")) return;
+      await api(`triggers/${id}`, { method: "DELETE" });
+      data = await api("triggers");
+      toast("تریگر حذف شد");
+      return render();
+    }
+    if (e.target.closest("[data-trg-test]")) {
+      const btn = e.target.closest("[data-trg-test]");
+      const r = await busy(btn, () => api(`triggers/${id}/test`, { body: {} }));
+      data = await api("triggers");
+      toast(r.ok ? r.detail : `خطا: ${r.detail}`, !r.ok);
+      return render();
+    }
+  }, on);
+
+  main.addEventListener("change", async (e) => {
+    if (e.target.id === "trg-event") {
+      const isInc = e.target.value === "incoming_message";
+      const incEl = document.getElementById("trg-cond-incoming");
+      const mcpEl = document.getElementById("trg-cond-mcp");
+      if (incEl) incEl.hidden = !isInc;
+      if (mcpEl) mcpEl.hidden = isInc;
+      updatePreview();
+      return;
+    }
+    if (e.target.id === "trg-action-type") {
+      const act = e.target.value;
+      main.querySelectorAll("[data-ac-group]").forEach((el) => {
+        el.hidden = el.dataset.acGroup !== act;
+      });
+      updatePreview();
+      return;
+    }
+    if (e.target.closest("#trg-form")) {
+      updatePreview();
+      return;
+    }
+    const sw = e.target.closest("[data-trg-toggle]");
+    if (!sw) return;
+    const id = sw.closest("[data-trg-id]").dataset.trgId;
+    await api(`triggers/${id}`, { method: "PUT", body: { enabled: sw.checked } });
+    data = await api("triggers");
+    toast(sw.checked ? "تریگر فعال شد" : "تریگر غیرفعال شد");
+    render();
+  }, on);
+
+  main.addEventListener("submit", async (e) => {
+    if (e.target.id !== "trg-form") return;
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const act = String(fd.get("actionType") || "reply_template");
+    const payload = {
+      name: String(fd.get("name") || "").trim(),
+      description: String(fd.get("description") || "").trim(),
+      category: String(fd.get("category") || "social"),
+      event: String(fd.get("event") || "incoming_message"),
+      match: {
+        provider: String(fd.get("provider") || "*").trim() || "*",
+        chatType: String(fd.get("chatType") || "*"),
+        contains: String(fd.get("contains") || "").trim(),
+        toolName: String(fd.get("matchToolName") || "*").trim() || "*",
+      },
+      action: {
+        type: act,
+        template: act === "forward" ? String(fd.get("forwardTemplate") || "") : String(fd.get("template") || ""),
+        systemPrompt: String(fd.get("systemPrompt") || ""),
+        targetProvider: String(fd.get("targetProvider") || "bale").trim(),
+        targetChatId: String(fd.get("targetChatId") || "").trim(),
+        webhookUrl: String(fd.get("webhookUrl") || "").trim(),
+        toolName: String(fd.get("actionToolName") || "").trim(),
+        toolArgs: String(fd.get("toolArgs") || "").trim(),
+      },
+    };
+    if (!payload.name) return toast("نام اتوماسیون را وارد کنید", true);
+    try {
+      if (mode === "create") {
+        await api("triggers", { body: { ...payload, enabled: true } });
+        toast("اتوماسیون جدید ساخته و فعال شد");
+      } else if (draft?.id) {
+        await api(`triggers/${draft.id}`, { method: "PUT", body: payload });
+        toast("تغییرات اتوماسیون ذخیره شد");
+      }
+      mode = "list";
+      draft = null;
+      history.replaceState(null, "", "#/triggers");
+      data = await api("triggers");
+      render();
+    } catch (err) {
+      toast(err.message, true);
+    }
+  }, on);
+}
+
 
 // ---------------------------------------------------------------- logs
 async function pageLogs(main) {
@@ -1888,10 +2905,16 @@ async function pageLogs(main) {
       <div class="seg" role="group" aria-label="فیلتر وضعیت">
         ${[["all", "همه"], ["ok", "موفق"], ["fail", "ناموفق"]].map(([v, l]) => `<button data-ok="${v}" aria-pressed="${state.logFilter.ok === v}">${l}</button>`).join("")}
       </div>
-      <select class="select" id="pf" aria-label="فیلتر پیام‌رسان">
-        <option value="">همه‌ی پیام‌رسان‌ها</option>
-        ${state.providers.map((p) => `<option value="${p.id}" ${state.logFilter.provider === p.id ? "selected" : ""}>${esc(p.nameFa)}</option>`).join("")}
-      </select>
+      <div class="ui-select" id="pf" data-ui-select>
+        <button class="ui-select-trigger" type="button" data-select-trigger aria-haspopup="listbox" aria-expanded="false" aria-label="فیلتر پیام‌رسان">
+          <span data-select-label>${esc(state.providers.find((p) => p.id === state.logFilter.provider)?.nameFa || "همه‌ی پیام‌رسان‌ها")}</span>
+          <span class="ui-select-chevron">${icons.chevron}</span>
+        </button>
+        <div class="ui-select-menu" role="listbox" hidden>
+          <button type="button" class="ui-select-option ${state.logFilter.provider ? "" : "active"}" role="option" aria-selected="${!state.logFilter.provider}" data-select-value="">همه‌ی پیام‌رسان‌ها</button>
+          ${state.providers.map((p) => `<button type="button" class="ui-select-option ${state.logFilter.provider === p.id ? "active" : ""}" role="option" aria-selected="${state.logFilter.provider === p.id}" data-select-value="${esc(p.id)}">${esc(p.nameFa)}</button>`).join("")}
+        </div>
+      </div>
     </div>
     <div class="calls" id="log-list"></div>`;
 
@@ -1923,7 +2946,50 @@ async function pageLogs(main) {
     main.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", x === b));
     draw();
   });
-  document.getElementById("pf").onchange = (e) => { state.logFilter.provider = e.target.value; draw(); };
+  const pf = document.getElementById("pf");
+  const pfTrigger = pf.querySelector("[data-select-trigger]");
+  const pfMenu = pf.querySelector(".ui-select-menu");
+  const pfLabel = pf.querySelector("[data-select-label]");
+  const closePf = () => {
+    pfMenu.hidden = true;
+    pf.classList.remove("open");
+    pfTrigger.setAttribute("aria-expanded", "false");
+  };
+  const openPf = () => {
+    pfMenu.hidden = false;
+    pf.classList.add("open");
+    pfTrigger.setAttribute("aria-expanded", "true");
+  };
+  pfTrigger.addEventListener("click", () => (pfMenu.hidden ? openPf() : closePf()));
+  pf.querySelectorAll("[data-select-value]").forEach((option) => {
+    option.addEventListener("click", () => {
+      state.logFilter.provider = option.dataset.selectValue;
+      pfLabel.textContent = option.textContent;
+      pf.querySelectorAll("[data-select-value]").forEach((x) => {
+        const active = x === option;
+        x.classList.toggle("active", active);
+        x.setAttribute("aria-selected", String(active));
+      });
+      closePf();
+      draw();
+    });
+  });
+  pf.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { closePf(); pfTrigger.focus(); return; }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (pfMenu.hidden) openPf();
+      const options = [...pf.querySelectorAll("[data-select-value]")];
+      const index = options.indexOf(document.activeElement);
+      const next = e.key === "ArrowDown"
+        ? options[Math.min(options.length - 1, index + 1)]
+        : options[Math.max(0, index - 1)];
+      next?.focus();
+    }
+  });
+  main.addEventListener("click", (e) => {
+    if (!pf.contains(e.target)) closePf();
+  });
   document.getElementById("reload").onclick = (e) => busy(e.currentTarget, load);
   document.getElementById("clear").onclick = async () => {
     if (!confirm("آیا تمامی گزارش‌ها و فایل‌های لاگ پاک شوند؟")) return;

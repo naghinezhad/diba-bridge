@@ -96,15 +96,22 @@ export async function dibaRouterModels(config: DibaRouterConfig): Promise<any[]>
 export async function dibaRouterChat(
   config: DibaRouterConfig,
   messages: DibaRouterMessage[],
-  opts: { maxTokens?: number; temperature?: number; tools?: DibaRouterTool[]; toolChoice?: "auto" | "none" } = {},
+  opts: {
+    maxTokens?: number;
+    temperature?: number;
+    tools?: DibaRouterTool[];
+    toolChoice?: "auto" | "none";
+    onDelta?: (delta: string) => void;
+  } = {},
 ): Promise<{ reply: string; model: string; routedModel?: string; cost?: number; toolCalls?: DibaRouterToolCall[]; finishReason?: string }> {
   if (!config.apiKey) throw new DibaRouterError("کلید API دیبا روتر ثبت نشده است.", 400);
+  const wantStream = typeof opts.onDelta === "function";
   const body: Record<string, unknown> = {
     model: config.model || DIBAROUTER_DEFAULT_MODEL,
     messages,
     max_tokens: opts.maxTokens ?? 900,
     temperature: opts.temperature ?? 0.35,
-    stream: false,
+    stream: wantStream,
   };
   if (opts.tools?.length) {
     body.tools = opts.tools;
@@ -115,11 +122,87 @@ export async function dibaRouterChat(
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new DibaRouterError(await readError(res), res.status);
+
+  const contentType = String(res.headers.get("content-type") ?? "").toLowerCase();
+  if (wantStream && contentType.includes("text/event-stream") && res.body) {
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let replyAcc = "";
+    let model = String(config.model || DIBAROUTER_DEFAULT_MODEL);
+    let finishReason: string | undefined;
+    let cost: number | undefined;
+    const toolMap = new Map<number, { id: string; name: string; arguments: string }>();
+
+    const handleLine = (rawLine: string) => {
+      const line = rawLine.trim();
+      if (!line.startsWith("data:")) return;
+      const payload = line.slice(5).trim();
+      if (!payload || payload === "[DONE]") return;
+      let chunk: any;
+      try {
+        chunk = JSON.parse(payload);
+      } catch {
+        return;
+      }
+      if (chunk?.model) model = String(chunk.model);
+      if (typeof chunk?.usage?.cost === "number") cost = chunk.usage.cost;
+      const choice = chunk?.choices?.[0];
+      if (!choice) return;
+      if (typeof choice.finish_reason === "string") finishReason = choice.finish_reason;
+      const delta = choice.delta ?? {};
+      if (typeof delta.content === "string" && delta.content) {
+        replyAcc += delta.content;
+        opts.onDelta!(delta.content);
+      }
+      if (Array.isArray(delta.tool_calls)) {
+        for (const tc of delta.tool_calls) {
+          const idx = typeof tc.index === "number" ? tc.index : 0;
+          const prev = toolMap.get(idx) ?? { id: "", name: "", arguments: "" };
+          if (tc.id) prev.id = String(tc.id);
+          if (tc.function?.name) prev.name += String(tc.function.name);
+          if (typeof tc.function?.arguments === "string") prev.arguments += tc.function.arguments;
+          toolMap.set(idx, prev);
+        }
+      }
+    };
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let nlIdx = buffer.indexOf("\n");
+      while (nlIdx >= 0) {
+        handleLine(buffer.slice(0, nlIdx));
+        buffer = buffer.slice(nlIdx + 1);
+        nlIdx = buffer.indexOf("\n");
+      }
+    }
+    if (buffer.trim()) handleLine(buffer);
+
+    const toolCalls: DibaRouterToolCall[] | undefined = toolMap.size
+      ? [...toolMap.entries()]
+          .sort((a, b) => a[0] - b[0])
+          .filter(([, tc]) => tc.name)
+          .map(([idx, tc]) => ({
+            id: tc.id || `call_${Date.now()}_${idx}`,
+            type: "function" as const,
+            function: { name: tc.name, arguments: tc.arguments || "{}" },
+          }))
+      : undefined;
+
+    return {
+      reply: replyAcc.trim(),
+      model,
+      routedModel: res.headers.get("x-routed-model") ?? undefined,
+      cost,
+      toolCalls: toolCalls?.length ? toolCalls : undefined,
+      finishReason,
+    };
+  }
+
   const data: any = await res.json();
   const message = data?.choices?.[0]?.message ?? {};
-  // Some OpenAI-compatible routers put the answer in `text` or use a
-  // multimodal content array. Accept all of them so an otherwise valid reply
-  // is not reported as empty.
   const content = message.content;
   const reply = typeof content === "string"
     ? content.trim()
@@ -141,7 +224,6 @@ export async function dibaRouterChat(
           },
         }))
     : undefined;
-  // Older OpenAI-compatible servers return the legacy single function_call shape.
   if (!toolCalls?.length && message.function_call?.name) {
     toolCalls = [{
       id: `call_${Date.now()}`,
@@ -152,6 +234,7 @@ export async function dibaRouterChat(
       },
     }];
   }
+  if (wantStream && reply && !toolCalls?.length) opts.onDelta!(reply);
   return {
     reply,
     model: String(data?.model ?? config.model),

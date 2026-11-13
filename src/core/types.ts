@@ -67,6 +67,8 @@ export interface InboxAccess {
 export interface ProviderContext {
   /** مقادیر نهایی تنظیمات (env + فایل + پیش‌فرض) */
   config: Record<string, string>;
+  /** پوشه‌ی داده‌ها برای نشست‌های کلاینت */
+  dataDir?: string;
   /** وقتی «دریافت پیام‌ها» برای این سرویس روشن است */
   inbox?: InboxAccess;
 }
@@ -100,6 +102,8 @@ export interface AuthStep {
   user?: AuthUser;
   hint?: string;
   warning?: string;
+  /** QR ورود به شکل data:image/png;base64,... (برای واتس‌اپ) */
+  qr?: string;
 }
 
 /** ورود به حساب کاربری (برای پیام‌رسان‌هایی که API رسمی کلاینت ندارند) */
@@ -110,6 +114,17 @@ export interface ProviderAuthDef {
   phoneField: string;
   /** فیلد ذخیره‌ی نشست (userId:jwt) */
   sessionField: string;
+  /** اگر false باشد، کد روی گوشی وارد می‌شود و فرم فقط دکمه‌ی بررسی نشان می‌دهد */
+  codeInput?: boolean;
+  /** ورود با اسکن QR (واتس‌اپ) */
+  qr?: boolean;
+  /** برچسب و راهنمای فیلد نام کاربری/شماره */
+  inputLabel?: string;
+  inputPlaceholder?: string;
+  startLabel?: string;
+  passwordHint?: string;
+  /** اگر ورود با نام کاربری و رمز است */
+  credentials?: "phone" | "username";
   start: (ctx: ProviderContext, phone: string, save: (values: Record<string, string>) => void) => Promise<AuthStep>;
   verifyCode: (ctx: ProviderContext, transactionHash: string, code: string, save: (values: Record<string, string>) => void) => Promise<AuthStep>;
   verifyPassword: (ctx: ProviderContext, transactionHash: string, password: string, save: (values: Record<string, string>) => void) => Promise<AuthStep>;

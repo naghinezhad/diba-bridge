@@ -503,7 +503,7 @@ export const telegramClient: ProviderDef = {
   docsUrl: "https://core.telegram.org/api",
   fields: [
     { key: "phone", label: "شماره تلفن", type: "text", placeholder: "۰۹۱۲۱۲۳۴۵۶۷", help: "برای ورود؛ بعد از ورود ذخیره می‌شود." },
-    { key: "session", label: "نشست حساب (خودکار)", type: "secret", help: "پس از ورود موفق ذخیره می‌شود." },
+    { key: "session", label: "نشست حساب (خودکار)", type: "secret", required: true, help: "پس از ورود موفق ذخیره می‌شود." },
     { key: "apiId", label: "API ID تلگرام", type: "text", default: String(DEFAULT_API_ID), help: "از my.telegram.org؛ مقدار پیش‌فرض برای شروع است." },
     { key: "apiHash", label: "API Hash تلگرام", type: "secret", default: DEFAULT_API_HASH, help: "از my.telegram.org؛ در صورت نیاز تغییر دهید." },
     { key: "defaultChatId", label: "چت پیش‌فرض", type: "text", placeholder: "اختیاری — @username یا شناسه عددی" },

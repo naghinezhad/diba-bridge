@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { RateLimiter } from "./auth.js";
 import { Inbox } from "./inbox.js";
+import { TriggerEngine } from "./triggers.js";
 import { CallLogger } from "./logger.js";
 import { summarizeForLog } from "./media.js";
 import { ConfigStore, envKey } from "./store.js";
@@ -47,6 +48,7 @@ export class DibaMcpEngine {
   readonly providers: ProviderDef[];
   /** صندوق پیام‌های ورودی */
   readonly inbox: Inbox;
+  readonly triggers: TriggerEngine;
   readonly version = SERVER_VERSION;
   /** سقف فراخوانی ابزارهای «نوشتنی» (ارسال پیام و ...) از طرف مدل در دقیقه */
   private writeLimiter: RateLimiter;
@@ -68,12 +70,17 @@ export class DibaMcpEngine {
       }
     }
     this.inbox = new Inbox(opts.dataDir, this.store, this.providers, (p) => this.contextOf(p));
+    this.triggers = new TriggerEngine(opts.dataDir, this);
+    this.inbox.onIncoming = (msg) => {
+      void this.triggers.onIncomingMessage(msg);
+    };
   }
 
   /** چیزی که ابزارها و تست‌ها از یک سرویس می‌بینند */
   contextOf(p: ProviderDef): ProviderContext {
     return {
       config: this.store.resolve(p).values,
+      dataDir: this.store.dir,
       inbox: this.inbox.isActive(p) ? this.inbox.access(p.id) : undefined,
     };
   }
@@ -125,6 +132,7 @@ export class DibaMcpEngine {
         error: r.error,
         result: r.ok ? JSON.stringify(r.result ?? null).slice(0, 2000) : undefined,
       });
+      void this.triggers.onToolEvent({ tool: name, args: rawArgs, ok: r.ok, error: r.error, ms, source });
       return { ...r, ms };
     };
 
@@ -355,6 +363,13 @@ export class DibaMcpEngine {
               description: p.auth.description,
               phoneField: p.auth.phoneField,
               sessionField: p.auth.sessionField,
+              codeInput: p.auth.codeInput !== false,
+              qr: Boolean(p.auth.qr),
+              inputLabel: p.auth.inputLabel,
+              inputPlaceholder: p.auth.inputPlaceholder,
+              startLabel: p.auth.startLabel,
+              passwordHint: p.auth.passwordHint,
+              credentials: p.auth.credentials,
               loggedIn: Boolean(values[p.auth.sessionField]),
             }
           : undefined,

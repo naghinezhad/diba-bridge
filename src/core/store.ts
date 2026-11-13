@@ -52,6 +52,10 @@ export class ConfigStore {
     this.data = this.load();
   }
 
+  get dir(): string {
+    return this.dataDir;
+  }
+
   private load(): StoredConfig {
     const defaults = (): StoredConfig => ({
       version: 1,
