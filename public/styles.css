@@ -4525,3 +4525,37 @@ body { background: var(--bg-soft); }
 .shell .native-select .ui-select-trigger { height: 40px; }
 .shell .native-select .ui-select-menu { z-index: 150; }
 .shell .trg-form .native-select { margin-top: 2px; }
+
+/* Manual trigger input modal */
+.modal-prompt { width: min(560px, 100%); }
+.modal-field { padding: 0 22px 18px; display: grid; gap: 7px; }
+.modal-field label { font-size: 11.5px; font-weight: 700; color: var(--ink-2); }
+.modal-field textarea { min-height: 170px; font-size: 11.5px; line-height: 1.8; background: var(--bg-soft); }
+.trg-manual-note {
+  margin: 12px 0 4px;
+  padding: 12px 14px;
+  border: 1px dashed var(--brand-300);
+  border-radius: 8px;
+  background: var(--brand-50);
+}
+.trg-manual-note p { margin: 7px 0 0; color: var(--ink-2); font-size: 11.5px; line-height: 1.9; }
+.trg-manual-note code { background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 1px 4px; font-size: 10px; }
+
+/* Tool picker modal + form row */
+.tool-pick-row { display: flex; align-items: center; gap: 6px; }
+.tool-pick-row .input { flex: 1; min-width: 0; }
+.tool-pick-row .btn { flex: none; white-space: nowrap; }
+.modal-tool-picker { width: min(620px, 100%); }
+.modal-tool-picker .modal-field { padding-bottom: 10px; }
+.tool-picker-search { width: 100%; height: 38px; }
+.modal-tool-list { max-height: 360px; overflow-y: auto; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.tool-picker-row {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 16px; border: 0; border-bottom: 1px solid var(--line); background: #fff;
+  text-align: start; cursor: pointer;
+}
+.tool-picker-row:last-child { border-bottom: 0; }
+.tool-picker-row:hover { background: var(--bg-soft); }
+.tool-picker-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tool-picker-body b { font-size: 11.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tool-picker-body small { font-size: 9.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

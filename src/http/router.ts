@@ -709,6 +709,11 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.json(r);
   });
 
+  api.post("/triggers/:id/run", async (req, res) => {
+    const vars = req.body?.vars && typeof req.body.vars === "object" ? req.body.vars : {};
+    res.json(await engine.triggers.runManual(String(req.params.id), vars));
+  });
+
   api.get("/connection", (_req, res) => {
     res.json({ token: engine.store.mcpToken, fromEnv: engine.store.mcpTokenFromEnv });
   });

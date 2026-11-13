@@ -11,7 +11,7 @@ import { dibaRouterChat } from "./dibarouter.js";
 import { netFetch } from "./net.js";
 import type { IncomingMessage } from "./types.js";
 
-export type TriggerEvent = "incoming_message" | "tool_called" | "tool_error";
+export type TriggerEvent = "incoming_message" | "tool_called" | "tool_error" | "manual";
 export type TriggerActionType = "reply_template" | "ai_reply" | "forward" | "call_tool" | "webhook";
 export type TriggerCategory = "social" | "ai" | "mcp" | "forward" | "webhook";
 
@@ -966,6 +966,26 @@ export class TriggerEngine {
             ms: "42",
           };
     return this.execute(t, sampleVars, { test: true });
+  }
+
+  /** اجرای دستی یک اتوماسیون، مستقل از فعال/غیرفعال بودن آن. */
+  async runManual(id: string, input: Record<string, string> = {}): Promise<{ ok: boolean; detail: string }> {
+    const t = this.data.triggers.find((x) => x.id === id);
+    if (!t) return { ok: false, detail: "تریگر پیدا نشد" };
+    const vars: Record<string, string> = {
+      text: "",
+      sender: "اجرای دستی",
+      username: "",
+      provider: "",
+      chatId: "",
+      chatTitle: "اجرای دستی",
+      toolName: "",
+      error: "",
+      args: "",
+      ms: "0",
+      ...input,
+    };
+    return this.execute(t, vars, { manual: true, vars });
   }
 
   private async execute(

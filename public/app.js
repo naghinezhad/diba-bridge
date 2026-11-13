@@ -105,8 +105,104 @@ function openModal({
   });
 }
 
-function selectControl(name, options, value, id = "", ariaLabel = "") {
-  const selected = options.find(([v]) => v === value) ?? options[0];
+function openPromptModal({
+  title = "ورودی اجرا",
+  message = "",
+  label = "JSON",
+  value = "{}",
+  confirmText = "اجرا",
+} = {}) {
+  return new Promise((resolve) => {
+    const previous = document.activeElement;
+    const wrap = document.createElement("div");
+    wrap.className = "modal-backdrop";
+    wrap.innerHTML = `
+      <section class="modal modal-prompt" role="dialog" aria-modal="true" aria-labelledby="prompt-title">
+        <header class="modal-head">
+          <span class="modal-icon">${icons.sparkles}</span>
+          <div><h2 id="prompt-title">${esc(title)}</h2>${message ? `<p>${esc(message)}</p>` : ""}</div>
+        </header>
+        <div class="modal-field">
+          <label for="prompt-input">${esc(label)}</label>
+          <textarea id="prompt-input" class="textarea ltr-input" rows="8" spellcheck="false">${esc(value)}</textarea>
+        </div>
+        <footer class="modal-actions">
+          <button class="btn btn-ghost" type="button" data-modal-cancel>انصراف</button>
+          <button class="btn btn-primary" type="button" data-modal-confirm>${esc(confirmText)}</button>
+        </footer>
+      </section>`;
+    const close = (answer) => {
+      document.removeEventListener("keydown", onKey);
+      wrap.classList.remove("open");
+      setTimeout(() => wrap.remove(), 160);
+      previous?.focus?.();
+      resolve(answer);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") close(null);
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) close(wrap.querySelector("#prompt-input").value);
+    };
+    wrap.addEventListener("click", (e) => { if (e.target === wrap) close(null); });
+    wrap.querySelector("[data-modal-cancel]").addEventListener("click", () => close(null));
+    wrap.querySelector("[data-modal-confirm]").addEventListener("click", () => close(wrap.querySelector("#prompt-input").value));
+    document.body.append(wrap);
+    requestAnimationFrame(() => wrap.classList.add("open"));
+    document.addEventListener("keydown", onKey);
+    wrap.querySelector("#prompt-input").focus();
+  });
+}
+
+async function openToolPicker() {
+  if (!state.providers.length) {
+    try { state.providers = await api("providers"); } catch { /* keep the picker usable with an empty list */ }
+  }
+  return new Promise((resolve) => {
+    const tools = [];
+    for (const p of state.providers || []) {
+      for (const t of p.tools || []) tools.push({ name: t.name, title: t.title || t.name, provider: p.nameFa || p.id, ready: p.ready });
+    }
+    const previous = document.activeElement;
+    const wrap = document.createElement("div");
+    wrap.className = "modal-backdrop";
+    wrap.innerHTML = `
+      <section class="modal modal-tool-picker" role="dialog" aria-modal="true">
+        <header class="modal-head"><span class="modal-icon">${icons.sparkles}</span><div><h2>انتخاب ابزار از سرویس‌ها</h2><p>${fa(tools.length)} ابزار از ${fa((state.providers || []).length)} سرویس</p></div></header>
+        <div class="modal-field"><input class="input tool-picker-search" type="search" placeholder="جستجوی نام سرویس یا ابزار…" aria-label="جستجوی ابزار"></div>
+        <div class="modal-tool-list" data-tool-picker-list></div>
+        <footer class="modal-actions"><button class="btn btn-ghost" type="button" data-modal-cancel>انصراف</button></footer>
+      </section>`;
+    const close = (answer) => {
+      document.removeEventListener("keydown", onKey);
+      wrap.classList.remove("open");
+      setTimeout(() => wrap.remove(), 160);
+      previous?.focus?.();
+      resolve(answer);
+    };
+    const onKey = (e) => { if (e.key === "Escape") close(null); };
+    const draw = (query = "") => {
+      const q = query.trim().toLowerCase();
+      const list = wrap.querySelector("[data-tool-picker-list]");
+      const rows = tools.filter((t) => !q || `${t.name} ${t.title} ${t.provider}`.toLowerCase().includes(q));
+      list.innerHTML = rows.length
+        ? rows.map((t) => `<button class="tool-picker-row" type="button" data-tool-name="${esc(t.name)}">
+            <span class="tool-picker-body"><b>${esc(t.title)}</b><small>${esc(t.provider)} · <span class="ltr">${esc(t.name)}</span></small></span>
+            <span class="pill ${t.ready ? "pill-ok" : "pill-off"}">${t.ready ? "آماده" : "خاموش"}</span>
+          </button>`).join("")
+        : `<div class="hint" style="padding:18px">ابزاری با این نام پیدا نشد.</div>`;
+      list.querySelectorAll("[data-tool-name]").forEach((b) => b.addEventListener("click", () => close(b.dataset.toolName)));
+    };
+    wrap.addEventListener("click", (e) => { if (e.target === wrap) close(null); });
+    wrap.querySelector("[data-modal-cancel]").addEventListener("click", () => close(null));
+    wrap.querySelector(".tool-picker-search").addEventListener("input", (e) => draw(e.target.value));
+    document.body.append(wrap);
+    draw();
+    requestAnimationFrame(() => wrap.classList.add("open"));
+    document.addEventListener("keydown", onKey);
+    wrap.querySelector(".tool-picker-search").focus();
+  });
+}
+
+function selectControl(name, options, value, id = "", ariaLabel = "") {  const selected = options.find(([v]) => v === value) ?? options[0];
   return `<div class="ui-select native-select" data-native-select data-name="${esc(name)}">
     <input type="hidden" name="${esc(name)}" ${id ? `id="${esc(id)}"` : ""} value="${esc(selected?.[0] ?? "")}">
     <button class="ui-select-trigger" type="button" data-select-trigger aria-haspopup="listbox" aria-expanded="false" aria-label="${esc(ariaLabel || name)}">
@@ -2570,7 +2666,7 @@ async function pageInbox(main, q) {
 
 // ---------------------------------------------------------------- triggers
 const trgCatFa = { social: "پیام‌رسان‌ها", ai: "هوش مصنوعی", mcp: "MCP", forward: "فوروارد", webhook: "وبهوک" };
-const trgEventFa = { incoming_message: "پیام ورودی", tool_called: "اجرای ابزار MCP", tool_error: "خطای ابزار MCP" };
+const trgEventFa = { incoming_message: "پیام ورودی", tool_called: "اجرای ابزار MCP", tool_error: "خطای ابزار MCP", manual: "اجرای دستی (Manual)" };
 const trgActionFa = {
   reply_template: "پاسخ آماده",
   ai_reply: "پاسخ هوشمند AI",
@@ -2800,6 +2896,7 @@ async function pageTriggers(main, q) {
     const ev = t.event || "incoming_message";
     const ac2 = t.action?.type || "reply_template";
     const isIncoming = ev === "incoming_message";
+    const isManual = ev === "manual";
     const vars = isIncoming
       ? ["{{sender}}", "{{text}}", "{{provider}}", "{{chatId}}", "{{chatTitle}}"]
       : ["{{toolName}}", "{{error}}", "{{args}}", "{{ms}}"];
@@ -2851,8 +2948,13 @@ async function pageTriggers(main, q) {
             <label><span>کلمات کلیدی (با کاما جدا کنید)</span><input class="input" name="contains" value="${esc(t.match?.contains || "")}" placeholder="مثلاً: سلام, /start, فوری (خالی = همه پیام‌ها)"></label>
           </div>
 
-          <div class="trg-grid" id="trg-cond-mcp" ${!isIncoming ? "" : "hidden"}>
+          <div class="trg-grid" id="trg-cond-mcp" ${!isIncoming && !isManual ? "" : "hidden"}>
             <label><span>الگوی نام ابزار MCP</span><input class="input ltr-input" name="matchToolName" value="${esc(t.match?.toolName || "*")}" placeholder="* یا *_send_* یا *_publish_*"></label>
+          </div>
+
+          <div class="trg-manual-note" ${isManual ? "" : "hidden"}>
+            <span class="pill pill-ok">Manual Trigger</span>
+            <p>این اتوماسیون با دکمه‌ی «اجرا» در لیست اجرا می‌شود. ورودی اجرا را هنگام اجرا به‌صورت JSON می‌دهید و در قالب‌ها با <code class="ltr">{{text}}</code>، <code class="ltr">{{sender}}</code> و ... قابل استفاده است.</p>
           </div>
         </div>
 
@@ -2888,7 +2990,12 @@ async function pageTriggers(main, q) {
 
           <div class="trg-action-fields" data-ac-group="call_tool" ${ac2 === "call_tool" ? "" : "hidden"}>
             <div class="trg-grid">
-              <label><span>نام ابزار MCP</span><input class="input ltr-input" name="actionToolName" value="${esc(t.action?.toolName || "")}" placeholder="bale_send_message"></label>
+              <label><span>نام ابزار MCP</span>
+                <div class="tool-pick-row">
+                  <input class="input ltr-input" name="actionToolName" value="${esc(t.action?.toolName || "")}" placeholder="bale_send_message">
+                  <button class="btn btn-ghost" type="button" data-pick-tool>انتخاب از سرویس‌ها</button>
+                </div>
+              </label>
               <label><span>آرگومان‌های JSON ابزار</span><textarea class="textarea ltr-input" name="toolArgs" rows="3" placeholder='{"chat_id":"{{chatId}}","text":"{{text}}"}'>${esc(t.action?.toolArgs || "")}</textarea></label>
             </div>
           </div>
@@ -2920,7 +3027,9 @@ async function pageTriggers(main, q) {
     const cond =
       ev === "incoming_message"
         ? `وقتی پیام ورودی در «${String(fd.get("provider") || "*").trim() || "*"}» (${trgChatTypeFa[String(fd.get("chatType") || "*")] || "همه"})${keywords ? ` شامل (${keywords})` : ""} برسد`
-        : `وقتی رویداد «${trgEventFa[ev] || ev}» برای ابزار (${String(fd.get("matchToolName") || "*").trim() || "*"}) رخ دهد`;
+        : ev === "manual"
+          ? "با اجرای دستی از داشبورد یا API"
+          : `وقتی رویداد «${trgEventFa[ev] || ev}» برای ابزار (${String(fd.get("matchToolName") || "*").trim() || "*"}) رخ دهد`;
     box.innerHTML = `<span class="pill pill-ok">پیش‌نمایش قانون</span><span>${esc(cond)} ← <b>${trgActionFa[act] || act}</b></span>`;
   };
 
@@ -2946,7 +3055,9 @@ async function pageTriggers(main, q) {
   const cardHtml = (t) => {
     const cond = t.event === "incoming_message"
       ? `${t.match?.provider && t.match.provider !== "*" ? t.match.provider : "همه‌ی سرویس‌ها"}${t.match?.chatType && t.match.chatType !== "*" ? ` · ${trgChatTypeFa[t.match.chatType] || t.match.chatType}` : ""}${t.match?.contains ? ` · کلمات: ${t.match.contains}` : ""}`
-      : `ابزار: ${t.match?.toolName || "*"}`;
+      : t.event === "manual"
+        ? "اجرای دستی"
+        : `ابزار: ${t.match?.toolName || "*"}`;
     return `<article class="trg-card${t.enabled ? " is-on" : ""}" data-trg-id="${esc(t.id)}">
       <div class="trg-card-top">
         <div class="trg-title">
@@ -2963,7 +3074,7 @@ async function pageTriggers(main, q) {
       </div>
       ${t.lastError ? `<div class="trg-err">آخرین خطا: ${esc(t.lastError)}</div>` : ""}
       <div class="trg-actions">
-        <button class="btn btn-ghost btn-sm" type="button" data-trg-test>تست اجرا</button>
+        ${t.event === "manual" ? `<button class="btn btn-primary btn-sm" type="button" data-trg-run>اجرا</button>` : `<button class="btn btn-ghost btn-sm" type="button" data-trg-test>تست اجرا</button>`}
         <button class="btn btn-ghost btn-sm" type="button" data-trg-edit>ویرایش</button>
         <button class="btn btn-ghost btn-danger btn-sm" type="button" data-trg-del>حذف</button>
       </div>
@@ -3088,6 +3199,15 @@ async function pageTriggers(main, q) {
   }, on);
 
   main.addEventListener("click", async (e) => {
+    if (e.target.closest("[data-pick-tool]")) {
+      const tool = await openToolPicker();
+      if (tool) {
+        const input = main.querySelector('[name="actionToolName"]');
+        if (input) input.value = tool;
+        updatePreview();
+      }
+      return;
+    }
     const catBtn = e.target.closest("[data-trg-cat]");
     if (catBtn) {
       filterCat = catBtn.dataset.trgCat || "all";
@@ -3166,6 +3286,29 @@ async function pageTriggers(main, q) {
       toast("تریگر حذف شد");
       return render();
     }
+    if (e.target.closest("[data-trg-run]")) {
+      const btn = e.target.closest("[data-trg-run]");
+      const raw = await openPromptModal({
+        title: "اجرای دستی اتوماسیون",
+        message: "ورودی این اجرا را به‌صورت JSON وارد کنید. متغیرها در قالب‌ها و آرگومان ابزارها قابل استفاده‌اند.",
+        label: "ورودی اجرا (JSON)",
+        value: '{\n  "text": "",\n  "sender": "کاربر تست"\n}',
+        confirmText: "اجرای اتوماسیون",
+      });
+      if (raw === null) return;
+      let vars;
+      try {
+        vars = JSON.parse(raw || "{}");
+        if (!vars || typeof vars !== "object" || Array.isArray(vars)) throw new Error("ورودی باید یک شیء JSON باشد");
+      } catch (ex) {
+        toast(ex.message, true);
+        return;
+      }
+      const r = await busy(btn, () => api(`triggers/${id}/run`, { body: { vars } }));
+      data = await api("triggers");
+      toast(r.ok ? r.detail : `خطا: ${r.detail}`, !r.ok);
+      return render();
+    }
     if (e.target.closest("[data-trg-test]")) {
       const btn = e.target.closest("[data-trg-test]");
       const r = await busy(btn, () => api(`triggers/${id}/test`, { body: {} }));
@@ -3178,10 +3321,13 @@ async function pageTriggers(main, q) {
   main.addEventListener("change", async (e) => {
     if (e.target.id === "trg-event") {
       const isInc = e.target.value === "incoming_message";
+      const isManual = e.target.value === "manual";
       const incEl = document.getElementById("trg-cond-incoming");
       const mcpEl = document.getElementById("trg-cond-mcp");
       if (incEl) incEl.hidden = !isInc;
-      if (mcpEl) mcpEl.hidden = isInc;
+      if (mcpEl) mcpEl.hidden = isInc || isManual;
+      const manualEl = main.querySelector(".trg-manual-note");
+      if (manualEl) manualEl.hidden = !isManual;
       updatePreview();
       return;
     }
