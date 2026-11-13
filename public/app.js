@@ -12,8 +12,35 @@ const state = {
   timer: null,
   authTx: {},
   openToolProvider: null,
-  agent: { open: true, busy: false, messages: [], config: null, unread: 0 },
+  agent: { open: true, busy: false, messages: [], config: null, unread: 0, full: false },
 };
+const AGENT_HISTORY_KEY = "diba.agent.history.v1";
+const AGENT_PREFS_KEY = "diba.agent.prefs.v1";
+function loadAgentHistory() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(AGENT_HISTORY_KEY) || "[]");
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && !m.streaming).slice(-60);
+  } catch { return []; }
+}
+function saveAgentHistory() {
+  try {
+    const clean = state.agent.messages
+      .filter((m) => m && (m.role === "user" || m.role === "assistant") && !m.streaming)
+      .slice(-60)
+      .map((m) => ({ role: m.role, content: m.content, toolTrace: Array.isArray(m.toolTrace) ? m.toolTrace : undefined }));
+    localStorage.setItem(AGENT_HISTORY_KEY, JSON.stringify(clean));
+  } catch { /* storage may be unavailable */ }
+}
+function saveAgentPrefs() {
+  try { localStorage.setItem(AGENT_PREFS_KEY, JSON.stringify({ open: state.agent.open, full: state.agent.full })); } catch { /* ignore */ }
+}
+try {
+  const prefs = JSON.parse(localStorage.getItem(AGENT_PREFS_KEY) || "{}");
+  if (typeof prefs.open === "boolean") state.agent.open = prefs.open;
+  if (typeof prefs.full === "boolean") state.agent.full = prefs.full;
+  state.agent.messages = loadAgentHistory();
+} catch { /* ignore */ }
 let authQrTimer = null;
 function stopAuthQrPolling() {
   if (authQrTimer) clearInterval(authQrTimer);
@@ -324,6 +351,8 @@ const icons = {
   external: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>',
   sparkles: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8zM19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9zM5 16l.9 2.1L8 19l-2.1.9L5 22l-.9-2.1L2 19l2.1-.9z"/></svg>',
   shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  maximize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>',
+  minimize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v3a2 2 0 0 1-2 2H3M16 3v3a2 2 0 0 0 2 2h3M8 21v-3a2 2 0 0 0-2-2H3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>',
   alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3L2.8 20h18.4L12 3z"/><path d="M12 9v5"/><circle cx="12" cy="17.4" r=".8" fill="currentColor" stroke="none"/></svg>',
 };
 // کلید منو با شناسه‌ی صفحه یکی است
@@ -787,7 +816,7 @@ function renderAuth(needsSetup) {
 // ---------------------------------------------------------------- agent dock
 function agentDockHtml() {
   const a = state.agent;
-  return `<div class="agent-dock${a.open ? " open" : ""}" id="agent-dock">
+  return `<div class="agent-dock${a.open ? " open" : ""}${a.full ? " full" : ""}" id="agent-dock">
     <button class="agent-fab" id="agent-toggle" type="button" aria-expanded="${a.open}" aria-controls="agent-panel">
       <span class="agent-fab-icon">${icons.sparkles}</span>
       <span class="agent-fab-text">دستیار دیبا</span>
@@ -800,7 +829,10 @@ function agentDockHtml() {
           <b>دستیار دیبا</b>
           <small id="agent-status">در حال بررسی اتصال…</small>
         </div>
-        <button class="btn btn-icon btn-quiet" id="agent-close" type="button" aria-label="بستن دستیار">${icons.cross}</button>
+        <div class="agent-head-actions">
+          <button class="btn btn-icon btn-quiet" id="agent-full" type="button" aria-label="${a.full ? "خروج از تمام‌صفحه" : "تمام‌صفحه"}">${a.full ? icons.minimize : icons.maximize}</button>
+          <button class="btn btn-icon btn-quiet" id="agent-close" type="button" aria-label="بستن دستیار">${icons.cross}</button>
+        </div>
       </header>
       <div class="agent-messages" id="agent-messages" aria-live="polite"></div>
       <form class="agent-form" id="agent-form">
@@ -815,6 +847,23 @@ function agentDockHtml() {
   </div>`;
 }
 
+function formatAgentText(text) {
+  let html = esc(String(text ?? ""));
+  const codeBlocks = [];
+  html = html.replace(/```([\s\S]*?)```/g, (_m, code) => {
+    const token = `\u0000CODE${codeBlocks.length}\u0000`;
+    codeBlocks.push(`<pre class="agent-code"><code>${code.trim()}</code></pre>`);
+    return token;
+  });
+  html = html.replace(/`([^`\n]+)`/g, '<code class="agent-inline-code">$1</code>');
+  html = html.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/==([^=\n]+)==/g, "<mark>$1</mark>");
+  html = html.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  html = html.replace(/\n/g, "<br>");
+  codeBlocks.forEach((block, i) => { html = html.replace(`\u0000CODE${i}\u0000`, block); });
+  return html;
+}
+
 function renderAgentMessages() {
   const box = document.getElementById("agent-messages");
   if (!box) return;
@@ -823,7 +872,7 @@ function renderAgentMessages() {
     state.agent.messages
       .map((m) => {
         const body = m.content
-          ? esc(m.content).replace(/\n/g, "<br>") + (m.streaming ? '<span class="agent-cursor" aria-hidden="true"></span>' : "")
+          ? (m.role === "assistant" ? formatAgentText(m.content) : esc(m.content).replace(/\n/g, "<br>")) + (m.streaming ? '<span class="agent-cursor" aria-hidden="true"></span>' : "")
           : m.streaming
             ? `<span class="agent-stream-status">${esc(m.status || "در حال فکر کردن…")}</span>`
             : "";
@@ -873,23 +922,44 @@ function initAgent() {
   const panel = document.getElementById("agent-panel");
   const toggle = document.getElementById("agent-toggle");
   const close = document.getElementById("agent-close");
+  const fullBtn = document.getElementById("agent-full");
   const input = document.getElementById("agent-input");
   const form = document.getElementById("agent-form");
   if (!dock || !panel || !form) return;
 
+  const applyLayout = () => {
+    dock.classList.toggle("full", state.agent.full);
+    document.querySelector(".shell")?.classList.toggle("with-agent", state.agent.open && !state.agent.full);
+    document.body.classList.toggle("agent-fullscreen", state.agent.open && state.agent.full);
+    if (fullBtn) {
+      fullBtn.innerHTML = state.agent.full ? icons.minimize : icons.maximize;
+      fullBtn.setAttribute("aria-label", state.agent.full ? "خروج از تمام‌صفحه" : "تمام‌صفحه");
+    }
+  };
   const setOpen = (open) => {
     state.agent.open = open;
     panel.hidden = !open;
     dock.classList.toggle("open", open);
-    document.querySelector(".shell")?.classList.toggle("with-agent", open);
+    applyLayout();
+    saveAgentPrefs();
     toggle.setAttribute("aria-expanded", String(open));
     if (open) setTimeout(() => input?.focus(), 50);
   };
+  const setFull = (full) => {
+    state.agent.full = full;
+    applyLayout();
+    saveAgentPrefs();
+  };
   toggle.onclick = () => setOpen(!state.agent.open);
   close.onclick = () => setOpen(false);
+  if (fullBtn) fullBtn.onclick = () => setFull(!state.agent.full);
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && state.agent.open) setOpen(false);
+    if (e.key === "Escape" && state.agent.open) {
+      if (state.agent.full) setFull(false);
+      else setOpen(false);
+    }
   });
+  applyLayout();
 
   form.onsubmit = async (e) => {
     e.preventDefault();
@@ -898,6 +968,7 @@ function initAgent() {
     input.value = "";
     input.style.height = "40px";
     state.agent.messages.push({ role: "user", content: text });
+    saveAgentHistory();
     const historyToSend = state.agent.messages.slice(-20);
     const botMsg = { role: "assistant", content: "", streaming: true, status: "در حال اتصال…", toolTrace: [] };
     state.agent.messages.push(botMsg);
@@ -976,6 +1047,7 @@ function initAgent() {
     } finally {
       state.agent.busy = false;
       renderAgentMessages();
+      saveAgentHistory();
     }
   };
     input.addEventListener("input", () => {
@@ -1001,7 +1073,7 @@ function initAgent() {
 // ---------------------------------------------------------------- shell
 function renderShell() {
   $app.innerHTML = `
-  <div class="shell${state.agent.open ? " with-agent" : ""}">
+  <div class="shell${state.agent.open && !state.agent.full ? " with-agent" : ""}">
     <aside class="side">
       <div class="brand">
         <img src="assets/logo-sm.png" alt="دیباپل" class="brand-logo">
