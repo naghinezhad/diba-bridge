@@ -21,6 +21,33 @@ export interface StoredConfig {
   providers: Record<string, ProviderState>;
   /** اتصال دیبا روتر برای دستیار داشبورد */
   dibarouter?: DibaRouterStored;
+  /** تنظیمات نصب/میزبانی */
+  settings?: AppSettingsStored;
+}
+
+export type AppProxyType = "none" | "http" | "socks5";
+
+export interface AppSettingsStored {
+  proxyType?: AppProxyType;
+  proxyUrl?: string;
+  logRetentionDays?: number;
+  mcpWriteLimit?: number;
+}
+
+/** خواندن تنظیمات پیش از ساخت موتور (برای اعمال پروکسی در startup) */
+export function readStoredSettings(dataDir: string): AppSettingsStored {
+  try {
+    const parsed = JSON.parse(readFileSync(join(dataDir, "config.json"), "utf8"));
+    return parsed?.settings ?? {};
+  } catch {
+    return {};
+  }
+}
+
+export function proxyEnvOf(settings: AppSettingsStored): Record<string, string> {
+  if (settings.proxyType === "socks5" && settings.proxyUrl) return { SOCKS_PROXY: settings.proxyUrl };
+  if (settings.proxyType === "http" && settings.proxyUrl) return { HTTPS_PROXY: settings.proxyUrl };
+  return {};
 }
 
 export interface DibaRouterStored {
@@ -171,6 +198,46 @@ export class ConfigStore {
     this.data.dibarouter = next;
     this.persist();
     return this.dibarouter();
+  }
+
+  // ---------- تنظیمات نصب ----------
+  settings() {
+    const saved = this.data.settings ?? {};
+    const envSocks = this.env.SOCKS_PROXY || this.env.socks_proxy;
+    const envHttp = this.env.HTTPS_PROXY || this.env.https_proxy || this.env.HTTP_PROXY || this.env.http_proxy;
+    const proxyFromEnv = Boolean(envSocks || envHttp);
+    return {
+      proxyType: saved.proxyType ?? (envSocks ? "socks5" : envHttp ? "http" : "none"),
+      proxyUrl: saved.proxyUrl ?? envSocks ?? envHttp ?? "",
+      proxyFromEnv,
+      logRetentionDays: Number(this.env.LOG_RETENTION_DAYS) || saved.logRetentionDays || 14,
+      mcpWriteLimit: Number(this.env.MCP_WRITE_LIMIT) || saved.mcpWriteLimit || 30,
+      logRetentionFromEnv: Boolean(this.env.LOG_RETENTION_DAYS),
+      mcpWriteLimitFromEnv: Boolean(this.env.MCP_WRITE_LIMIT),
+    };
+  }
+
+  updateSettings(patch: AppSettingsStored) {
+    const cur = this.data.settings ?? {};
+    const next: AppSettingsStored = { ...cur };
+    if (patch.proxyType !== undefined) {
+      if (patch.proxyType === "none") {
+        next.proxyType = "none";
+        delete next.proxyUrl;
+      } else {
+        next.proxyType = patch.proxyType;
+      }
+    }
+    if (patch.proxyUrl !== undefined) {
+      const value = patch.proxyUrl.trim();
+      if (value) next.proxyUrl = value;
+      else delete next.proxyUrl;
+    }
+    if (patch.logRetentionDays !== undefined) next.logRetentionDays = patch.logRetentionDays;
+    if (patch.mcpWriteLimit !== undefined) next.mcpWriteLimit = patch.mcpWriteLimit;
+    this.data.settings = next;
+    this.persist();
+    return this.settings();
   }
 
   // ---------- سرویس‌ها ----------

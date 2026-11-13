@@ -118,6 +118,8 @@ export interface ProviderAuthDef {
   codeInput?: boolean;
   /** ورود با اسکن QR (واتس‌اپ) */
   qr?: boolean;
+  /** وضعیت/تصویر QR جاری برای تازه‌سازی خودکار در مرورگر */
+  getQr?: (ctx: ProviderContext) => Promise<{ qr?: string; ready?: boolean; error?: string }>;
   /** برچسب و راهنمای فیلد نام کاربری/شماره */
   inputLabel?: string;
   inputPlaceholder?: string;

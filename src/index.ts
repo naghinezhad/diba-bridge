@@ -13,6 +13,7 @@ import { resolve } from "node:path";
 import { DibaMcpEngine, SERVER_VERSION } from "./core/engine.js";
 import { configureMedia } from "./core/media.js";
 import { configureProxy } from "./core/net.js";
+import { proxyEnvOf, readStoredSettings } from "./core/store.js";
 import type { ProviderDef } from "./core/types.js";
 import { createDibaMcpRouter, type RouterOptions } from "./http/router.js";
 import { builtinProviders } from "./providers/index.js";
@@ -27,12 +28,16 @@ export interface CreateOptions {
 }
 
 export function createDibaMcp(opts: CreateOptions = {}) {
-  configureProxy(opts.env ?? process.env);
-  configureMedia(opts.env ?? process.env);
+  const dataDir = resolve(opts.dataDir ?? process.env.DATA_DIR ?? "./data");
+  const baseEnv = opts.env ?? process.env;
+  const proxyEnv = proxyEnvOf(readStoredSettings(dataDir));
+  const env = { ...baseEnv, ...proxyEnv };
+  if (Object.keys(proxyEnv).length) Object.assign(process.env, proxyEnv);
+  configureProxy(env);
+  configureMedia(env);
   let providers = [...builtinProviders, ...(opts.extraProviders ?? [])];
   if (opts.only) providers = providers.filter((p) => opts.only!.includes(p.id));
-  const dataDir = resolve(opts.dataDir ?? process.env.DATA_DIR ?? "./data");
-  const engine = new DibaMcpEngine({ dataDir, providers, env: opts.env });
+  const engine = new DibaMcpEngine({ dataDir, providers, env });
   return {
     engine,
     dataDir,

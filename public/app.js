@@ -14,6 +14,11 @@ const state = {
   openToolProvider: null,
   agent: { open: true, busy: false, messages: [], config: null, unread: 0 },
 };
+let authQrTimer = null;
+function stopAuthQrPolling() {
+  if (authQrTimer) clearInterval(authQrTimer);
+  authQrTimer = null;
+}
 
 // ---------------------------------------------------------------- utils
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -45,8 +50,133 @@ function toast(msg, isErr = false) {
   setTimeout(() => el.remove(), isErr ? 6000 : 3200);
 }
 
-async function copy(text) {
-  try { await navigator.clipboard.writeText(text); }
+/** مودال محلی داشبورد؛ به‌جای confirm/alert مرورگر. */
+function openModal({
+  title = "تأیید عملیات",
+  message = "",
+  confirmText = "تأیید",
+  cancelText = "انصراف",
+  tone = "primary",
+  details = "",
+} = {}) {
+  return new Promise((resolve) => {
+    const previous = document.activeElement;
+    const wrap = document.createElement("div");
+    wrap.className = "modal-backdrop";
+    wrap.innerHTML = `
+      <section class="modal ${tone === "danger" ? "modal-danger" : ""}" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <header class="modal-head">
+          <span class="modal-icon">${tone === "danger" ? icons.alert : icons.shield}</span>
+          <div>
+            <h2 id="modal-title">${esc(title)}</h2>
+            ${message ? `<p>${esc(message)}</p>` : ""}
+          </div>
+        </header>
+        ${details ? `<div class="modal-details">${esc(details)}</div>` : ""}
+        <footer class="modal-actions">
+          <button class="btn btn-ghost" type="button" data-modal-cancel>${esc(cancelText)}</button>
+          <button class="btn ${tone === "danger" ? "btn-danger-solid" : "btn-primary"}" type="button" data-modal-confirm>${esc(confirmText)}</button>
+        </footer>
+      </section>`;
+    const close = (answer) => {
+      document.removeEventListener("keydown", onKey);
+      wrap.classList.remove("open");
+      setTimeout(() => wrap.remove(), 160);
+      if (previous && previous.focus) previous.focus();
+      resolve(answer);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") close(false);
+      if (e.key === "Tab") {
+        const items = [...wrap.querySelectorAll("button")];
+        if (!items.length) return;
+        const i = items.indexOf(document.activeElement);
+        e.preventDefault();
+        items[(i + (e.shiftKey ? -1 : 1) + items.length) % items.length].focus();
+      }
+    };
+    wrap.addEventListener("click", (e) => { if (e.target === wrap) close(false); });
+    wrap.querySelector("[data-modal-cancel]").addEventListener("click", () => close(false));
+    wrap.querySelector("[data-modal-confirm]").addEventListener("click", () => close(true));
+    document.body.append(wrap);
+    requestAnimationFrame(() => wrap.classList.add("open"));
+    document.addEventListener("keydown", onKey);
+    wrap.querySelector("[data-modal-confirm]").focus();
+  });
+}
+
+function selectControl(name, options, value, id = "", ariaLabel = "") {
+  const selected = options.find(([v]) => v === value) ?? options[0];
+  return `<div class="ui-select native-select" data-native-select data-name="${esc(name)}">
+    <input type="hidden" name="${esc(name)}" ${id ? `id="${esc(id)}"` : ""} value="${esc(selected?.[0] ?? "")}">
+    <button class="ui-select-trigger" type="button" data-select-trigger aria-haspopup="listbox" aria-expanded="false" aria-label="${esc(ariaLabel || name)}">
+      <span data-select-label>${esc(selected?.[1] ?? "")}</span>
+      <span class="ui-select-chevron">${icons.chevron}</span>
+    </button>
+    <div class="ui-select-menu" role="listbox" hidden>
+      ${options.map(([v, l]) => `<button type="button" class="ui-select-option ${v === selected?.[0] ? "active" : ""}" role="option" aria-selected="${v === selected?.[0]}" data-select-value="${esc(v)}">${esc(l)}</button>`).join("")}
+    </div>
+  </div>`;
+}
+
+function closeNativeSelects(except) {
+  document.querySelectorAll("[data-native-select].open").forEach((el) => {
+    if (el === except) return;
+    el.classList.remove("open");
+    el.querySelector(".ui-select-menu").hidden = true;
+    el.querySelector("[data-select-trigger]").setAttribute("aria-expanded", "false");
+  });
+}
+
+document.addEventListener("click", (e) => {
+  const box = e.target.closest("[data-native-select]");
+  if (!box) { closeNativeSelects(); return; }
+  const trigger = e.target.closest("[data-select-trigger]");
+  if (trigger) {
+    const menu = box.querySelector(".ui-select-menu");
+    const open = menu.hidden;
+    closeNativeSelects(box);
+    menu.hidden = !open;
+    box.classList.toggle("open", open);
+    trigger.setAttribute("aria-expanded", String(open));
+    return;
+  }
+  const option = e.target.closest("[data-select-value]");
+  if (option) {
+    const input = box.querySelector('input[type="hidden"]');
+    const label = box.querySelector("[data-select-label]");
+    input.value = option.dataset.selectValue;
+    label.textContent = option.textContent;
+    box.querySelectorAll("[data-select-value]").forEach((x) => {
+      const active = x === option;
+      x.classList.toggle("active", active);
+      x.setAttribute("aria-selected", String(active));
+    });
+    closeNativeSelects();
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  const box = e.target.closest("[data-native-select]");
+  if (!box) return;
+  if (e.key === "Escape") { closeNativeSelects(); box.querySelector("[data-select-trigger]").focus(); }
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const menu = box.querySelector(".ui-select-menu");
+    if (menu.hidden) {
+      closeNativeSelects(box);
+      menu.hidden = false;
+      box.classList.add("open");
+      box.querySelector("[data-select-trigger]").setAttribute("aria-expanded", "true");
+    }
+    const opts = [...box.querySelectorAll("[data-select-value]")];
+    const i = opts.indexOf(document.activeElement);
+    opts[Math.max(0, Math.min(opts.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))].focus();
+  }
+});
+
+async function copy(text) {  try { await navigator.clipboard.writeText(text); }
   catch {
     const t = Object.assign(document.createElement("textarea"), { value: text });
     document.body.append(t); t.select(); document.execCommand("copy"); t.remove();
@@ -98,9 +228,11 @@ const icons = {
   external: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>',
   sparkles: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8zM19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9zM5 16l.9 2.1L8 19l-2.1.9L5 22l-.9-2.1L2 19l2.1-.9z"/></svg>',
   shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3L2.8 20h18.4L12 3z"/><path d="M12 9v5"/><circle cx="12" cy="17.4" r=".8" fill="currentColor" stroke="none"/></svg>',
 };
 // کلید منو با شناسه‌ی صفحه یکی است
 icons.triggers = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
+icons.settings = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.17.37.38.7.6 1 .3.3.7.4 1.1.4H21v4h-.09a1.7 1.7 0 0 0-1.51.6z"/></svg>';
 icons.dibarouter = icons.router;
 
 const pages = [
@@ -112,6 +244,7 @@ const pages = [
   { id: "logs", title: "گزارش فراخوانی‌ها" },
   { id: "dibarouter", title: "دیبا روتر" },
   { id: "connect", title: "اتصال به هوش مصنوعی" },
+  { id: "settings", title: "تنظیمات" },
 ];
 
 // Provider groups for the submenu — Iranian vs Other
@@ -425,12 +558,37 @@ function renderAuth(needsSetup) {
           <p>${needsSetup ? "کد شش‌حرفی چاپ‌شده در کنسول سرور را وارد کرده و یک رمز عبور امن بسازید." : "برای مدیریت سرویس‌ها، بررسی پیام‌ها و کلیدهای ارتباطی وارد شوید."}</p>
         </div>
         ${needsSetup ? `
-        <form id="f">
-          <div class="field"><label for="code">کد راه‌اندازی سرور</label><input id="code" class="input ltr-input" autocomplete="off" required maxlength="6" placeholder="A1B2C3"></div>
-          <div class="field"><label for="pw">رمز عبور داشبورد</label><input id="pw" type="password" class="input" autocomplete="new-password" minlength="8" required><span class="hint">حداقل ۸ کاراکتر</span></div>
-          <div class="field"><label for="pw2">تکرار رمز عبور</label><input id="pw2" type="password" class="input" autocomplete="new-password" required></div>
+        <form id="f" data-setup-wizard>
+          <div data-setup-step="1">
+            <div class="field"><label for="code">کد راه‌اندازی سرور</label><input id="code" class="input ltr-input" autocomplete="off" required maxlength="6" placeholder="A1B2C3"></div>
+            <div class="field"><label for="pw">رمز عبور داشبورد</label><input id="pw" type="password" class="input" autocomplete="new-password" minlength="8" required><span class="hint">حداقل ۸ کاراکتر</span></div>
+            <div class="field"><label for="pw2">تکرار رمز عبور</label><input id="pw2" type="password" class="input" autocomplete="new-password" required></div>
+          </div>
+          <div data-setup-step="2" hidden>
+            <div class="field">
+              <span class="field-label">محیط شبکه / پروکسی</span>
+              <div class="seg" data-wizard-proxy>
+                <button type="button" data-proxy-type="none" aria-pressed="true">بدون پروکسی</button>
+                <button type="button" data-proxy-type="http" aria-pressed="false">HTTP</button>
+                <button type="button" data-proxy-type="socks5" aria-pressed="false">SOCKS5</button>
+              </div>
+            </div>
+            <div class="field"><label for="wizardProxy">آدرس پروکسی</label><input id="wizardProxy" class="input ltr-input" placeholder="http://127.0.0.1:8080 یا socks5://127.0.0.1:1080" disabled></div>
+            <div class="auth-two-col">
+              <div class="field"><label for="wizardRetention">نگهداری لاگ (روز)</label><input id="wizardRetention" class="input ltr-input" type="number" min="1" max="365" value="14"></div>
+              <div class="field"><label for="wizardWrite">سقف نوشتن MCP در دقیقه</label><input id="wizardWrite" class="input ltr-input" type="number" min="1" max="1000" value="30"></div>
+            </div>
+          </div>
+          <div data-setup-step="3" hidden>
+            <div class="setup-summary" data-setup-summary></div>
+            <p class="hint">پس از تکمیل، می‌توانید همه‌ی این مقادیر را از صفحه‌ی «تنظیمات» تغییر دهید.</p>
+          </div>
           <div class="form-err" id="err"></div>
-          <button class="btn btn-primary" type="submit">ساخت رمز و ورود به داشبورد</button>
+          <div class="auth-wizard-actions">
+            <button class="btn btn-ghost" type="button" data-setup-back hidden>بازگشت</button>
+            <button class="btn btn-primary" type="button" data-setup-next>ادامه</button>
+            <button class="btn btn-primary" type="submit" data-setup-finish hidden>تکمیل نصب</button>
+          </div>
         </form>` : `
         <form id="f">
           <div class="field"><label for="pw">رمز عبور داشبورد</label><input id="pw" type="password" class="input" autocomplete="current-password" required autofocus></div>
@@ -443,18 +601,88 @@ function renderAuth(needsSetup) {
     </main>
   </div>`;
   const f = document.getElementById("f");
+  if (needsSetup) {
+    let step = 1;
+    let proxyType = "none";
+    const err = document.getElementById("err");
+    const stepEls = [...f.querySelectorAll("[data-setup-step]")];
+    const nextBtn = f.querySelector("[data-setup-next]");
+    const finishBtn = f.querySelector("[data-setup-finish]");
+    const backBtn = f.querySelector("[data-setup-back]");
+    const showStep = (n) => {
+      step = n;
+      stepEls.forEach((el) => (el.hidden = Number(el.dataset.setupStep) !== n));
+      backBtn.hidden = n === 1;
+      nextBtn.hidden = n === 3;
+      finishBtn.hidden = n !== 3;
+      err.textContent = "";
+    };
+    const proxyInput = document.getElementById("wizardProxy");
+    f.querySelectorAll("[data-proxy-type]").forEach((b) => {
+      b.addEventListener("click", () => {
+        proxyType = b.dataset.proxyType;
+        f.querySelectorAll("[data-proxy-type]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+        proxyInput.disabled = proxyType === "none";
+        if (proxyType === "none") proxyInput.value = "";
+      });
+    });
+    const summary = () => {
+      const p = proxyType === "none" ? "بدون پروکسی" : `${proxyType.toUpperCase()} — ${proxyInput.value.trim()}`;
+      f.querySelector("[data-setup-summary]").innerHTML = `
+        <div><span>رمز عبور</span><b>تنظیم می‌شود</b></div>
+        <div><span>پروکسی</span><b>${esc(p)}</b></div>
+        <div><span>نگهداری لاگ</span><b>${fa(Number(document.getElementById("wizardRetention").value) || 14)} روز</b></div>
+        <div><span>سقف نوشتن MCP</span><b>${fa(Number(document.getElementById("wizardWrite").value) || 30)} در دقیقه</b></div>`;
+    };
+    nextBtn.addEventListener("click", () => {
+      if (step === 1) {
+        const pw = f.querySelector("#pw").value;
+        if (!f.querySelector("#code").value.trim()) { err.textContent = "کد راه‌اندازی را وارد کنید"; return; }
+        if (pw.length < 8) { err.textContent = "رمز باید حداقل ۸ کاراکتر باشد"; return; }
+        if (pw !== f.querySelector("#pw2").value) { err.textContent = "رمز و تکرارش یکی نیستند"; return; }
+        showStep(2);
+        return;
+      }
+      if (step === 2) {
+        if (proxyType !== "none" && !proxyInput.value.trim()) { err.textContent = "آدرس پروکسی را وارد کنید"; return; }
+        summary();
+        showStep(3);
+      }
+    });
+    backBtn.addEventListener("click", () => showStep(Math.max(1, step - 1)));
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (step !== 3) { nextBtn.click(); return; }
+      err.textContent = "";
+      const pw = f.querySelector("#pw").value;
+      try {
+        await busy(finishBtn, () => api("auth/setup", {
+          body: {
+            code: f.querySelector("#code").value,
+            password: pw,
+            settings: {
+              proxyType,
+              proxyUrl: proxyInput.value.trim(),
+              logRetentionDays: Number(document.getElementById("wizardRetention").value) || 14,
+              mcpWriteLimit: Number(document.getElementById("wizardWrite").value) || 30,
+            },
+          },
+        }));
+        boot();
+      } catch (ex) {
+        err.textContent = ex.message;
+      }
+    });
+    showStep(1);
+    return;
+  }
   f.addEventListener("submit", async (e) => {
     e.preventDefault();
     const err = document.getElementById("err");
     err.textContent = "";
     const pw = f.querySelector("#pw").value;
     try {
-      if (needsSetup) {
-        if (pw !== f.querySelector("#pw2").value) { err.textContent = "رمز و تکرارش یکی نیستند"; return; }
-        await busy(f.querySelector("button"), () => api("auth/setup", { body: { code: f.querySelector("#code").value, password: pw } }));
-      } else {
-        await busy(f.querySelector("button"), () => api("auth/login", { body: { password: pw } }));
-      }
+      await busy(f.querySelector("button"), () => api("auth/login", { body: { password: pw } }));
       boot();
     } catch (ex) { err.textContent = ex.message; }
   });
@@ -756,7 +984,7 @@ async function render() {
   document.title = `${pages.find((p) => p.id === page).title} — Diba Bridge (دیبا پل) | دیباچین`;
   const main = document.getElementById("main");
   try {
-    await ({ overview: pageOverview, providers: pageProviders, playground: pagePlayground, inbox: pageInbox, triggers: pageTriggers, logs: pageLogs, dibarouter: pageDibaRouter, connect: pageConnect })[page](main, q);
+    await ({ overview: pageOverview, providers: pageProviders, playground: pagePlayground, inbox: pageInbox, triggers: pageTriggers, logs: pageLogs, dibarouter: pageDibaRouter, connect: pageConnect, settings: pageSettings })[page](main, q);
   } catch (e) {
     if (!(e instanceof AuthError)) main.innerHTML = `<div class="err-box">${esc(e.message)}</div>`;
   }
@@ -1003,6 +1231,18 @@ function renderProviderMode(p, role, plat) {
             </div>
             <div class="test-out" data-out></div>
           </form>
+          ${p.id === "whatsapp" ? `
+          <div class="wa-chat-panel" data-wa-chats>
+            <div class="wa-chat-head">
+              <div><b>چت‌ها و کانال‌های واتس‌اپ</b><span class="hint">گروه‌ها، گفتگوهای خصوصی و کانال‌ها</span></div>
+              <div class="wa-chat-actions">
+                <button class="btn btn-ghost btn-sm" type="button" data-wa-contacts>مخاطبین</button>
+                <button class="btn btn-ghost btn-sm" type="button" data-wa-sync>همگام‌سازی</button>
+                <button class="btn btn-ghost btn-sm" type="button" data-wa-load>نمایش لیست</button>
+              </div>
+            </div>
+            <div class="wa-chat-list" data-wa-list><span class="hint">برای دریافت لیست، دکمه را بزنید.</span></div>
+          </div>` : ""}
         </div>
 
         <div class="prov-tools-col">
@@ -1011,8 +1251,9 @@ function renderProviderMode(p, role, plat) {
               <span class="icon-inline">${icons.sparkles}</span>
               ${fa(p.tools.length)} ابزار هوش مصنوعی در اختیار مدل
             </h3>
+            <input class="input tool-search" type="search" placeholder="جستجوی ابزار…" aria-label="جستجوی ابزار" oninput="this.closest('.prov-tools-card').querySelectorAll('.tool-line').forEach((x) => x.hidden = !x.innerText.toLowerCase().includes(this.value.toLowerCase()))">
             <div class="tool-list-compact">
-              ${p.tools.map((t) => `<div class="tool-line"><a href="#/playground?tool=${t.name}">${esc(t.title)}</a><code>${esc(t.name)}</code></div>`).join("")}
+              ${p.tools.map((t) => `<div class="tool-line"><a href="#/playground?tool=${t.name}" title="${esc(t.name)}">${esc(t.title)}</a></div>`).join("")}
             </div>
             ${p.docsUrl ? `<div class="prov-docs-link"><a href="${esc(p.docsUrl)}" target="_blank" rel="noopener">${icons.external} مستندات رسمی ${esc(p.nameFa)}</a></div>` : ""}
           </div>
@@ -1267,7 +1508,12 @@ async function pageProviders(main, q) {
     if (clearBtn) {
       const id = clearBtn.dataset.id;
       const p = state.providers.find((x) => x.id === id);
-      if (confirm(`آیا توکن ذخیره‌شده برای ${p.nameFa} حذف شود؟ ارتباط هوش مصنوعی با این بخش قطع خواهد شد.`)) {
+      if (await openModal({
+        title: "حذف توکن",
+        message: `آیا توکن ذخیره‌شده برای ${p.nameFa} حذف شود؟ ارتباط هوش مصنوعی با این بخش قطع خواهد شد.`,
+        confirmText: "حذف توکن",
+        tone: "danger",
+      })) {
         const keys = p.fields.filter((f) => f.type === "secret").map((f) => f.key);
         replace(await api(`providers/${id}`, { method: "PUT", body: { values: { __clear: keys } } }));
         toast("توکن با موفقیت حذف شد");
@@ -1275,7 +1521,84 @@ async function pageProviders(main, q) {
       return;
     }
 
-    // 8. Auth flow for unofficial clients
+    // 8. WhatsApp chat list
+    const waSync = e.target.closest("[data-wa-sync]");
+    if (waSync) {
+      if (!(await openModal({
+        title: "همگام‌سازی کامل چت‌ها",
+        message: "برای دریافت تاریخچه‌ی کامل، نشست فعلی بسته می‌شود و باید یک بار دیگر با QR وارد شوید. ادامه می‌دهید؟",
+        confirmText: "ساخت QR جدید",
+        tone: "danger",
+      }))) return;
+      try {
+        await api("providers/whatsapp/auth/logout", { body: {} });
+        const fresh = await busy(waSync, () => api("providers/whatsapp/auth/start", { body: { phone: "" } }));
+        if (!fresh.ok) { toast(fresh.error, true); return; }
+        state.authTx.whatsapp = fresh.result.transactionHash;
+        const ab = document.querySelector('[data-auth][data-id="whatsapp"]');
+        if (ab && fresh.result.qr) {
+          const img = ab.querySelector("[data-auth-qr]");
+          if (img) img.src = fresh.result.qr;
+          ab.querySelectorAll("[data-auth-step]").forEach((el) => (el.hidden = el.dataset.authStep !== "qr"));
+          const hint = ab.querySelector("[data-auth-qr-hint]");
+          if (hint) hint.textContent = "QR را اسکن کنید؛ سپس «بررسی اتصال» را بزنید. تاریخچه پس از اتصال دریافت می‌شود.";
+          ab.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        toast("QR جدید ساخته شد؛ برای دریافت تاریخچه اسکن کنید");
+      } catch (ex) {
+        toast(ex.message, true);
+      }
+      return;
+    }
+    const waContacts = e.target.closest("[data-wa-contacts]");
+    if (waContacts) {
+      const box = waContacts.closest("[data-wa-chats]");
+      const list = box.querySelector("[data-wa-list]");
+      list.innerHTML = `<span class="hint">در حال دریافت مخاطبین…</span>`;
+      try {
+        const r = await busy(waContacts, () => api("tools/whatsapp_get_contacts/call", { body: { args: { limit: 300 } } }));
+        if (!r.ok) { list.innerHTML = `<div class="err-box">${esc(r.error)}</div>`; return; }
+        const contacts = r.result?.contacts ?? [];
+        list.innerHTML = contacts.length
+          ? contacts.map((c) => `<button class="wa-chat-row" type="button" data-wa-pick="${esc(c.id)}">
+              <span class="wa-chat-type">مخاطب</span>
+              <span class="wa-chat-body"><b>${esc(c.name)}</b><small class="ltr">${esc(c.id)}</small></span>
+            </button>`).join("")
+          : `<span class="hint">${esc(r.result?.note || "مخاطبی پیدا نشد.")}</span>`;
+      } catch (ex) {
+        list.innerHTML = `<div class="err-box">${esc(ex.message)}</div>`;
+      }
+      return;
+    }
+    const waLoad = e.target.closest("[data-wa-load]");
+    if (waLoad) {
+      const box = waLoad.closest("[data-wa-chats]");
+      const list = box.querySelector("[data-wa-list]");
+      list.innerHTML = `<span class="hint">در حال دریافت چت‌ها…</span>`;
+      try {
+        const r = await busy(waLoad, () => api("tools/whatsapp_get_chats/call", { body: { args: { limit: 80 } } }));
+        if (!r.ok) { list.innerHTML = `<div class="err-box">${esc(r.error)}</div>`; return; }
+        const chats = r.result?.chats ?? [];
+        list.innerHTML = chats.length
+          ? chats.map((c) => `<button class="wa-chat-row" type="button" data-wa-pick="${esc(c.chat_id)}">
+              <span class="wa-chat-type">${c.type === "group" ? "گروه" : c.type === "channel" ? "کانال" : "خصوصی"}</span>
+              <span class="wa-chat-body"><b>${esc(c.title || c.chat_id)}</b><small class="ltr">${esc(c.chat_id)}</small></span>
+              ${c.unread_count ? `<span class="wa-chat-unread">${fa(c.unread_count)}</span>` : ""}
+            </button>`).join("")
+          : `<span class="hint">${esc(r.result?.note || "چتی پیدا نشد. اگر تازه وارد شده‌اید چند لحظه صبر کنید و دوباره تلاش کنید.")}</span>`;
+      } catch (ex) {
+        list.innerHTML = `<div class="err-box">${esc(ex.message)}</div>`;
+      }
+      return;
+    }
+    const waPick = e.target.closest("[data-wa-pick]");
+    if (waPick) {
+      const input = e.target.closest(".prov-mode-container")?.querySelector('[data-arg="chat_id"]');
+      if (input) { input.value = waPick.dataset.waPick; toast("شناسه چت در فرم قرار گرفت"); }
+      return;
+    }
+
+    // 9. Auth flow for unofficial clients
     const authBox = e.target.closest("[data-auth]");
     if (!authBox) return;
     const authId = authBox.dataset.id;
@@ -1297,10 +1620,34 @@ async function pageProviders(main, q) {
       if (img && r.result?.qr) img.src = r.result.qr;
       showStep("qr");
       const hint = authBox.querySelector("[data-auth-qr-hint]");
-      if (hint) hint.textContent = r.result?.hint || "QR را اسکن کنید؛ سپس «بررسی اتصال» را بزنید.";
+      if (hint) hint.textContent = (r.result?.hint || "QR را اسکن کنید؛ سپس «بررسی اتصال» را بزنید.") + " این QR خودکار تازه می‌شود.";
+      startQrPolling();
+    };
+    const startQrPolling = () => {
+      stopAuthQrPolling();
+      authQrTimer = setInterval(async () => {
+        const qrStep = authBox.querySelector('[data-auth-step="qr"]');
+        if (!document.body.contains(authBox) || !qrStep || qrStep.hidden) { stopAuthQrPolling(); return; }
+        try {
+          const r = await api(`providers/${authId}/auth/qr`);
+          if (!r.ok) { authFail(r.error); stopAuthQrPolling(); return; }
+          if (r.result?.ready) {
+            const hint = authBox.querySelector("[data-auth-qr-hint]");
+            if (hint) hint.textContent = "واتس‌اپ متصل شد؛ روی «بررسی اتصال» بزنید.";
+            stopAuthQrPolling();
+            return;
+          }
+          if (r.result?.error) { authFail(r.result.error); stopAuthQrPolling(); return; }
+          const img = authBox.querySelector("[data-auth-qr]");
+          if (img && r.result?.qr && img.src !== r.result.qr) img.src = r.result.qr;
+        } catch {
+          // A transient poll failure must not break the QR view.
+        }
+      }, 2500);
     };
 
     if (e.target.closest("[data-auth-start]")) {
+      stopAuthQrPolling();
       const phone = authBox.querySelector("[data-auth-phone]")?.value.trim() ?? "";
       authOut.innerHTML = "";
       try {
@@ -1325,6 +1672,7 @@ async function pageProviders(main, q) {
     }
 
     if (e.target.closest("[data-auth-resend]")) {
+      stopAuthQrPolling();
       const phone = authBox.querySelector("[data-auth-phone]")?.value.trim() ?? "";
       try {
         const r = await busy(e.target.closest("[data-auth-resend]"), () => api(`providers/${authId}/auth/start`, { body: { phone } }));
@@ -1344,12 +1692,14 @@ async function pageProviders(main, q) {
     }
 
     if (e.target.closest("[data-auth-back]")) {
+      stopAuthQrPolling();
       delete state.authTx[authId];
       authOut.innerHTML = "";
       showStep("phone");
     }
 
     if (e.target.closest("[data-auth-verify-code]")) {
+      stopAuthQrPolling();
       const code = authBox.querySelector("[data-auth-code]")?.value.trim() ?? "";
       authOut.innerHTML = "";
       try {
@@ -1393,7 +1743,12 @@ async function pageProviders(main, q) {
       }
     }
 
-    if (e.target.closest("[data-auth-logout]") && confirm(`آیا از حساب کاربری ${p.nameFa} خارج می‌شوید؟ ابزارهای این بخش تا ورود مجدد غیرفعال خواهند شد.`)) {
+    if (e.target.closest("[data-auth-logout]") && await openModal({
+      title: "خروج از حساب",
+      message: `آیا از حساب کاربری ${p.nameFa} خارج می‌شوید؟ ابزارهای این بخش تا ورود مجدد غیرفعال خواهند شد.`,
+      confirmText: "خروج از حساب",
+      tone: "danger",
+    })) {
       try {
         const r = await api(`providers/${authId}/auth/logout`, { body: {} });
         if (!r.ok) return authFail(r.error);
@@ -1704,7 +2059,11 @@ async function pagePlayground(main, q) {
   document.getElementById("tool-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector("[type=submit]");
-    if (!t.annotations.readOnlyHint && !confirm(`این ابزار پیام واقعی به حساب ${p.nameFa} ارسال خواهد کرد. آیا مایل به ادامه هستید؟`)) return;
+    if (!t.annotations.readOnlyHint && !(await openModal({
+      title: "ارسال پیام واقعی",
+      message: `این ابزار پیام واقعی به حساب ${p.nameFa} ارسال خواهد کرد. آیا مایل به ادامه هستید؟`,
+      confirmText: "ارسال کن",
+    }))) return;
     const r = await busy(btn, () => api(`tools/${t.name}/call`, { body: { args: collect() } }));
     result.hidden = false;
     result.innerHTML = `<div class="result-head"><h2>نتیجه بازگشتی از سرویس</h2>${r.ok ? '<span class="pill pill-ok">موفق</span>' : '<span class="pill pill-err">ناموفق</span>'}<span class="meta">${fa(r.ms)} میلی‌ثانیه</span></div>
@@ -2145,7 +2504,12 @@ async function pageInbox(main, q) {
     }
     if (rcv && e.target.closest("[data-clear-inbox]")) {
       const pName = provOf(rcv.dataset.rcv)?.nameFa || rcv.dataset.rcv;
-      if (!confirm(`آیا پیام‌های ذخیره‌شده‌ی ${pName} از صندوق پاک شوند؟`)) return;
+      if (!(await openModal({
+        title: "پاک کردن صندوق پیام",
+        message: `آیا پیام‌های ذخیره‌شده‌ی ${pName} از صندوق پاک شوند؟`,
+        confirmText: "پاک کن",
+        tone: "danger",
+      }))) return;
       await busy(e.target.closest("[data-clear-inbox]"), () => api(`inbox/${rcv.dataset.rcv}`, { method: "DELETE" }));
       if (sel.p === rcv.dataset.rcv) { sel.p = ""; sel.c = ""; history.replaceState(null, "", "#/inbox"); }
       toast(`صندوق ${pName} پاک شد`);
@@ -2471,14 +2835,10 @@ async function pageTriggers(main, q) {
           <div class="trg-grid">
             <label><span>نام اتوماسیون</span><input class="input" name="name" required value="${esc(t.name)}" placeholder="مثلاً پاسخ خودکار سلام"></label>
             <label><span>دسته‌بندی</span>
-              <select class="select" name="category">
-                ${Object.entries(trgCatFa).map(([k, v]) => `<option value="${k}" ${t.category === k ? "selected" : ""}>${v}</option>`).join("")}
-              </select>
+              ${selectControl("category", Object.entries(trgCatFa), t.category || "", "", "دسته‌بندی")}
             </label>
             <label><span>رویداد (Trigger Event)</span>
-              <select class="select" name="event" id="trg-event">
-                ${Object.entries(trgEventFa).map(([k, v]) => `<option value="${k}" ${ev === k ? "selected" : ""}>${v}</option>`).join("")}
-              </select>
+              ${selectControl("event", Object.entries(trgEventFa), ev, "trg-event", "رویداد")}
             </label>
           </div>
           <label><span>توضیح کوتاه</span><input class="input" name="description" value="${esc(t.description || "")}" placeholder="توضیح کاربرد این اتوماسیون"></label>
@@ -2486,9 +2846,7 @@ async function pageTriggers(main, q) {
           <div class="trg-grid" id="trg-cond-incoming" ${isIncoming ? "" : "hidden"}>
             <label><span>پیام‌رسان</span><input class="input ltr-input" name="provider" value="${esc(t.match?.provider || "*")}" placeholder="* یا bale / telegram / instagram"></label>
             <label><span>نوع گفتگو</span>
-              <select class="select" name="chatType">
-                ${Object.entries(trgChatTypeFa).map(([k, v]) => `<option value="${k}" ${(t.match?.chatType || "*") === k ? "selected" : ""}>${v}</option>`).join("")}
-              </select>
+              ${selectControl("chatType", Object.entries(trgChatTypeFa), t.match?.chatType || "*", "", "نوع گفتگو")}
             </label>
             <label><span>کلمات کلیدی (با کاما جدا کنید)</span><input class="input" name="contains" value="${esc(t.match?.contains || "")}" placeholder="مثلاً: سلام, /start, فوری (خالی = همه پیام‌ها)"></label>
           </div>
@@ -2508,9 +2866,7 @@ async function pageTriggers(main, q) {
           </div>
           <div class="trg-grid">
             <label><span>نوع اقدام (Action)</span>
-              <select class="select" name="actionType" id="trg-action-type">
-                ${Object.entries(trgActionFa).map(([k, v]) => `<option value="${k}" ${ac2 === k ? "selected" : ""}>${v}</option>`).join("")}
-              </select>
+              ${selectControl("actionType", Object.entries(trgActionFa), ac2, "trg-action-type", "نوع اقدام")}
             </label>
           </div>
 
@@ -2799,7 +3155,12 @@ async function pageTriggers(main, q) {
       return;
     }
     if (e.target.closest("[data-trg-del]")) {
-      if (!confirm("این تریگر حذف شود؟")) return;
+      if (!(await openModal({
+        title: "حذف تریگر",
+        message: "این تریگر حذف شود؟",
+        confirmText: "حذف تریگر",
+        tone: "danger",
+      }))) return;
       await api(`triggers/${id}`, { method: "DELETE" });
       data = await api("triggers");
       toast("تریگر حذف شد");
@@ -2892,6 +3253,95 @@ async function pageTriggers(main, q) {
   }, on);
 }
 
+
+// ---------------------------------------------------------------- settings
+async function pageSettings(main) {
+  const s = await api("settings");
+  main.innerHTML = `${head("تنظیمات", "محیط اجرا، پروکسی و رمز عبور داشبورد را مدیریت کنید. تغییرات شبکه برای اتصال‌های جدید اعمال می‌شود.", "پیکربندی سرور")}
+    <div class="settings-grid">
+      <section class="panel">
+        <h2>شبکه و پروکسی</h2>
+        <p class="desc">برای سرویس‌هایی که از IP ایران به آن‌ها دسترسی ندارید، پروکسی HTTP یا SOCKS5 تنظیم کنید.</p>
+        <div class="field">
+          <span class="field-label">نوع پروکسی</span>
+          <div class="seg" data-settings-proxy>
+            ${[["none", "بدون پروکسی"], ["http", "HTTP"], ["socks5", "SOCKS5"]].map(([v, l]) => `<button type="button" data-proxy-type="${v}" aria-pressed="${s.proxyType === v}">${l}</button>`).join("")}
+          </div>
+        </div>
+        <div class="field"><label for="settingsProxy">آدرس پروکسی</label><input id="settingsProxy" class="input ltr-input" value="${esc(s.proxyUrl || "")}" placeholder="http://127.0.0.1:8080 یا socks5://127.0.0.1:1080" ${s.proxyType === "none" ? "disabled" : ""}></div>
+        <div class="settings-actions"><button class="btn btn-primary" type="button" id="save-settings">ذخیره تنظیمات</button><span class="hint" id="settings-status"></span></div>
+      </section>
+
+      <section class="panel">
+        <h2>محیط اجرا</h2>
+        <p class="desc">این مقادیر در سرور ذخیره می‌شوند. تغییر برخی از آن‌ها پس از ری‌استارت کامل اعمال می‌شود.</p>
+        <div class="auth-two-col">
+          <div class="field"><label for="retention">نگهداری لاگ (روز)</label><input id="retention" class="input ltr-input" type="number" min="1" max="365" value="${s.logRetentionDays}"></div>
+          <div class="field"><label for="writeLimit">سقف نوشتن MCP در دقیقه</label><input id="writeLimit" class="input ltr-input" type="number" min="1" max="1000" value="${s.mcpWriteLimit}"></div>
+        </div>
+        <div class="settings-meta"><span>مسیر داده</span><code class="ltr">${esc(s.dataDir)}</code></div>
+        <div class="settings-meta"><span>نسخه</span><code class="ltr">${esc(s.version || "")}</code></div>
+        <div class="settings-actions"><button class="btn btn-ghost" type="button" id="save-runtime">ذخیره محیط</button><span class="hint" id="runtime-status"></span></div>
+      </section>
+
+      <section class="panel">
+        <h2>رمز عبور</h2>
+        <p class="desc">پس از تغییر رمز، نشست‌های قبلی باطل می‌شوند و همین مرورگر دوباره وارد می‌شود.</p>
+        ${s.passwordFromEnv ? '<div class="err-box">رمز عبور از متغیر <code class="ltr">ADMIN_PASSWORD</code> در فایل <code class="ltr">.env</code> کنترل می‌شود؛ برای تغییر، آن را ویرایش و سرور را ری‌استارت کنید.</div>' : `
+        <form id="password-form">
+          <div class="field"><label for="currentPw">رمز فعلی</label><input id="currentPw" type="password" class="input" autocomplete="current-password" required></div>
+          <div class="field"><label for="newPw">رمز جدید</label><input id="newPw" type="password" class="input" autocomplete="new-password" minlength="8" required><span class="hint">حداقل ۸ کاراکتر</span></div>
+          <div class="field"><label for="newPw2">تکرار رمز جدید</label><input id="newPw2" type="password" class="input" autocomplete="new-password" required></div>
+          <div class="form-err" id="pw-err"></div>
+          <button class="btn btn-primary" type="submit">تغییر رمز</button>
+        </form>`}
+      </section>
+    </div>`;
+
+  let proxyType = s.proxyType;
+  const proxyInput = document.getElementById("settingsProxy");
+  main.querySelectorAll("[data-settings-proxy] [data-proxy-type]").forEach((b) => {
+    b.addEventListener("click", () => {
+      proxyType = b.dataset.proxyType;
+      main.querySelectorAll("[data-settings-proxy] [data-proxy-type]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      proxyInput.disabled = proxyType === "none";
+      if (proxyType === "none") proxyInput.value = "";
+    });
+  });
+
+  const saveSettings = async (withRuntime) => {
+    const status = document.getElementById(withRuntime ? "runtime-status" : "settings-status");
+    try {
+      const body = withRuntime
+        ? { ...s, proxyType, proxyUrl: proxyInput.value.trim(), logRetentionDays: Number(document.getElementById("retention").value), mcpWriteLimit: Number(document.getElementById("writeLimit").value) }
+        : { proxyType, proxyUrl: proxyInput.value.trim(), logRetentionDays: s.logRetentionDays, mcpWriteLimit: s.mcpWriteLimit };
+      const r = await api("settings", { method: "PUT", body });
+      Object.assign(s, r);
+      if (status) status.textContent = r.restartRecommended ? "ذخیره شد؛ برای اعمال کامل، سرور را ری‌استارت کنید." : "ذخیره شد.";
+      toast("تنظیمات ذخیره شد");
+    } catch (ex) {
+      if (status) status.textContent = ex.message;
+    }
+  };
+  document.getElementById("save-settings").addEventListener("click", () => saveSettings(false));
+  document.getElementById("save-runtime").addEventListener("click", () => saveSettings(true));
+
+  const passwordForm = document.getElementById("password-form");
+  if (passwordForm) passwordForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const err = document.getElementById("pw-err");
+    err.textContent = "";
+    const newPw = document.getElementById("newPw").value;
+    if (newPw !== document.getElementById("newPw2").value) { err.textContent = "رمز جدید و تکرارش یکی نیستند"; return; }
+    try {
+      await busy(e.target.querySelector("button"), () => api("settings/password", { method: "POST", body: { currentPassword: document.getElementById("currentPw").value, newPassword: newPw } }));
+      toast("رمز عبور تغییر کرد");
+      e.target.reset();
+    } catch (ex) {
+      err.textContent = ex.message;
+    }
+  });
+}
 
 // ---------------------------------------------------------------- logs
 async function pageLogs(main) {
@@ -2992,7 +3442,12 @@ async function pageLogs(main) {
   });
   document.getElementById("reload").onclick = (e) => busy(e.currentTarget, load);
   document.getElementById("clear").onclick = async () => {
-    if (!confirm("آیا تمامی گزارش‌ها و فایل‌های لاگ پاک شوند؟")) return;
+    if (!(await openModal({
+      title: "پاک کردن گزارش‌ها",
+      message: "آیا تمامی گزارش‌ها و فایل‌های لاگ پاک شوند؟",
+      confirmText: "پاک کردن همه",
+      tone: "danger",
+    }))) return;
     await api("logs", { method: "DELETE" });
     await load();
     toast("تمام گزارش‌ها پاک شدند");
@@ -3188,7 +3643,12 @@ async function pageConnect(main) {
     if (rv) { const i = document.getElementById(rv.dataset.reveal); i.type = i.type === "password" ? "text" : "password"; }
     const tb = e.target.closest("[data-tab]");
     if (tb) { tab = tb.dataset.tab; main.querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-selected", b === tb)); drawSnip(); }
-    if (e.target.closest("#rotate") && confirm("آیا توکن دسترسی کنونی باطل شود؟ تمام کلاینت‌های متصل باید با توکن جدید تنظیم شوند.")) {
+    if (e.target.closest("#rotate") && await openModal({
+      title: "ساخت توکن جدید",
+      message: "آیا توکن دسترسی کنونی باطل شود؟ تمام کلاینت‌های متصل باید با توکن جدید تنظیم شوند.",
+      confirmText: "توکن جدید",
+      tone: "danger",
+    })) {
       await api("connection/rotate", { body: {} });
       toast("توکن جدید ساخته شد");
       pageConnect(main);

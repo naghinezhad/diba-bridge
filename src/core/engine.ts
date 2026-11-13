@@ -259,6 +259,21 @@ export class DibaMcpEngine {
   }
 
   /**
+   * وضعیت QR جاری برای ورود (بدون شروع دوباره‌ی جریان).
+   */
+  async authQr(id: string): Promise<CallResult> {
+    const started = performance.now();
+    const p = this.provider(id);
+    if (!p?.auth?.getQr) return { ok: false, ms: 0, error: "این سرویس QR ندارد" };
+    try {
+      const result = await p.auth.getQr(this.contextOf(p));
+      return { ok: true, ms: Math.round(performance.now() - started), result };
+    } catch (err: any) {
+      return { ok: false, ms: Math.round(performance.now() - started), error: String(err?.message ?? err) };
+    }
+  }
+
+  /**
    * یک McpServer تازه با ابزارهای فعال می‌سازد.
    * در حالت HTTP بدون‌نشست، برای هر درخواست یک نمونه ساخته می‌شود تا تغییر
    * تنظیمات در داشبورد بلافاصله اعمال شود.

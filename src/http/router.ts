@@ -6,6 +6,8 @@ import { hashPassword, RateLimiter, safeEqual, SignedSessions, verifyPassword } 
 import { dibaRouterChat, dibaRouterModels, dibaRouterTest, type DibaRouterMessage, type DibaRouterTool } from "../core/dibarouter.js";
 import { compactConversation, compactToolResult, extractContextLimit, fitContextToBudget, isContextLimitError, selectAndCompactTools, summarizeContextError } from "../core/context.js";
 import { SERVER_VERSION, type DibaMcpEngine } from "../core/engine.js";
+import { configureProxy } from "../core/net.js";
+import { proxyEnvOf, type AppProxyType } from "../core/store.js";
 import { runNetcheck } from "../core/netcheck.js";
 import { hintFor, runSelfTest } from "../core/selftest.js";
 import { handleEitaaBridgeWebhook } from "../providers/eitaa-client.js";
@@ -93,6 +95,30 @@ function agentTools(engine: DibaMcpEngine, maxTools = 160): DibaRouterTool[] {
     }
   }
   return out;
+}
+
+function normalizeSettings(body: any) {
+  const proxyType: AppProxyType = ["none", "http", "socks5"].includes(body?.proxyType) ? body.proxyType : "none";
+  const proxyUrl = typeof body?.proxyUrl === "string" ? body.proxyUrl.trim() : "";
+  if (proxyType !== "none") {
+    if (!proxyUrl) throw new Error("آدرس پروکسی الزامی است");
+    let u: URL;
+    try { u = new URL(proxyUrl); } catch { throw new Error("آدرس پروکسی معتبر نیست"); }
+    if (!/^(https?|socks5?):$/.test(u.protocol)) throw new Error("پروتکل پروکسی باید http، https یا socks5 باشد");
+    if (proxyType === "socks5" && !/^socks5?:$/.test(u.protocol)) throw new Error("برای پروکسی SOCKS5 آدرس socks5:// وارد کنید");
+  }
+  const logRetentionDays = Math.max(1, Math.min(365, Number(body?.logRetentionDays) || 14));
+  const mcpWriteLimit = Math.max(1, Math.min(1000, Number(body?.mcpWriteLimit) || 30));
+  return { proxyType, proxyUrl, logRetentionDays, mcpWriteLimit };
+}
+
+function applyProxySettings(settings: ReturnType<typeof normalizeSettings>) {
+  const envPatch = proxyEnvOf(settings);
+  for (const key of ["SOCKS_PROXY", "HTTPS_PROXY", "HTTP_PROXY", "ALL_PROXY"]) {
+    if (!(key in envPatch)) delete process.env[key];
+  }
+  Object.assign(process.env, envPatch);
+  configureProxy(process.env);
 }
 
 /**
@@ -194,10 +220,18 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
       return void res.status(403).json({ error: "کد راه‌اندازی اشتباه است (در کنسول سرور چاپ شده)" });
     if (typeof password !== "string" || password.length < 8)
       return void res.status(400).json({ error: "رمز باید حداقل ۸ کاراکتر باشد" });
+    let settings;
+    try {
+      settings = normalizeSettings(req.body?.settings ?? {});
+    } catch (err: any) {
+      return void res.status(400).json({ error: String(err?.message ?? err) });
+    }
+    engine.store.updateSettings(settings);
+    applyProxySettings(settings);
     engine.store.setAdmin(hashPassword(password));
     setupCode = null;
     setCookie(req, res, sessions.create(), SESSION_MAX_AGE);
-    res.json({ ok: true });
+    res.json({ ok: true, settings });
   });
 
   api.post("/auth/login", (req, res) => {
@@ -232,6 +266,41 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   api.use((req, res, next) => {
     if (!sessions.valid(sid(req))) return void res.status(401).json({ error: "ابتدا وارد شوید" });
     next();
+  });
+
+  // ---------------- تنظیمات نصب ----------------
+  api.get("/settings", (_req, res) => {
+    res.json({ ok: true, version: SERVER_VERSION, dataDir: engine.store.dir, passwordFromEnv: Boolean(env.ADMIN_PASSWORD), ...engine.store.settings() });
+  });
+
+  api.put("/settings", (req, res) => {
+    let settings;
+    try {
+      settings = normalizeSettings(req.body ?? {});
+    } catch (err: any) {
+      return void res.status(400).json({ error: String(err?.message ?? err) });
+    }
+    const before = engine.store.settings();
+    engine.store.updateSettings(settings);
+    applyProxySettings(settings);
+    res.json({
+      ok: true,
+      ...engine.store.settings(),
+      restartRecommended: before.mcpWriteLimit !== settings.mcpWriteLimit || before.logRetentionDays !== settings.logRetentionDays,
+    });
+  });
+
+  api.post("/settings/password", (req, res) => {
+    if (env.ADMIN_PASSWORD) return void res.status(400).json({ error: "رمز از متغیر ADMIN_PASSWORD کنترل می‌شود" });
+    const current = String(req.body?.currentPassword ?? "");
+    const next = String(req.body?.newPassword ?? "");
+    if (!engine.store.admin || !verifyPassword(current, engine.store.admin))
+      return void res.status(400).json({ error: "رمز فعلی اشتباه است" });
+    if (next.length < 8) return void res.status(400).json({ error: "رمز جدید باید حداقل ۸ کاراکتر باشد" });
+    engine.store.setAdmin(hashPassword(next));
+    // setAdmin نشست‌ها را باطل می‌کند؛ یک نشست تازه برای همین مرورگر بساز.
+    setCookie(req, res, sessions.create(), SESSION_MAX_AGE);
+    res.json({ ok: true });
   });
 
   // ---------------- دیبا روتر ----------------
@@ -548,6 +617,11 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   });
 
   // ---------------- ورود با حساب کاربری (کلاینت غیررسمی) ----------------
+  api.get("/providers/:id/auth/qr", async (req, res) => {
+    const id = String(req.params.id);
+    res.json(await engine.authQr(id));
+  });
+
   api.post("/providers/:id/auth/:step", async (req, res) => {
     const id = String(req.params.id);
     const step = String(req.params.step);
