@@ -3025,7 +3025,7 @@ async function pageTriggers(main, q) {
             <label><span>نوع گفتگو</span>
               ${selectControl("chatType", Object.entries(trgChatTypeFa), t.match?.chatType || "*", "", "نوع گفتگو")}
             </label>
-            <label><span>کلمات کلیدی (با کاما جدا کنید)</span><input class="input" name="contains" value="${esc(t.match?.contains || "")}" placeholder="مثلاً: سلام, /start, فوری (خالی = همه پیام‌ها)"></label>
+            <label><span>کلمات کلیدی (اختیاری — برای پاسخ هوشمند خالی بگذارید)</span><input class="input" name="contains" value="${esc(t.match?.contains || "")}" placeholder="خالی = پاسخ به همه‌ی پیام‌ها؛ مثلاً: سلام, /start, قیمت"></label>
           </div>
 
           <div class="trg-grid" id="trg-cond-mcp" ${!isIncoming && !isManual ? "" : "hidden"}>
@@ -3206,6 +3206,14 @@ async function pageTriggers(main, q) {
         <button class="btn btn-ghost btn-sm" type="button" id="trg-reset">بازنشانی پیش‌فرض‌ها</button>
         <button class="btn btn-primary btn-sm" type="button" id="trg-new">+ ساخت اتوماسیون جدید</button>
       </div>`)}
+
+      <div class="trg-smart-card${triggers.find((t) => t.id === "ai-assistant-default" && t.enabled) ? " is-on" : ""}">
+        <span class="trg-smart-icon">${icons.sparkles}</span>
+        <div>
+          <b>دستیار هوشمند پیش‌فرض</b>
+          <p>${triggers.find((t) => t.id === "ai-assistant-default" && t.enabled) ? "به همه‌ی پیام‌های خصوصی، بدون نیاز به کلمه‌ی کلیدی پاسخ هوشمند می‌دهد. اتوماسیون‌های دارای کلمه‌ی کلیدی همیشه اولویت دارند." : "دستیار پیش‌فرض خاموش است. برای تجربه‌ی پیشنهادی، آن را از لیست پایین روشن کنید."}</p>
+        </div>
+      </div>
 
       <section class="trg-stats">
         <div class="trg-stat">

@@ -81,7 +81,7 @@ export interface TriggerHost {
 const MAX_LOGS = 150;
 
 /** نسخه‌ی کتابخانه‌ی نمونه؛ با تغییر آن، نمونه‌های تازه به نصب‌های موجود اضافه می‌شوند */
-export const TRIGGER_SEED_VERSION = 3;
+export const TRIGGER_SEED_VERSION = 4;
 
 /**
  * کتابخانه‌ی نمونه‌های آماده‌ی اتوماسیون (۳۷ قانون).
@@ -263,6 +263,21 @@ export function defaultTriggers(): TriggerDef[] {
     },
 
     // ---------------------------------------------------------------- هوش مصنوعی
+    {
+      id: "ai-assistant-default",
+      name: "دستیار هوشمند پیش‌فرض",
+      description: "پاسخ هوشمند به همه‌ی پیام‌های خصوصی، بدون نیاز به کلمه‌ی کلیدی",
+      category: "ai",
+      enabled: true,
+      builtin: true,
+      event: "incoming_message",
+      match: { provider: "*", chatType: "private" },
+      action: {
+        type: "ai_reply",
+        systemPrompt:
+          "تو دستیار هوشمند و خوش‌برخورد کسب‌وکار هستی. به سؤال کاربر به فارسی روان، کوتاه و دقیق پاسخ بده. اگر سؤال درباره‌ی قیمت، قرارداد، سفارش یا موضوعی است که اطلاعات مطمئن نداری، از خودت عدد یا وعده نساز و کاربر را به کارشناس انسانی ارجاع بده. اگر کاربر فقط سلام کرد، خوش‌آمد بگو و بپرس چطور می‌توانی کمک کنی.",
+      },
+    },
     {
       id: "ai-private-qa",
       name: "پاسخ هوشمند با دیبا روتر (AI)",
@@ -911,12 +926,25 @@ export class TriggerEngine {
       chatTitle: msg.chatTitle || msg.chatId,
     };
 
+    const matches = (t: TriggerDef) => {
+      if (t.match.provider && t.match.provider !== "*" && t.match.provider !== msg.provider) return false;
+      if (t.match.chatType && t.match.chatType !== "*" && t.match.chatType !== msg.chatType) return false;
+      if (t.match.chatId && t.match.chatId !== msg.chatId) return false;
+      if (t.match.contains && !matchPattern(t.match.contains, text)) return false;
+      return true;
+    };
+
+    // Specific automations win. The default smart assistant is only the fallback.
+    let handled = false;
     for (const t of active) {
-      if (t.match.provider && t.match.provider !== "*" && t.match.provider !== msg.provider) continue;
-      if (t.match.chatType && t.match.chatType !== "*" && t.match.chatType !== msg.chatType) continue;
-      if (t.match.chatId && t.match.chatId !== msg.chatId) continue;
-      if (t.match.contains && !matchPattern(t.match.contains, text)) continue;
+      if (t.id === "ai-assistant-default") continue;
+      if (!matches(t)) continue;
       await this.execute(t, vars, { message: msg });
+      handled = true;
+    }
+    const fallback = active.find((t) => t.id === "ai-assistant-default");
+    if (!handled && fallback && matches(fallback)) {
+      await this.execute(fallback, vars, { message: msg });
     }
   }
 

@@ -4600,3 +4600,19 @@ body.agent-fullscreen { overflow: hidden; }
   .agent-dock.full .agent-form { padding: 8px 12px 2px; }
   .agent-dock.full .agent-foot { padding: 6px 12px 10px; }
 }
+
+/* Default smart assistant card */
+.trg-smart-card {
+  display: flex; align-items: flex-start; gap: 12px;
+  margin: 12px 0 4px; padding: 14px 16px;
+  border: 1px solid var(--line); border-radius: 9px;
+  background: #fff;
+}
+.trg-smart-card.is-on { border-color: var(--brand-100); background: var(--brand-50); }
+.trg-smart-icon {
+  flex: none; width: 34px; height: 34px; display: grid; place-items: center;
+  border-radius: 8px; background: var(--brand); color: #fff;
+}
+.trg-smart-icon svg { width: 18px; height: 18px; }
+.trg-smart-card b { color: var(--ink); font-size: 12.5px; }
+.trg-smart-card p { margin: 3px 0 0; color: var(--muted); font-size: 11px; line-height: 1.9; }
