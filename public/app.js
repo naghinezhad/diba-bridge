@@ -363,7 +363,6 @@ icons.dibarouter = icons.router;
 const pages = [
   { id: "overview", title: "نمای کلی" },
   { id: "providers", title: "پیام‌رسان‌ها", submenu: true },
-  { id: "inbox", title: "پیام‌های دریافتی" },
   { id: "triggers", title: "تریگرها و اتوماسیون" },
   { id: "playground", title: "آزمایش ابزارها" },
   { id: "logs", title: "گزارش فراخوانی‌ها" },
@@ -1134,6 +1133,7 @@ async function render() {
   clearInterval(state.timer);
   disposePage();
   const { page, q } = route();
+  if (/^#\/inbox(?:\?|$)/.test(location.hash)) history.replaceState(null, "", "#/overview");
   // Update nav active state
   document.querySelectorAll(".nav a").forEach((a) => {
     let active = a.dataset.page === page;
@@ -1152,7 +1152,7 @@ async function render() {
   document.title = `${pages.find((p) => p.id === page).title} — Diba Bridge (دیبا پل) | دیباچین`;
   const main = document.getElementById("main");
   try {
-    await ({ overview: pageOverview, providers: pageProviders, playground: pagePlayground, inbox: pageInbox, triggers: pageTriggers, logs: pageLogs, dibarouter: pageDibaRouter, connect: pageConnect, settings: pageSettings })[page](main, q);
+    await ({ overview: pageOverview, providers: pageProviders, playground: pagePlayground, triggers: pageTriggers, logs: pageLogs, dibarouter: pageDibaRouter, connect: pageConnect, settings: pageSettings })[page](main, q);
   } catch (e) {
     if (!(e instanceof AuthError)) main.innerHTML = `<div class="err-box">${esc(e.message)}</div>`;
   }
@@ -1231,7 +1231,7 @@ async function pageOverview(main) {
           <div class="ov-next-actions">
             ${ready === 0
       ? `<a class="btn btn-primary" href="#/providers">اتصال سرویس</a><a class="btn btn-ghost" href="#/connect">راهنمای اتصال</a>`
-      : `<a class="btn btn-primary" href="#/connect">اتصال به مدل</a><a class="btn btn-ghost" href="#/inbox">${icons.inbox} پیام‌ها</a>`}
+      : `<a class="btn btn-primary" href="#/connect">اتصال به مدل</a><a class="btn btn-ghost" href="#/logs">${icons.logs} گزارش‌ها</a>`}
           </div>
         </div>
       </aside>
@@ -1281,7 +1281,7 @@ function fieldHtml(p, f) {
       <input id="${id}" name="${f.key}" type="password" class="input ltr-input" placeholder="${esc(ph)}" autocomplete="off" ${locked ? "disabled" : ""}>
       <button type="button" class="btn btn-icon btn-quiet" data-reveal="${id}" aria-label="نمایش توکن">${icons.eye}</button></div>${savedHint}</div>`;
   }
-  const pick = f.key === "defaultChatId" && p.receive?.supported && !locked ? `<span class="hint"><a href="#/inbox?p=${p.id}">انتخاب از پیام‌های دریافتی</a></span>` : "";
+  const pick = "";
   return `<div class="field">${label}<input id="${id}" name="${f.key}" class="input ${f.type === "url" || /id$/i.test(f.key) ? "ltr-input" : ""}" value="${esc(f.value)}" placeholder="${esc(f.placeholder || f.default || "")}" ${locked ? "disabled" : ""}>${hint}${pick}</div>`;
 }
 
