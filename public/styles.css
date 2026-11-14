@@ -4655,6 +4655,7 @@ body.agent-fullscreen { overflow: hidden; }
 /* Settings refinement */
 .shell .settings-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); align-items: start; }
 .shell .settings-grid .panel { align-self: start; }
+.shell .settings-grid .panel + .panel { margin-top: 0; }
 .shell .settings-password-panel { grid-column: 1 / -1; }
 .shell .settings-password-panel form {
   display: grid;
