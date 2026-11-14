@@ -3532,7 +3532,7 @@ async function pageSettings(main) {
         <div class="settings-actions"><button class="btn btn-ghost" type="button" id="save-runtime">ذخیره محیط</button><span class="hint" id="runtime-status"></span></div>
       </section>
 
-      <section class="panel">
+      <section class="panel settings-password-panel">
         <h2>رمز عبور</h2>
         <p class="desc">پس از تغییر رمز، نشست‌های قبلی باطل می‌شوند و همین مرورگر دوباره وارد می‌شود.</p>
         ${s.passwordFromEnv ? '<div class="err-box">رمز عبور از متغیر <code class="ltr">ADMIN_PASSWORD</code> در فایل <code class="ltr">.env</code> کنترل می‌شود؛ برای تغییر، آن را ویرایش و سرور را ری‌استارت کنید.</div>' : `

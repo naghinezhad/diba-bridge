@@ -4651,3 +4651,29 @@ body.agent-fullscreen { overflow: hidden; }
   .shell .call .call-ago { white-space: nowrap; }
   .shell .call .src, .shell .call .call-dur, .shell .call-head .src, .shell .call-head .call-dur { display: none; }
 }
+
+/* Settings refinement */
+.shell .settings-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); align-items: start; }
+.shell .settings-grid .panel { align-self: start; }
+.shell .settings-password-panel { grid-column: 1 / -1; }
+.shell .settings-password-panel form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 16px;
+  align-items: end;
+}
+.shell .settings-password-panel form .field { margin: 0; min-width: 0; }
+.shell .settings-password-panel form .form-err { grid-column: 1 / -1; }
+.shell .settings-password-panel form > .btn { grid-column: 1 / -1; justify-self: start; margin-top: 2px; }
+.shell .settings-grid .seg button[aria-pressed="true"] {
+  background: var(--brand-50);
+  border-color: var(--brand-200);
+  color: var(--brand-700);
+}
+@media (max-width: 900px) {
+  .shell .settings-password-panel form { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .shell .settings-grid { grid-template-columns: 1fr; }
+  .shell .settings-password-panel { grid-column: auto; }
+}
