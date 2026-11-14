@@ -4616,3 +4616,38 @@ body.agent-fullscreen { overflow: hidden; }
 .trg-smart-icon svg { width: 18px; height: 18px; }
 .trg-smart-card b { color: var(--ink); font-size: 12.5px; }
 .trg-smart-card p { margin: 3px 0 0; color: var(--muted); font-size: 11px; line-height: 1.9; }
+
+/* Overview refinement: one readiness signal, compact secondary metrics */
+.shell .ov-insight { gap: 10px; }
+.shell .ov-health {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.shell .ov-health-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.shell .ov-health-head span { color: var(--muted); font-size: 11px; }
+.shell .ov-health-head b { color: var(--ink); font-size: 27px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
+.shell .ov-health-head b small { color: var(--muted); font-size: 12px; font-weight: 600; }
+.shell .ov-meter { height: 6px; margin-top: 11px; overflow: hidden; border-radius: 3px; background: var(--bg-soft); }
+.shell .ov-meter i { display: block; height: 100%; border-radius: inherit; background: var(--brand); }
+.shell .ov-health-note { display: block; margin-top: 7px; color: var(--muted); font-size: 10.5px; }
+.shell .ov-metric-list { border: 1px solid var(--line); border-radius: 10px; background: #fff; overflow: hidden; }
+.shell .ov-metric-list > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+.shell .ov-metric-list > div:last-child { border-bottom: 0; }
+.shell .ov-metric-list span { color: var(--muted); font-size: 10.5px; }
+.shell .ov-metric-list b { color: var(--ink-2); font-size: 13px; font-variant-numeric: tabular-nums; }
+.shell .ov-metric-list b small { color: var(--muted); font-size: 9.5px; font-weight: 600; }
+.shell .ov-next { background: #fff; border-color: var(--line); }
+.shell .ov-next > .ov-kicker { color: var(--brand-600); }
+.shell .call-head { padding-block: 7px; border-bottom: 1px solid var(--line); background: var(--bg-soft); cursor: default; }
+.shell .call-head:hover { background: var(--bg-soft); }
+.shell .call-head .col-label { color: var(--muted); font-size: 10px; font-weight: 700; }
+.shell .call-head .meta, .shell .call-head .src { color: var(--muted); font-size: 10px; font-weight: 700; }
+@media (max-width: 560px) {
+  .shell .ov-provider-list { grid-template-columns: 1fr; }
+  .shell .ov-prov-text b { white-space: normal; }
+  .shell .call { grid-template-columns: 12px minmax(0, 1fr) 86px; }
+  .shell .call .call-ago { white-space: nowrap; }
+  .shell .call .src, .shell .call .call-dur, .shell .call-head .src, .shell .call-head .call-dur { display: none; }
+}

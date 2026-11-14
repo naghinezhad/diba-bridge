@@ -1165,8 +1165,8 @@ function callRow(l, expandable = false) {
     <span class="dot" aria-label="${l.ok ? "موفق" : "ناموفق"}"></span>
     <span class="tool">${esc(l.tool)}</span>
     ${l.ok ? `<span class="src">${l.source === "mcp" ? "از طرف مدل" : "از داشبورد"}</span>` : `<span class="err" title="${esc(l.error)}">${esc(l.error)}</span>`}
-    <span class="meta">${fa(l.ms)} میلی‌ثانیه</span>
-    <span class="meta">${ago(l.time)}</span>
+    <span class="meta call-dur">${fa(l.ms)} میلی‌ثانیه</span>
+    <span class="meta call-ago">${ago(l.time)}</span>
   </div>`;
 }
 
@@ -1175,6 +1175,8 @@ async function pageOverview(main) {
   const verEl = document.getElementById("ver");
   if (verEl) verEl.textContent = `نسخه ${o.version}`;
   const ready = o.providers.filter((p) => p.ready).length;
+  const readinessPct = o.providers.length ? Math.round((ready / o.providers.length) * 100) : 0;
+  const notReady = o.providers.length - ready;
   main.innerHTML = `
     ${head("نمای کلی", "وضعیت اتصال، مصرف امروز و آخرین فراخوانی‌ها در یک نگاه.", "داشبورد دیباچین")}
     <section class="ov-grid">
@@ -1207,11 +1209,20 @@ async function pageOverview(main) {
       </div>
 
       <aside class="ov-insight">
-        <div class="ov-metric-grid">
-          <div class="ov-metric"><b>${fa(ready)}<small>/${fa(o.providers.length)}</small></b><span>سرویس آماده</span></div>
-          <div class="ov-metric"><b>${fa(o.stats.today)}</b><span>فراخوانی امروز</span></div>
-          <div class="ov-metric"><b>${o.stats.successRate === null ? "—" : fa(o.stats.successRate) + "٪"}</b><span>نرخ موفقیت</span></div>
-          <div class="ov-metric"><b>${o.stats.avgMs === null ? "—" : fa(o.stats.avgMs)}<small>${o.stats.avgMs === null ? "" : "ms"}</small></b><span>میانگین پاسخ</span></div>
+        <div class="ov-health">
+          <div class="ov-health-head">
+            <span>آمادگی سرویس‌ها</span>
+            <b>${fa(ready)}<small>/${fa(o.providers.length)}</small></b>
+          </div>
+          <div class="ov-meter" role="img" aria-label="${fa(ready)} از ${fa(o.providers.length)} سرویس آماده">
+            <i style="width:${readinessPct}%"></i>
+          </div>
+          <small class="ov-health-note">${notReady ? `${fa(notReady)} سرویس هنوز آماده نیست` : "همه‌ی سرویس‌ها آماده‌اند"}</small>
+        </div>
+        <div class="ov-metric-list">
+          <div><span>فراخوانی امروز</span><b>${fa(o.stats.today)}</b></div>
+          <div><span>نرخ موفقیت امروز</span><b>${o.stats.successRate === null ? "—" : fa(o.stats.successRate) + "٪"}</b></div>
+          <div><span>میانگین پاسخ امروز</span><b>${o.stats.avgMs === null ? "—" : `${fa(o.stats.avgMs)} <small>ms</small>`}</b></div>
         </div>
         <div class="ov-next">
           <span class="ov-kicker">قدم بعدی</span>
@@ -1231,6 +1242,9 @@ async function pageOverview(main) {
       <a class="link-arrow" href="#/logs">مشاهده همه گزارش‌ها</a>
     </div>
     <div class="calls">
+      <div class="call call-head" aria-hidden="true">
+        <span></span><span class="col-label">ابزار</span><span class="src">منبع</span><span class="meta call-dur">مدت</span><span class="meta call-ago">زمان</span>
+      </div>
       ${o.recent.length ? o.recent.slice(0, 5).map((l) => callRow(l)).join("") : `<div class="empty"><b>هنوز ابزاری فراخوانی نشده است</b>از بخش «آزمایش ابزارها» اولین پیام را ارسال کنید.</div>`}
     </div>`;
 
