@@ -65,6 +65,18 @@ describe("engine.callTool", () => {
     assert.match(bad.error!, /ورودی نامعتبر/);
   });
 
+  test("system tools list_services and list_chats work without a provider", async () => {
+    const e = engine();
+    const services = await e.callTool("list_services", {}, "mcp");
+    assert.equal(services.ok, true);
+    const list = services.result as Array<{ id: string; ready: boolean; tools: string[] }>;
+    assert.ok(list.some((p) => p.id === "fake" && p.ready && p.tools.includes("fake_send")));
+
+    const chats = await e.callTool("list_chats", { provider: "fake" }, "mcp");
+    assert.equal(chats.ok, true);
+    assert.ok(Array.isArray((chats.result as { chats: unknown[] }).chats));
+  });
+
   test("provider errors are redacted; unexpected errors are wrapped", async () => {
     const e = engine();
     const r = await e.callTool("fake_send", { text: "boom" }, "dashboard");

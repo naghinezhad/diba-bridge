@@ -80,7 +80,7 @@ describe("TriggerEngine", () => {
         category: "social",
         enabled: true,
         event: "incoming_message",
-        match: { provider: "bale", contains: "سلام" },
+        match: { provider: "bale_client", contains: "سلام" },
         action: { type: "reply_template", template: "علیک سلام {{sender}}" },
       });
       assert.equal(engine.list().triggers.length, total + 1);
@@ -115,8 +115,8 @@ describe("TriggerEngine", () => {
       engine.update("mcp-tool-error-alert", { enabled: true });
 
       await engine.onIncomingMessage({
-        key: "bale:100:1",
-        provider: "bale",
+        key: "bale_client:100:1",
+        provider: "bale_client",
         chatId: "100",
         chatType: "private",
         messageId: "1",
@@ -128,7 +128,7 @@ describe("TriggerEngine", () => {
       });
 
       await engine.onToolEvent({
-        tool: "telegram_send_message",
+        tool: "telegram_client_send_message",
         args: { chat_id: "1" },
         ok: false,
         error: "timeout",
@@ -136,13 +136,13 @@ describe("TriggerEngine", () => {
       });
 
       assert.equal(calls.length, 2);
-      assert.equal(calls[0].name, "bale_send_message");
+      assert.equal(calls[0].name, "bale_client_send_message");
       assert.equal(calls[0].args.chat_id, "100");
       assert.match(calls[0].args.text, /علی/);
 
-      assert.equal(calls[1].name, "bale_send_message");
+      assert.equal(calls[1].name, "bale_client_send_message");
       assert.equal(calls[1].args.chat_id, "999");
-      assert.match(calls[1].args.text, /telegram_send_message/);
+      assert.match(calls[1].args.text, /telegram_client_send_message/);
       assert.equal(engine.list().logs.length, 2);
       assert.ok(engine.list().logs.every((l) => !l.demo));
     } finally {

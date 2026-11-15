@@ -53,10 +53,43 @@
   - **تلگرام:** حساب کاربری (MTProto)
 - 📬 **صندوق پیام‌های دریافتی یکپارچه (Shared Inbox):** مشاهده پیام‌های دریافتی، تفکیک پیام‌های ورودی و خروجی، امکان پاسخ‌گویی مستقیم و استفاده هوش مصنوعی از ابزار `get_updates`.
 - ⚡ **تریگرها و اتوماسیون (Automation Triggers):** صفحه‌ی `#/triggers` با ۳۸ قانون آماده‌ی ویرایش‌پذیر؛ پاسخ خودکار، پاسخ هوشمند دیبا روتر، فوروارد بین پیام‌رسان‌ها، اجرای ابزار MCP و ارسال به Webhook (n8n / Make / CRM). هر تریگر شرط (پیام‌رسان، نوع چت، کلمه‌ی کلیدی، ابزار) و اقدام دارد و با یک کلیک روشن، تست یا خاموش می‌شود. تاریخچه‌ی اجرا در `data/triggers.json` ذخیره می‌شود.
-- 🎨 **داشبورد اختصاصی با زبان طراحی دیباچین:** رابط کاربری مدرن، تفکیک آکاردئونی پیام‌رسان‌ها با تب پیش‌فرض حساب کاربری، تم تاریک/روشن و واکنش‌گرایی کامل.
+- 🎨 **داشبورد اختصاصی با زبان طراحی دیباچین:** رابط کاربری مدرن، یک اتصال «حساب کاربری» برای هر پیام‌رسان در آکاردئون اختصاصی، تم تاریک/روشن و واکنش‌گرایی کامل.
+- ⏻ **روشن/خاموش کردن حساب با یک کلید:** هر حساب کاربری یک کلید دارد (هم روی کارت بسته و هم داخل پنل)؛ با خاموش کردن آن ابزارهای آن حساب از دسترس مدل خارج و دریافت پیام متوقف می‌شود، اما نشست ذخیره می‌ماند و با روشن کردن دوباره بدون ورود مجدد برمی‌گردد.
 - 🧪 **محیط آزمایش زنده (Playground):** تست دستی ابزارها، ارسال متن، تصویر و فایل با قابلیت Drag & Drop یا Paste (Ctrl+V) و مشاهده پاسخ JSON سرور.
+- 🧠 **حافظه‌ی ماندگار دستیار:** گفتگوها، اطلاعات پایدار کاربر و مخاطبان شناخته‌شده در `data/assistant.json` ذخیره می‌شوند؛ ابزارهای `memory_search` و `memory_remember` برای MCP و همگام‌سازی تاریخچه بین دستگاه‌ها.
+- ✉️ **ارسال هوشمند به نام مخاطب:** با گفتن «به [نام] پیام بده»، دستیار نزدیک‌ترین مخاطب/چت را از بین چت‌ها، مخاطبین و حافظه پیدا می‌کند، متن پیشنهادی را می‌سازد و **پس از تأیید شما** ارسال می‌کند. ارسال به گروه/کانال، مخاطب مبهم، متن تکراری/اسپم و ارسال پرتکرار مسدود می‌شود و هیچ chat_id در گفتگو نمایش داده نمی‌شود.
 - 🔒 **امنیت در سطح سازمانی:** استفاده از توکن‌های Bearer، محدودکننده نرخ درخواست (Rate Limiting) و ذخیره‌سازی نشست‌ها روی سرور محلی با مجوز امنیتی ۶۰۰.
 - 🌐 **تست خودکار شبکه و سلامت اتصال (NetCheck & SelfTest):** بررسی وضعیت دسترسی سرور به APIهای داخلی و خارجی با پشتیبانی از SOCKS5 و HTTP Proxy.
+
+> **تغییر مهم:** اتصال با ربات رسمی (Bot API) برای بله، ایتا، روبیکا، سروش‌پلاس و تلگرام به‌طور کامل حذف شده است. هر پیام‌رسان فقط یک اتصال «حساب کاربری» دارد و توکن‌های رباتی که قبلاً ذخیره شده بودند دیگر بارگذاری نمی‌شوند.
+
+---
+
+### 🗺️ نقشه‌راه محصول
+
+این بخش نشان می‌دهد الآن کجای مسیر هستیم و قدم‌های بعدی چیست. تمرکز نقشه‌راه روی سه لایه است: **ارتباط پایدار**، **داده‌های مالی** و **تعامل هوشمند با مشتری**.
+
+| # | مسیر | وضعیت | خروجی نهایی |
+|---|---|---|---|
+| ۱ | **اتصال به پیام‌رسان‌ها** | ✅ انجام شده | اتصال به واتس‌اپ، تلگرام، بله، روبیکا، سروش‌پلاس و ایتا؛ صندوق ورودی یکپارچه، ارسال/دریافت پیام، تریگرها و ابزارهای MCP |
+| ۲ | **اتصال به پلتفرم‌های بانکی و مدیریت موجودی حساب‌ها** | ⏳ مرحله‌ی بعدی | اتصال امن به حساب‌های بانکی/مالی، نمای یکپارچه‌ی موجودی و تراکنش‌ها، هشدار و مغایرت‌گیری |
+| ۳ | **اتصال پیج اینستاگرام و دایرکت هوشمند** | 🚧 در حال انجام | اتصال پیج حرفه‌ای، دریافت دایرکت و کامنت، پاسخ هوشمند با تأیید انسان و ارجاع به اپراتور |
+
+#### وضعیت فعلی
+
+- **پیام‌رسان‌ها:** بالغ و قابل استفاده؛ حساب‌های کاربری، دریافت زنده، ارسال، تریگر و ابزارهای MCP فعال‌اند.
+- **اینستاگرام:** ورود امن با پنجره‌ی مرورگر، عبور از کد واتساپ/۲FA و بازیابی نشست انجام شده است. پروفایل و مدیای حساب هم از طریق ابزارهای MCP خوانده می‌شود. **دایرکت هوشمند هنوز فعال نیست.**
+- **بانکداری:** هنوز پیاده‌سازی نشده؛ اولویت بعدی است و با دسترسی **فقط‌خواندنی** شروع می‌شود.
+
+#### قدم‌های بعدی
+
+1. **تثبیت لایه‌ی پیام‌رسان:** پایش خطا، بازپخش رویدادها و تست‌های پایدار برای اتصال‌های طولانی‌مدت.
+2. **اتصال پیج اینستاگرام:** تکمیل دسترسی‌های پیج، دریافت دایرکت/کامنت و اتصال آن به موتور تریگر.
+3. **دایرکت هوشمند:** تشخیص نیت، پاسخ مبتنی بر دانش کسب‌وکار، تأیید انسانی، ثبت سرنخ و ارجاع به اپراتور.
+4. **بانکداری فقط‌خواندنی:** اتصال به APIهای رسمی، همگام‌سازی موجودی و تراکنش، نمای چندحسابی و هشدار تغییر موجودی.
+5. **عملیات بانکی با تأیید:** انتقال/دستور پرداخت فقط در مرحله‌ی بعد، با تأیید صریح و لاگ کامل.
+
+> **اصل مسیر:** هر قابلیت مالی یا ارسال پیام ابتدا در حالت امن و قابل‌بازبینی عرضه می‌شود؛ اقدام‌های حساس بدون تأیید انسانی انجام نمی‌شوند.
 
 ---
 
@@ -113,11 +146,12 @@ docker run -d --name diba-bridge -p 127.0.0.1:3790:3790 \
   "mcpServers": {
     "diba-bridge": {
       "command": "npx",
-      "args": ["-y", "diba-mcp", "stdio"]
+      "args": ["-y", "diba-mcp", "stdio", "--data", "/absolute/path/to/diba-mcp/data"]
     }
   }
 }
 ```
+> مسیر `--data` باید همان پوشه‌ی داده‌ی داشبورد باشد (پیش‌فرض `./data`). دستور آماده با مسیر درست را از تب **اتصال به هوش مصنوعی** کپی کنید. حالت HTTP و stdio را هم‌زمان برای یک حساب اجرا نکنید.
 
 #### ۲. Claude Code (CLI)
 ```bash
@@ -140,17 +174,81 @@ claude mcp add --transport http diba-bridge http://127.0.0.1:3790/mcp --header "
 
 ---
 
-### فهرست ابزارهای هوش مصنوعی (MCP Tools)
+### دستیار سطح‌بالای MCP (پیش‌فرض)
+
+به‌صورت پیش‌فرض MCP فقط **یک ابزار** به کلاینت می‌دهد: `diba_agent`
+
+این ابزار یک جمله‌ی ساده‌ی فارسی یا انگلیسی را می‌فهمد و خودش تمام کار را انجام می‌دهد:
+
+1. **سرویس را از خود جمله** تشخیص می‌دهد («داخل تلگرام»، «on WhatsApp»، …)؛ اگر سرویس مشخص نشده باشد، همه‌ی سرویس‌های آماده را با هم جستجو می‌کند.
+2. **اول چت‌های اخیر**، بعد **مخاطبین/دفترچه‌ی سرویس** و در آخر **حافظه‌ی دستیار** را می‌گردد.
+3. نام‌ها را **آوایی** تطبیق می‌دهد: «عماد» = «Emad» = «Emmad»، «جان» = «John»، «علی» = «Ali». (بدون مدل و بدون شبکه)
+4. **چت‌های بی‌نام** (فقط شناسه یا JID) را با `get_chat` همان سرویس نام‌دار می‌کند؛ اگر نام نبود، `@username` و در آخر برچسب کوتاه‌شده نمایش داده می‌شود. این نام‌ها در جستجو و ارسال هم قابل استفاده‌اند.
+5. اگر مخاطب یکتا و متن صریح بود، **همان‌جا ارسال می‌کند**؛ اگر چند گزینه بود فهرست کوتاه **بدون chat_id** می‌دهد؛ اگر متن باید نوشته شود، پیش‌نویس + تأیید.
+6. گفتگو را **موقت** (۳۰ دقیقه) نگه می‌دارد: «بله»، «۱»، «لغو» و «متن را عوض کن» در همان رشته کار می‌کنند (`conversation_id`).
+7. فهرست چت‌ها، خواندن پیام‌ها، وضعیت سرویس‌ها، توانایی‌ها و **اجرای هر ابزار سطح‌پایین** (`tool` + `args`) هم از همین ابزار انجام می‌شود.
+
+ورودی‌ها:
+
+```json
+{
+  "request": "به عماد داخل تلگرام پیام بده که فردا جلسه داریم",
+  "conversation_id": "mcp",
+  "provider": "telegram_client",
+  "recipient": "عماد",
+  "selection_token": "...",
+  "text": "سلام عماد جان، فردا جلسه داریم.",
+  "confirm": true,
+  "dry_run": false,
+  "tool": "telegram_client_get_history",
+  "args": { "chat_id": "...", "limit": 10 }
+}
+```
+
+- همه‌ی فیلدها جز `request` اختیاری‌اند؛ برای یک پیام ساده فقط `request` کافی است.
+- `provider` وقتی پر می‌شود که بخواهید جستجو را به یک سرویس محدود کنید.
+- `selection_token` توکن مبهم انتخاب مخاطب است، نه chat_id.
+- `confirm: true` پیش‌نویس در انتظار یا اجرای ابزار نوشتنی را تأیید می‌کند.
+- `dry_run: true` فقط نشان می‌دهد چه چیزی ارسال می‌شد (برای آزمایش).
+- `conversation_id` رشته‌ی گفتگو را نگه می‌دارد (پیش‌فرض `mcp`).
+- هیچ chat_id به مدل داده نمی‌شود.
+
+پاسخ‌ها:
+
+| `status` | معنی |
+|---|---|
+| `done` | کار انجام شد (ارسال/یافتن/فهرست/خواندن) |
+| `need_person` | چند گزینه؛ با `selection_token` یا شماره انتخاب کن |
+| `need_confirmation` | پیش‌نویس آماده است؛ با «بله» یا `confirm` تأیید کن |
+| `need_info` | نام یا متن پیام کم است |
+| `need_provider` | برای این کار سرویس مشخصی لازم است |
+| `error` | توضیح خطا در `message` |
+
+حالت‌های MCP با متغیر `MCP_MODE`:
+
+| مقدار | رفتار |
+|---|---|
+| `agent` (پیش‌فرض) | فقط `diba_agent` |
+| `tools` | همان ابزارهای سطح‌پایین قبلی |
+| `both` | هم دستیار سطح‌بالا و هم ابزارهای سطح‌پایین |
+
+مثال:
+
+```bash
+MCP_MODE=tools npx diba-mcp
+```
+
+> در حالت `agent`، لیست ابزارهای MCP فقط `diba_agent` است و کلاینت هوش مصنوعی باید پیام‌های `need_person` / `need_confirmation` / `need_info` را به کاربر نشان بدهد و پاسخ را با همان فیلدها برگرداند.
+
+---
+
+### ابزارهای سطح‌پایین (فقط در `MCP_MODE=tools` یا `both`)
 
 | پیام‌رسان | ابزارهای در دسترس مدل هوش مصنوعی |
 |---|---|
-| **بله (ربات)** | `bale_get_me`, `bale_send_message`, `bale_send_photo`, `bale_send_document`, `bale_get_chat`, `bale_get_updates` |
 | **بله (حساب کاربری)** | `bale_client_get_me`, `bale_client_send_message`, `bale_client_get_chat`, `bale_client_get_dialogs`, `bale_client_get_history`, `bale_client_get_updates` |
-| **ایتا (ربات)** | `eitaa_get_me`, `eitaa_send_message`, `eitaa_send_photo`, `eitaa_send_file` |
 | **ایتا (حساب کاربری)** | `eitaa_client_get_me`, `eitaa_client_send_message`, `eitaa_client_get_chat`, `eitaa_client_get_chats`, `eitaa_client_get_history`, `eitaa_client_get_updates` |
-| **روبیکا (ربات)** | `rubika_get_me`, `rubika_send_message`, `rubika_send_photo`, `rubika_send_file`, `rubika_send_location`, `rubika_get_chat`, `rubika_get_updates` |
 | **روبیکا (حساب کاربری)** | `rubika_client_get_me`, `rubika_client_send_message`, `rubika_client_send_photo`, `rubika_client_send_file`, `rubika_client_get_chat`, `rubika_client_get_chats`, `rubika_client_get_history`, `rubika_client_get_updates` + مدیریت گروه/کانال: `list_groups`, `create_group`, `group_members`, `add_group_members`, `remove_group_member`, `edit_group`, `leave_group`, `delete_group`, `list_channels`, `create_channel`, `channel_members`, `add_channel_members`, `remove_channel_member`, `edit_channel`, `delete_channel` |
-| **سروش‌پلاس (ربات)** | `soroush_get_me`, `soroush_send_message`, `soroush_send_photo`, `soroush_send_document`, `soroush_get_chat`, `soroush_get_updates` |
 | **سروش‌پلاس (حساب کاربری)** | `soroush_client_get_me`, `soroush_client_send_message`, `soroush_client_send_photo`, `soroush_client_send_file`, `soroush_client_get_chat`, `soroush_client_get_chats`, `soroush_client_get_history`, `soroush_client_get_updates` + مدیریت گروه/کانال: `list_groups`, `create_group`, `group_members`, `add_group_members`, `edit_group`, `leave_group`, `delete_group`, `list_channels`, `create_channel`, `channel_members`, `add_channel_members`, `edit_channel`, `leave_channel`, `delete_channel` |
 | **ابزارهای عمومی** | `list_services`, `list_chats` |
 
@@ -203,10 +301,43 @@ Developed by **[Dibachain](https://dibachain.ir)**, the dashboard and API strict
   - **WhatsApp:** Personal account via QR multi-device login (Baileys).
 - 💬 **Integrated Live Inbox:** Synchronize real-time conversations across personal accounts, allowing two-way responses from either the dashboard or the AI agent (`get_updates`).
 - ⚡ **Automation Triggers:** A dedicated `#/triggers` page ships with 38 editable presets — auto-replies, DibaRouter AI answers, cross-messenger forwarding, MCP tool calls and outbound webhooks (n8n / Make / CRM). Each rule has a condition (provider, chat type, keywords, tool) and an action, and can be toggled, tested or deleted in one click; run history lives in `data/triggers.json`.
-- 🎨 **Dibachain Design System:** Production-grade UI featuring unified messenger accordions, default account tabs, Dark/Light modes, and accessible RTL typography.
+- 🎨 **Dibachain Design System:** Production-grade UI with one account connection per messenger, Dark/Light modes, and accessible RTL typography.
+- ⏻ **One-switch account control:** every account has a toggle on the collapsed card and inside its panel. Turning it off removes that account's tools from the model and stops message receiving, while the saved session stays; turning it back on restores the account without logging in again.
 - 🧪 **Live Tool Playground:** Execute tools interactively, upload images or files via drag & drop or clipboard paste (Ctrl+V), and inspect raw JSON payloads.
+- 🧠 **Persistent assistant memory:** conversations, durable user facts and known recipients are stored in `data/assistant.json`; `memory_search` and `memory_remember` are exposed over MCP, and history syncs across devices.
+- ✉️ **Safe name-based sending:** “message [name]” makes the assistant surface the closest matching chats/contacts (fuzzy/partial names and recent chats included), compose a natural message, and send it **only after your confirmation**. Chat IDs are never shown in the conversation; groups/channels, duplicate/spammy text and high-frequency sends are blocked to reduce ban risk.
 - 🛡️ **Robust Security:** Authenticated Bearer tokens, granular rate limiting, brute-force protection, and secure local session credential storage (POSIX permissions 600).
 - 🌍 **Network Diagnostics:** Built-in `netcheck` and automated `selftest` suites with SOCKS5 and HTTP proxy support.
+
+> **Breaking change:** official Bot API connections for Bale, Eitaa, Rubika, Soroush Plus and Telegram have been removed entirely. Each messenger now has a single user-account connection, and previously saved bot tokens are no longer loaded.
+
+---
+
+### 🗺️ Product Roadmap
+
+This roadmap shows where the product stands today and where it is heading. The work is organized around three layers: **reliable connectivity**, **financial data**, and **intelligent customer conversations**.
+
+| # | Track | Status | Outcome |
+|---|---|---|---|
+| 1 | **Messaging platform integrations** | ✅ Done | WhatsApp, Telegram, Bale, Rubika, Soroush+, and Eitaa connected; unified inbox, send/receive, triggers, and MCP tools |
+| 2 | **Banking platform integrations & account balance management** | ⏳ Next | Secure connections to banking/financial accounts, a unified balance and transaction view, alerts, and reconciliation |
+| 3 | **Instagram page connection & smart Direct** | 🚧 In progress | Professional page connection, DM and comment ingestion, AI-assisted replies with human approval, and operator handoff |
+
+#### Where we are
+
+- **Messaging:** mature and usable. User-account connections, live ingestion, sending, triggers, and MCP tools are in place.
+- **Instagram:** secure sign-in through a real browser window, WhatsApp/2FA code handling, and session restoration are complete. Profile and media data are available through MCP tools. **Smart Direct is not live yet.**
+- **Banking:** not implemented yet. It is the next priority and will start in **read-only** mode.
+
+#### What comes next
+
+1. **Harden the messaging layer:** error monitoring, event replay, and long-running connection tests.
+2. **Connect Instagram pages:** complete page permissions, ingest DMs/comments, and route them into the trigger engine.
+3. **Smart Direct:** intent detection, business-knowledge replies, human approval, lead capture, and operator handoff.
+4. **Read-only banking:** official API connections, balance and transaction sync, a multi-account view, and balance-change alerts.
+5. **Approval-gated banking actions:** transfers and payment instructions only in a later phase, with explicit confirmation and a full audit trail.
+
+> **Roadmap principle:** every financial or outbound-messaging capability ships in a safe, observable mode first; sensitive actions never run without human approval.
 
 ---
 
@@ -262,11 +393,12 @@ Add the following configuration to your `claude_desktop_config.json`:
   "mcpServers": {
     "diba-bridge": {
       "command": "npx",
-      "args": ["-y", "diba-mcp", "stdio"]
+      "args": ["-y", "diba-mcp", "stdio", "--data", "/absolute/path/to/diba-mcp/data"]
     }
   }
 }
 ```
+> `--data` must point to the dashboard's data directory (default `./data`). Copy the ready-made command with the correct path from the **Connect** tab. Do not run HTTP and stdio for the same account at the same time.
 
 #### 2. Claude Code (CLI)
 ```bash
@@ -293,13 +425,9 @@ claude mcp add --transport http diba-bridge http://127.0.0.1:3790/mcp --header "
 
 | Platform | Exposed MCP Tools |
 |---|---|
-| **Bale (Bot)** | `bale_get_me`, `bale_send_message`, `bale_send_photo`, `bale_send_document`, `bale_get_chat`, `bale_get_updates` |
 | **Bale (User Account)** | `bale_client_get_me`, `bale_client_send_message`, `bale_client_get_chat`, `bale_client_get_dialogs`, `bale_client_get_history`, `bale_client_get_updates` |
-| **Eitaa (Bot)** | `eitaa_get_me`, `eitaa_send_message`, `eitaa_send_photo`, `eitaa_send_file` |
 | **Eitaa (User Account)** | `eitaa_client_get_me`, `eitaa_client_send_message`, `eitaa_client_get_chat`, `eitaa_client_get_chats`, `eitaa_client_get_history`, `eitaa_client_get_updates` |
-| **Rubika (Bot)** | `rubika_get_me`, `rubika_send_message`, `rubika_send_photo`, `rubika_send_file`, `rubika_send_location`, `rubika_get_chat`, `rubika_get_updates` |
 | **Rubika (User Account)** | `rubika_client_get_me`, `rubika_client_send_message`, `rubika_client_send_photo`, `rubika_client_send_file`, `rubika_client_get_chat`, `rubika_client_get_chats`, `rubika_client_get_history`, `rubika_client_get_updates` + group/channel management: `rubika_client_list_groups`, `create_group`, `group_members`, `add_group_members`, `remove_group_member`, `edit_group`, `leave_group`, `delete_group`, `list_channels`, `create_channel`, `channel_members`, `add_channel_members`, `remove_channel_member`, `edit_channel`, `delete_channel` |
-| **Soroush Plus (Bot)** | `soroush_get_me`, `soroush_send_message`, `soroush_send_photo`, `soroush_send_document`, `soroush_get_chat`, `soroush_get_updates` |
 | **Soroush Plus (User Account)** | `soroush_client_get_me`, `soroush_client_send_message`, `soroush_client_send_photo`, `soroush_client_send_file`, `soroush_client_get_chat`, `soroush_client_get_chats`, `soroush_client_get_history`, `soroush_client_get_updates` + group/channel management: `soroush_client_list_groups`, `create_group`, `group_members`, `add_group_members`, `edit_group`, `leave_group`, `delete_group`, `list_channels`, `create_channel`, `channel_members`, `add_channel_members`, `edit_channel`, `leave_channel`, `delete_channel` |
 | **General Utilities** | `list_services`, `list_chats` |
 

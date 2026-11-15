@@ -94,6 +94,36 @@ describe("context management", () => {
     assert.ok(estimateTokens(JSON.stringify(selected)) <= 1650);
   });
 
+  test("selectAndCompactTools ابزارهای سیستمی را همیشه دارد و ابزار نوشتنی بی‌درخواست را حذف می‌کند", () => {
+    const tool = (name: string) => ({
+      type: "function" as const,
+      function: { name, description: "", parameters: { type: "object", properties: {} } },
+    });
+    const tools = [
+      tool("list_services"),
+      tool("list_chats"),
+      tool("bale_client_get_me"),
+      tool("bale_client_send_message"),
+      tool("bale_client_leave_chat"),
+      ...Array.from({ length: 30 }, (_, i) => tool(`rubika_client_get_tool_${i}`)),
+    ];
+    const status = selectAndCompactTools(tools, "وضعیت سرویس‌ها چطور است؟", { maxTools: 10, maxToolTokens: 2400 });
+    const statusNames = status.map((t) => t.function.name);
+    assert.ok(statusNames.includes("list_services"));
+    assert.ok(statusNames.includes("list_chats"));
+    assert.ok(!statusNames.includes("bale_client_send_message"));
+    assert.ok(!statusNames.includes("bale_client_leave_chat"));
+
+    const send = selectAndCompactTools(tools, "به بله پیام بفرست", { maxTools: 10, maxToolTokens: 2400 });
+    const sendNames = send.map((t) => t.function.name);
+    assert.ok(sendNames.includes("list_services"));
+    assert.ok(sendNames.includes("bale_client_send_message"));
+    assert.ok(!sendNames.includes("bale_client_leave_chat"));
+
+    const remove = selectAndCompactTools(tools, "عضو را از گروه حذف کن", { maxTools: 10, maxToolTokens: 2400 });
+    assert.ok(remove.map((t) => t.function.name).includes("bale_client_leave_chat"));
+  });
+
   test("fitContextToBudget درخواست بزرگ‌تر از سقف را به زیر بودجه می‌آورد", () => {
     const messages = [
       { role: "system", content: "سیستم پرامپت" },

@@ -15,6 +15,28 @@ export interface CallLog {
   error?: string;
 }
 
+export type LogStatusFilter = "all" | "ok" | "fail";
+
+export interface LogQuery {
+  /** شماره‌ی صفحه؛ از ۱ شروع می‌شود */
+  page?: number;
+  /** تعداد ردیف در هر صفحه (۱ تا ۱۰۰) */
+  pageSize?: number;
+  /** فیلتر وضعیت */
+  ok?: LogStatusFilter;
+  /** فیلتر شناسه‌ی سرویس؛ خالی یعنی همه */
+  provider?: string;
+}
+
+export interface LogPage {
+  items: CallLog[];
+  /** تعداد کل ردیف‌های مطابق فیلتر */
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export interface LoggerOptions {
   /** پوشه‌ی فایل‌های لاگ. اگر نباشد لاگ فقط در حافظه می‌ماند */
   dir?: string;
@@ -96,6 +118,24 @@ export class CallLogger {
 
   list(limit = 100): CallLog[] {
     return this.items.slice(0, limit);
+  }
+
+  /**
+   * یک صفحه از لاگ‌ها همراه با فیلتر وضعیت/سرویس.
+   * فیلترها قبل از صفحه‌بندی اعمال می‌شوند تا «تعداد کل» و شماره‌ی صفحه‌ها درست باشد.
+   */
+  page(query: LogQuery = {}): LogPage {
+    const pageSize = Math.min(100, Math.max(1, Math.trunc(query.pageSize ?? 20) || 20));
+    const ok: LogStatusFilter = query.ok === "ok" || query.ok === "fail" ? query.ok : "all";
+    const provider = String(query.provider ?? "").trim();
+    const filtered = this.items.filter(
+      (item) => (ok === "all" || (ok === "ok") === item.ok) && (!provider || item.provider === provider),
+    );
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const page = Math.min(totalPages, Math.max(1, Math.trunc(query.page ?? 1) || 1));
+    const start = (page - 1) * pageSize;
+    return { items: filtered.slice(start, start + pageSize), total, page, pageSize, totalPages };
   }
 
   clear() {

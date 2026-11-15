@@ -35,7 +35,7 @@ export interface IncomingMessage {
   buttonId?: string;
   /** زمان پیام (ISO) */
   date: string;
-  /** in = از کاربر به ربات (پیش‌فرض)، out = پیامی که خود ربات فرستاده */
+  /** in = از کاربر به حساب (پیش‌فرض)، out = پیامی که خود حساب فرستاده */
   direction?: "in" | "out";
   /** برای پیام‌های out: از داشبورد، از طرف مدل، یا از خود حساب کاربری (موبایل/وب) */
   source?: "mcp" | "dashboard" | "account";
@@ -97,13 +97,31 @@ export interface AuthUser {
  * done یعنی نشست ساخته شد و در فیلد sessionField ذخیره می‌شود.
  */
 export interface AuthStep {
-  step: "code" | "password" | "done";
+  step: "code" | "password" | "done" | "browser";
   transactionHash?: string;
   user?: AuthUser;
   hint?: string;
   warning?: string;
+  /** در انتظار اقدام کاربر در پنجره‌ی مرورگر */
+  pending?: boolean;
   /** QR ورود به شکل data:image/png;base64,... (برای واتس‌اپ) */
   qr?: string;
+}
+
+/** ورود با نشست آماده (کوکی مرورگر) — برای سرویس‌هایی که ورود با رمز ممکن نیست */
+export interface AuthSessionImport {
+  title: string;
+  hint: string;
+  placeholder: string;
+  run: (ctx: ProviderContext, raw: string, save: (values: Record<string, string>) => void) => Promise<AuthStep>;
+}
+
+/** ورود با پنجره‌ی واقعی مرورگر (برای سایت‌هایی که iframe را مسدود می‌کنند) */
+export interface AuthBrowserLogin {
+  title: string;
+  hint: string;
+  start: (ctx: ProviderContext) => Promise<{ jobId: string; hint?: string }>;
+  status: (ctx: ProviderContext, jobId: string, save: (values: Record<string, string>) => void) => Promise<AuthStep>;
 }
 
 /** ورود به حساب کاربری (برای پیام‌رسان‌هایی که API رسمی کلاینت ندارند) */
@@ -120,6 +138,10 @@ export interface ProviderAuthDef {
   qr?: boolean;
   /** وضعیت/تصویر QR جاری برای تازه‌سازی خودکار در مرورگر */
   getQr?: (ctx: ProviderContext) => Promise<{ qr?: string; ready?: boolean; error?: string }>;
+  /** روش جایگزین: وارد کردن کوکی نشست از مرورگر (مثلاً اینستاگرام) */
+  sessionImport?: AuthSessionImport;
+  /** روش جایگزین: باز کردن پنجره‌ی واقعی مرورگر و خواندن خودکار کوکی */
+  browserLogin?: AuthBrowserLogin;
   /** برچسب و راهنمای فیلد نام کاربری/شماره */
   inputLabel?: string;
   inputPlaceholder?: string;

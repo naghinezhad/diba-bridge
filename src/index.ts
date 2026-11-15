@@ -7,7 +7,7 @@
  *   const dibaMcp = createDibaMcp({ dataDir: "./data/diba-mcp" });
  *   app.use("/diba-mcp", dibaMcp.router());          // داشبورد + /mcp
  *   // یا مستقیم از کد خودتان:
- *   await dibaMcp.engine.callTool("bale_send_message", { text: "سلام" }, "dashboard");
+ *   await dibaMcp.engine.callTool("bale_client_send_message", { text: "سلام" }, "dashboard");
  */
 import { resolve } from "node:path";
 import { DibaMcpEngine, SERVER_VERSION } from "./core/engine.js";
@@ -53,8 +53,7 @@ export { DibaMcpEngine, SERVER_VERSION } from "./core/engine.js";
 export { startHttp, startStdio, printNetcheck } from "./server.js";
 export { defineTool, ProviderError } from "./core/types.js";
 export type { ProviderDef, ToolDef, ProviderField, ProviderContext, ProviderAuthDef, AuthStep, AuthUser } from "./core/types.js";
-export { createTelegramLikeProvider } from "./providers/telegram-like.js";
-export { builtinProviders, baleClient, eitaaClient, instagram, linkedinProvider, rubikaClient, soroushClient, telegram, telegramClient, whatsapp, x } from "./providers/index.js";
+export { builtinProviders, baleClient, eitaaClient, instagram, linkedinProvider, rubikaClient, soroushClient, telegramClient, whatsapp, x } from "./providers/index.js";
 export { createDibaMcpRouter } from "./http/router.js";
 export { configureProxy, proxyMode } from "./core/net.js";
 export { runNetcheck } from "./core/netcheck.js";

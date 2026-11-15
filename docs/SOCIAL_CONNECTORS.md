@@ -19,7 +19,20 @@ Tools: `telegram_client_get_me`, `telegram_client_get_chats`, `telegram_client_s
 4. If the account has 2FA or a security checkpoint, enter the verification code when prompted.
 5. The session is stored server-side; no API key or Meta Developer Portal app is needed.
 
-Tools: `instagram_get_me`, `instagram_get_user`, `instagram_get_media`, `instagram_get_comments`, `instagram_publish_photo`.
+Instagram limits logins by IP. If the server is in Iran or on a datacenter IP and you see `429`/timeout, set a proxy in the Instagram provider field (or `INSTAGRAM_PROXY_URL`) or in **Settings → proxy**. HTTP and SOCKS5 proxies are supported, and the global `HTTPS_PROXY` / `SOCKS_PROXY` variables are used as a fallback. Wait 15–60 minutes before retrying after a 429; repeated attempts can extend the limit.
+
+Instagram's legacy password endpoint now rejects many clients with `error_type: needs_upgrade` (*"Your version of Instagram is out of date"*) before it even checks the password. The bundled JS client cannot complete Instagram's newer Bloks/CAA login flow. If password login fails this way, use **ورود با کوکی مرورگر** in the same card:
+
+1. Log in to `instagram.com` in a desktop browser.
+2. Open DevTools → Application → Cookies → `https://www.instagram.com`.
+3. Copy `sessionid`, `csrftoken`, and `ds_user_id`.
+4. Paste them (e.g. `sessionid=…; csrftoken=…; ds_user_id=…`) into the cookie box and click **ورود با نشست**. A bare `sessionid` value is also accepted.
+
+Treat these cookies like a password; they are stored server-side and masked in the dashboard.
+
+Tools: `instagram_get_me`, `instagram_get_user`, `instagram_get_media`, `instagram_get_comments`, `instagram_list_chats`, `instagram_get_messages`, `instagram_publish_photo`.
+
+`instagram_list_chats` / `instagram_get_messages` read the direct-message inbox (chat list and recent messages). Instagram direct messages are **read-only** here: the assistant can list and read them, but cannot send DMs.
 
 `instagram_publish_photo` accepts a public image URL or a `data:` URL uploaded from the dashboard.
 
@@ -74,9 +87,11 @@ This uses X's web/private API through an unofficial client. Accounts can be rate
 ## Environment variables
 
 ```env
-TELEGRAM_TOKEN=
-TELEGRAM_BASE_URL=https://api.telegram.org
-TELEGRAM_DEFAULT_CHAT_ID=
+TELEGRAM_CLIENT_ENABLED=true
+TELEGRAM_CLIENT_PHONE=+989121234567
+TELEGRAM_CLIENT_SESSION=1BVtsOK...
+TELEGRAM_CLIENT_API_ID=2040
+TELEGRAM_CLIENT_API_HASH=b18441a1ff607e10a989891a5462e627
 
 INSTAGRAM_USERNAME=
 INSTAGRAM_SESSION=

@@ -411,7 +411,7 @@ export function defaultTriggers(): TriggerDef[] {
       match: { provider: "*", chatType: "*", contains: "فوری, مهم, اضطراری, urgent, asap" },
       action: {
         type: "forward",
-        targetProvider: "bale",
+        targetProvider: "bale_client",
         template: "🚨 پیام فوری از {{provider}} ({{sender}} | چت {{chatId}}):\n{{text}}",
       },
     },
@@ -423,10 +423,10 @@ export function defaultTriggers(): TriggerDef[] {
       enabled: false,
       builtin: true,
       event: "incoming_message",
-      match: { provider: "bale", chatType: "*" },
+      match: { provider: "bale_client", chatType: "*" },
       action: {
         type: "forward",
-        targetProvider: "telegram",
+        targetProvider: "telegram_client",
         template: "📩 از بله ({{sender}}):\n{{text}}",
       },
     },
@@ -438,10 +438,10 @@ export function defaultTriggers(): TriggerDef[] {
       enabled: false,
       builtin: true,
       event: "incoming_message",
-      match: { provider: "telegram", chatType: "*" },
+      match: { provider: "telegram_client", chatType: "*" },
       action: {
         type: "forward",
-        targetProvider: "bale",
+        targetProvider: "bale_client",
         template: "📨 از تلگرام ({{sender}}):\n{{text}}",
       },
     },
@@ -456,7 +456,7 @@ export function defaultTriggers(): TriggerDef[] {
       match: { provider: "*", chatType: "private", contains: "قیمت, دمو, پیش‌فاکتور, خرید, مشاوره" },
       action: {
         type: "forward",
-        targetProvider: "telegram",
+        targetProvider: "telegram_client",
         template: "💼 لید فروش تازه\nسرویس: {{provider}}\nفرستنده: {{sender}}\nچت: {{chatId}}\nمتن: {{text}}",
       },
     },
@@ -471,7 +471,7 @@ export function defaultTriggers(): TriggerDef[] {
       match: { provider: "instagram", chatType: "private" },
       action: {
         type: "forward",
-        targetProvider: "bale",
+        targetProvider: "bale_client",
         template: "⭐ مشتری VIP\n{{sender}} (اینستاگرام)\n{{text}}",
       },
     },
@@ -483,10 +483,10 @@ export function defaultTriggers(): TriggerDef[] {
       enabled: false,
       builtin: true,
       event: "incoming_message",
-      match: { provider: "rubika", chatType: "*" },
+      match: { provider: "rubika_client", chatType: "*" },
       action: {
         type: "forward",
-        targetProvider: "telegram",
+        targetProvider: "telegram_client",
         template: "🗂 آرشیو از روبیکا\n{{sender}} | {{chatTitle}}\n{{text}}",
       },
     },
@@ -498,10 +498,10 @@ export function defaultTriggers(): TriggerDef[] {
       enabled: false,
       builtin: true,
       event: "incoming_message",
-      match: { provider: "eitaa", chatType: "*", contains: "فوری, مشکل, سفارش, شکایت" },
+      match: { provider: "eitaa_client", chatType: "*", contains: "فوری, مشکل, سفارش, شکایت" },
       action: {
         type: "forward",
-        targetProvider: "soroush",
+        targetProvider: "soroush_client",
         template: "🔔 از ایتا ({{sender}}):\n{{text}}",
       },
     },
@@ -516,7 +516,7 @@ export function defaultTriggers(): TriggerDef[] {
       match: { provider: "x", chatType: "*" },
       action: {
         type: "forward",
-        targetProvider: "bale",
+        targetProvider: "bale_client",
         template: "🐦 منشن تازه در ایکس\n{{sender}}: {{text}}",
       },
     },
@@ -533,7 +533,7 @@ export function defaultTriggers(): TriggerDef[] {
       match: { toolName: "*" },
       action: {
         type: "forward",
-        targetProvider: "bale",
+        targetProvider: "bale_client",
         template: "⚠️ خطای MCP در ابزار {{toolName}}:\n{{error}}\nآرگومان‌ها: {{args}}",
       },
     },
@@ -582,16 +582,16 @@ export function defaultTriggers(): TriggerDef[] {
     {
       id: "mcp-health-ping",
       name: "دستور /ping برای سلامت سرویس",
-      description: "با دریافت /ping ربات پاسخ می‌دهد و وضعیت اتصال را تایید می‌کند",
+      description: "با دریافت /ping حساب پاسخ می‌دهد و وضعیت اتصال را تایید می‌کند",
       category: "mcp",
       enabled: false,
       builtin: true,
       event: "incoming_message",
-      match: { provider: "*", chatType: "*", contains: "/ping, تست ربات, ربات فعالی" },
+      match: { provider: "*", chatType: "*", contains: "/ping, تست حساب, حساب فعالی" },
       action: {
         type: "call_tool",
-        toolName: "bale_send_message",
-        toolArgs: '{"chat_id":"{{chatId}}","text":"✅ ربات فعال است — {{provider}} | {{sender}}"}',
+        toolName: "bale_client_send_message",
+        toolArgs: '{"chat_id":"{{chatId}}","text":"✅ حساب متصل است — {{provider}} | {{sender}}"}',
       },
     },
     {
@@ -605,7 +605,7 @@ export function defaultTriggers(): TriggerDef[] {
       match: { provider: "*", chatType: "private", contains: "/broadcast" },
       action: {
         type: "call_tool",
-        toolName: "bale_send_message",
+        toolName: "bale_client_send_message",
         toolArgs: '{"chat_id":"{{chatId}}","text":"📣 اعلان دریافت شد و در صف ارسال قرار گرفت.\nفرستنده: {{sender}}"}',
       },
     },
@@ -693,7 +693,7 @@ interface DemoLogSeed {
 
 /** گزارش‌های نمونه‌ی اولیه تا صفحه‌ی تریگرها در نگاه اول خالی و بی‌روح نباشد */
 const DEMO_LOG_SEEDS: DemoLogSeed[] = [
-  { triggerId: "social-welcome", ok: true, detail: "پاسخ خوش‌آمدگویی به bale:10427631 ارسال شد", minutesAgo: 6 },
+  { triggerId: "social-welcome", ok: true, detail: "پاسخ خوش‌آمدگویی به bale_client:10427631 ارسال شد", minutesAgo: 6 },
   { triggerId: "social-pricing-faq", ok: true, detail: "تعرفه‌ها به instagram:8812043 ارسال شد", minutesAgo: 15 },
   { triggerId: "ai-private-qa", ok: true, detail: "پاسخ هوشمند دیبا روتر به telegram:7751204 ارسال شد", minutesAgo: 24 },
   { triggerId: "social-support-ticket", ok: true, detail: "تیکت شماره‌ی RUB-10987 برای rubika:1098723 ثبت شد", minutesAgo: 41 },
@@ -983,12 +983,12 @@ export class TriggerEngine {
             text: "سلام، این یک پیام آزمایشی برای تست تریگر است.",
             sender: "کاربر تست",
             username: "test_user",
-            provider: t.match.provider && t.match.provider !== "*" ? t.match.provider : "bale",
+            provider: t.match.provider && t.match.provider !== "*" ? t.match.provider : "bale_client",
             chatId: t.match.chatId || "",
             chatTitle: "چت تست",
           }
         : {
-            toolName: "bale_send_message",
+            toolName: "bale_client_send_message",
             error: "خطای آزمایشی برای تست تریگر",
             args: '{"chat_id":"123","text":"test"}',
             ms: "42",
@@ -1059,7 +1059,7 @@ export class TriggerEngine {
       }
 
       if (a.type === "forward") {
-        const targetProvider = a.targetProvider || "bale";
+        const targetProvider = a.targetProvider || "bale_client";
         const p = this.host.provider(targetProvider);
         if (!p || !this.host.store.isReady(p)) throw new Error(`سرویس مقصد (${targetProvider}) آماده نیست`);
         const resolved = this.host.store.resolve(p);

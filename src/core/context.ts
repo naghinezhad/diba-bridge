@@ -240,49 +240,173 @@ const PROVIDER_KEYWORDS: Record<string, string[]> = {
 /**
  * ابزارها را متناسب با پیام کاربر و بودجه توکن انتخاب و اسکیمای آن‌ها را فشرده می‌کند
  * تا مدل‌های با کانتکست 8192 سرریز نکنند.
+ *
+ * قواعد مهم:
+ *  - `list_services` و `list_chats` همیشه در فهرست هستند تا مدل وضعیت را حدس نزند.
+ *  - ابزارهای نوشتنی فقط وقتی درخواست ارسال/ویرایش/حذف صریح باشد وارد می‌شوند.
+ *  - ابزارهای خطرناک (حذف/خروج/بن) فقط با درخواست صریح حذف/خروج.
+ *  - اگر سرویسی در پیام نام برده شده، ابزارهای همان سرویس اولویت می‌گیرند.
  */
+const META_TOOL_NAMES = new Set([
+  "list_services",
+  "list_chats",
+  "memory_search",
+  "memory_remember",
+  "resolve_recipient",
+  "send_message_to",
+]);
+const WRITE_TOOL_RE =
+  /(^|_)(send|post|publish|upload|create|add|invite|join|leave|delete|remove|kick|ban|promote|demote|edit|set|update|mark_read|archive|pin|react|reply|forward|share|logout|login|rotate)(_|$)/;
+const DESTRUCTIVE_TOOL_RE = /(delete|remove|leave|kick|ban|demote|clear|reset|drop|logout|revoke|archive)/;
+const READ_TOOL_RE = /(^|_)(get|list|find|resolve|search|inspect|info|chats|history|messages|contacts|members|session|updates)(_|$)/;
+
+function providerPrefixOf(name: string): string {
+  let best = "";
+  for (const key of Object.keys(PROVIDER_KEYWORDS)) {
+    if (name.startsWith(`${key}_`) && key.length > best.length) best = key;
+  }
+  return best;
+}
+
 export function selectAndCompactTools<T extends { type: "function"; function: { name: string; description?: string; parameters?: any } }>(
   tools: T[],
   userText: string,
-  opts: { maxTools?: number; maxToolTokens?: number } = {},
+  opts: { maxTools?: number; maxToolTokens?: number; blockDirectSend?: boolean } = {},
 ): T[] {
   const maxTools = opts.maxTools ?? 24;
   const maxToolTokens = opts.maxToolTokens ?? 2600;
   const query = userText.toLowerCase();
 
-  const scored = tools.map((t, index) => {
+  const wantsSend =
+    /(بفرست|بفرستم|ارسال|پیام بده|پیام بفرست|send|post|publish|share|forward|reply|منتشر|آپلود|upload)/.test(query);
+  const wantsCreate = /(بساز|ایجاد|ساخت|اضافه|عضو|دعوت|create|new|add|invite|join)/.test(query);
+  const wantsEdit = /(ویرایش|تغییر|اصلاح|edit|update|set|rename|pin|archive|mark|read)/.test(query);
+  const wantsDestructive =
+    /(حذف|پاک|بیرون|اخراج|بن|بلاک|مسدود|غیرفعال|خروج|leave|delete|remove|kick|ban|logout|revoke|clear)/.test(query);
+  const wantsStatus = /(وضعیت|آماده|سرویس|اتصال|متصل|سلامت|ready|status|health|connection|چه خبر)/.test(query);
+  const wantsChats = /(چت|گفتگو|مخاطب|لیست|فهرست|chat|contact|inbox|گروه|کانال)/.test(query);
+  const wantsProfile = /(پروفایل|حساب|من کی|profile|account)/.test(query);
+  const wantsMemory = /(یادت|حافظه|قبلاً|قبلا|به یاد|ذخیره|فراموش|اسم من|نام من|یادت باشه|به خاطر بسپار)/.test(query);
+  const allowWrites = wantsSend || wantsCreate || wantsEdit || wantsDestructive;
+  const hasHighLevelSend = tools.some((t) => t.function.name === "send_message_to");
+  // اگر کاربر خودش chat_id/یوزرنیم داده، ابزار سطح‌پایین هم مجاز است
+  const explicitTarget = /(?:^|\s)@[A-Za-z0-9_]{3,}|-?\d{5,}|\|/.test(userText);
+
+  // سلام/تشکر ساده نیازی به ابزار ندارد
+  const plainGreeting = /^(سلام|درود|وقت بخیر|صبح بخیر|شب بخیر|hi|hello|hey|thanks|ممنون|مرسی)[!؟.،\s]*$/i.test(userText.trim());
+  if (plainGreeting) return [];
+
+  const mentionedPlatforms = new Set<string>();
+  for (const [key, kws] of Object.entries(PROVIDER_KEYWORDS)) {
+    if (kws.some((kw) => query.includes(kw))) mentionedPlatforms.add(key.replace(/_client$/, ""));
+  }
+
+  const scored: Array<{ tool: T; score: number; index: number; platform: string }> = [];
+  tools.forEach((t, index) => {
     const name = t.function.name.toLowerCase();
-    let score = 0;
-    for (const [prefix, kws] of Object.entries(PROVIDER_KEYWORDS)) {
-      if (name.startsWith(`${prefix}_`) && kws.some((kw) => query.includes(kw))) {
-        score += 20;
+    const prefix = providerPrefixOf(name);
+    const platform = prefix.replace(/_client$/, "");
+    const isMeta = META_TOOL_NAMES.has(name);
+    const isWrite = WRITE_TOOL_RE.test(name);
+    const isDestructive = DESTRUCTIVE_TOOL_RE.test(name);
+    const isSend = /(send_|post|publish|upload|share|forward|reply)/.test(name);
+    const isEdit = /(edit|update|set|mark|pin|archive|rename)/.test(name);
+    const isCreate = /(add|invite|join|create)/.test(name);
+
+    // برای ارسال به «نام مخاطب» از ابزار سطح‌بالا استفاده کن، نه انتخاب دستی chat_id
+    const directTextSend = /(?:^|_)(?:send_message|send_msg|send_dm|send_text)$/.test(name);
+    if (hasHighLevelSend && !explicitTarget && directTextSend) return;
+    // در دستیار داشبورد ارسال مستقیم متن ممنوع است؛ فقط مسیر آماده‌سازی/تأیید
+    if (opts.blockDirectSend && directTextSend) return;
+    // ابزار سطح‌بالای ارسال فقط وقتی کاربر ارسال خواسته باشد
+    if (name === "send_message_to" && !wantsSend) return;
+
+    if (!isMeta) {
+      // ابزار نوشتنی فقط با درخواست متناسب با همان نوع کار
+      if (isWrite) {
+        if (isDestructive) {
+          if (!wantsDestructive) return;
+        } else if (isSend) {
+          if (!wantsSend) return;
+        } else if (isEdit) {
+          if (!wantsEdit) return;
+        } else if (isCreate) {
+          if (!wantsCreate && !wantsEdit) return;
+        } else if (!allowWrites) {
+          return;
+        }
+        // اگر سرویس مشخصی نام برده شده، ارسال/تغییر از سرویس دیگر را نشان نده
+        if (mentionedPlatforms.size && platform && !mentionedPlatforms.has(platform)) return;
       }
     }
-    if (/(get_me|get_chats|send_message|get_updates|get_history|get_media)/.test(name)) score += 6;
-    if (/ارسال|بفرست|پیام/.test(query) && /send_message|post|publish/.test(name)) score += 10;
-    if (/چت|گفتگو|فهرست|لیست|مخاطب/.test(query) && /get_chats|get_updates|get_history|get_media/.test(name)) score += 10;
-    if (/پروفایل|من|حساب/.test(query) && /get_me|get_session|get_user/.test(name)) score += 10;
-    return { tool: t, score, index };
+
+    let score = 0;
+    if (name === "list_services") score += 220;
+    else if (name === "list_chats") score += 140;
+    else if (name === "send_message_to") score += wantsSend ? 150 : 0;
+    else if (name === "resolve_recipient") score += wantsSend ? 90 : wantsChats ? 20 : 0;
+    else if (name === "memory_search") score += wantsMemory ? 80 : 10;
+    else if (name === "memory_remember") score += wantsMemory ? 60 : 0;
+    else {
+      if (platform && mentionedPlatforms.has(platform)) score += 60;
+      if (wantsStatus && /(get_me|get_session)/.test(name)) score += 8;
+      if (wantsChats && /(list_chats|get_chats|get_dialogs|get_contacts|find_contact|resolve_contact|get_chat$|get_messages)/.test(name)) score += 30;
+      if (wantsProfile && /(get_me|get_user|get_session|get_profile)/.test(name)) score += 25;
+      if (wantsSend && isSend) score += 40;
+      if (wantsCreate && isCreate) score += 30;
+      if (wantsEdit && isEdit) score += 25;
+      if (wantsDestructive && isDestructive) score += 40;
+      if (READ_TOOL_RE.test(name)) score += 5;
+    }
+    scored.push({ tool: t, score, index, platform });
   });
 
   scored.sort((a, b) => b.score - a.score || a.index - b.index);
 
   const selected: T[] = [];
+  const usedNames = new Set<string>();
+  const counts = new Map<string, number>();
   let usedTokens = 24;
-  for (const { tool } of scored) {
-    if (selected.length >= maxTools) break;
+
+  const push = (tool: T, force = false) => {
+    const name = tool.function.name;
+    if (usedNames.has(name)) return;
     const compact = {
       type: "function" as const,
       function: {
-        name: tool.function.name,
+        name,
         description: truncateText(tool.function.description || "", 75),
         parameters: compactSchemaNode(tool.function.parameters ?? { type: "object", properties: {} }),
       },
     } as T;
     const cost = estimateTokens(JSON.stringify(compact));
-    if (selected.length > 0 && usedTokens + cost > maxToolTokens) continue;
+    if (!force && selected.length > 0 && usedTokens + cost > maxToolTokens) return;
     selected.push(compact);
+    usedNames.add(name);
     usedTokens += cost;
+    const lower = name.toLowerCase();
+    if (!META_TOOL_NAMES.has(lower)) {
+      const platform = providerPrefixOf(lower).replace(/_client$/, "");
+      if (platform) counts.set(platform, (counts.get(platform) ?? 0) + 1);
+    }
+  };
+
+  // ۱) ابزارهای سیستمی/سطح‌بالا همیشه و حتی اگر بودجه تنگ باشد
+  const forceNames = ["list_services", "list_chats"];
+  if (wantsSend) forceNames.push("send_message_to", "resolve_recipient");
+  if (wantsMemory) forceNames.push("memory_search");
+  for (const name of forceNames) {
+    const t = tools.find((x) => x.function.name === name);
+    if (t) push(t, true);
+  }
+
+  // ۲) بقیه‌ی ابزارها با سقف هر پلتفرم
+  for (const item of scored) {
+    if (selected.length >= maxTools) break;
+    if (META_TOOL_NAMES.has(item.tool.function.name.toLowerCase())) continue;
+    const limit = mentionedPlatforms.size ? (mentionedPlatforms.has(item.platform) ? 12 : 1) : 3;
+    if (item.platform && (counts.get(item.platform) ?? 0) >= limit) continue;
+    push(item.tool);
   }
   return selected;
 }

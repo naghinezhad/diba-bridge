@@ -20,6 +20,8 @@ describe("instagram provider", () => {
         "instagram_get_user",
         "instagram_get_media",
         "instagram_get_comments",
+        "instagram_list_chats",
+        "instagram_get_messages",
         "instagram_publish_photo",
       ],
     );
@@ -41,6 +43,15 @@ describe("instagram provider", () => {
 
       const resolved = engine.store.resolve(instagram);
       assert.equal(resolved.values.username, "Test.User_1");
+
+      // ورود جایگزین با کوکی: ورودی نامعتبر بدون تماس شبکه رد می‌شود
+      assert.ok(engine.describeProviders()[0].auth?.sessionImport?.title);
+      const noCookie = await engine.authImport("instagram", "");
+      assert.equal(noCookie.ok, false);
+      assert.match(noCookie.error!, /sessionid/);
+      const junk = await engine.authImport("instagram", "not a cookie");
+      assert.equal(junk.ok, false);
+      assert.match(junk.error!, /sessionid/);
 
       const out = await engine.authStep("instagram", "logout");
       assert.equal(out.ok, true);

@@ -34,6 +34,12 @@ export interface DibaRouterTool {
   };
 }
 
+export type DibaRouterToolChoice =
+  | "auto"
+  | "none"
+  | "required"
+  | { type: "function"; function: { name: string } };
+
 export class DibaRouterError extends Error {
   constructor(
     message: string,
@@ -57,13 +63,17 @@ function headers(config: DibaRouterConfig): Record<string, string> {
 }
 
 async function drFetch(config: DibaRouterConfig, path: string, init: any = {}, timeoutMs = 90_000): Promise<any> {
+  const timeout = AbortSignal.timeout(timeoutMs);
+  // لغو کاربر (توقف دستیار) هم باید درخواست به دیبا روتر را ببندد
+  const signal = init.signal ? AbortSignal.any([timeout, init.signal as AbortSignal]) : timeout;
   try {
     return await netFetch(`${baseOf(config)}${path}`, {
       ...init,
       headers: { ...headers(config), ...(init.headers as Record<string, string> | undefined) },
-      signal: AbortSignal.timeout(timeoutMs),
+      signal,
     });
   } catch (err: any) {
+    if (init.signal?.aborted) throw err;
     throw new DibaRouterError(`دسترسی به دیبا روتر برقرار نشد: ${err?.message ?? err}`, 502);
   }
 }
@@ -73,23 +83,39 @@ async function readError(res: any): Promise<string> {
   return String(data?.error?.message ?? data?.error ?? data?.message ?? `HTTP ${res.status}`);
 }
 
-export async function dibaRouterModels(config: DibaRouterConfig): Promise<any[]> {
+export interface DibaRouterModelInfo {
+  id: string;
+  name: string;
+  category: string;
+  context_length: number;
+  is_free: boolean;
+  supports_tools: boolean;
+  description: string;
+}
+
+export async function dibaRouterModels(config: DibaRouterConfig): Promise<DibaRouterModelInfo[]> {
   const res = await drFetch(config, "/models", { method: "GET" }, 30_000);
   if (!res.ok) throw new DibaRouterError(await readError(res), res.status);
   const data: any = await res.json();
   const list = Array.isArray(data?.data) ? data.data : [];
   return list
     .filter((m: any) => {
+      if (!m?.id) return false;
+      if (m.available === false) return false;
       const category = String(m?.category ?? "").toLowerCase();
       return !category || category === "chat" || category === "vision";
     })
     .map((m: any) => ({
       id: String(m.id),
       name: m.name ? String(m.name) : String(m.id),
-      category: m.category,
-      context_length: m.context_length,
+      category: String(m.category ?? "chat"),
+      context_length: Number(m.context_length) || 0,
       is_free: Boolean(m.is_free),
-      supports_tools: Boolean(m.supports_tools),
+      // در پاسخ دیبا روتر قابلیت‌ها در supported_parameters می‌آید، نه در supports_tools
+      supports_tools: Array.isArray(m.supported_parameters)
+        ? m.supported_parameters.includes("tools")
+        : Boolean(m.supports_tools),
+      description: typeof m.description === "string" ? m.description.replace(/\s+/g, " ").trim().slice(0, 240) : "",
     }));
 }
 
@@ -100,8 +126,10 @@ export async function dibaRouterChat(
     maxTokens?: number;
     temperature?: number;
     tools?: DibaRouterTool[];
-    toolChoice?: "auto" | "none";
+    toolChoice?: DibaRouterToolChoice;
     onDelta?: (delta: string) => void;
+    /** لغو پاسخ در جریان (دکمه‌ی توقف دستیار) */
+    signal?: AbortSignal;
   } = {},
 ): Promise<{ reply: string; model: string; routedModel?: string; cost?: number; toolCalls?: DibaRouterToolCall[]; finishReason?: string }> {
   if (!config.apiKey) throw new DibaRouterError("کلید API دیبا روتر ثبت نشده است.", 400);
@@ -120,6 +148,7 @@ export async function dibaRouterChat(
   const res = await drFetch(config, "/chat/completions", {
     method: "POST",
     body: JSON.stringify(body),
+    signal: opts.signal,
   });
   if (!res.ok) throw new DibaRouterError(await readError(res), res.status);
 
@@ -135,6 +164,7 @@ export async function dibaRouterChat(
     const toolMap = new Map<number, { id: string; name: string; arguments: string }>();
 
     const handleLine = (rawLine: string) => {
+      if (opts.signal?.aborted) return;
       const line = rawLine.trim();
       if (!line.startsWith("data:")) return;
       const payload = line.slice(5).trim();

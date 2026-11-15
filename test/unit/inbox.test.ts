@@ -7,61 +7,6 @@ import { DibaMcpEngine } from "../../src/core/engine.ts";
 import { hintFor } from "../../src/core/selftest.ts";
 import { testImagePng } from "../../src/core/testimage.ts";
 import type { IncomingMessage, ProviderDef } from "../../src/core/types.ts";
-import { normalizeRubikaUpdate } from "../../src/providers/rubika.ts";
-import { normalizeTelegramUpdate } from "../../src/providers/telegram-like.ts";
-
-describe("normalizeTelegramUpdate (Bale / Soroush)", () => {
-  test("private text message", () => {
-    const m = normalizeTelegramUpdate("bale", {
-      update_id: 10,
-      message: { message_id: 5, date: 1_700_000_000, text: "سلام", chat: { id: 123, type: "private", first_name: "علی", last_name: "رضایی" }, from: { id: 123, first_name: "علی", username: "ali" } },
-    })!;
-    assert.equal(m.key, "bale:123:5");
-    assert.equal(m.chatId, "123");
-    assert.equal(m.chatType, "private");
-    assert.equal(m.chatTitle, "علی رضایی");
-    assert.equal(m.from?.username, "ali");
-    assert.equal(m.kind, "text");
-    assert.equal(m.date, new Date(1_700_000_000_000).toISOString());
-  });
-
-  test("channel post with photo + caption, supergroup, button click", () => {
-    const ch = normalizeTelegramUpdate("bale", { update_id: 1, channel_post: { message_id: 9, date: 1, caption: "عکس", photo: [{}], chat: { id: -100, type: "channel", title: "کانال من" } } })!;
-    assert.equal(ch.chatType, "channel");
-    assert.equal(ch.kind, "photo");
-    assert.equal(ch.text, "عکس");
-    assert.equal(ch.chatTitle, "کانال من");
-    assert.equal(normalizeTelegramUpdate("bale", { message: { message_id: 1, chat: { id: -5, type: "supergroup", title: "g" }, text: "x" } })!.chatType, "group");
-    const cb = normalizeTelegramUpdate("bale", { callback_query: { id: "77", data: "menu_1", from: { id: 3, first_name: "B" }, message: { message_id: 4, chat: { id: 3, type: "private" } } } })!;
-    assert.equal(cb.kind, "button");
-    assert.equal(cb.buttonId, "menu_1");
-    assert.equal(cb.key, "bale:3:cb77");
-  });
-
-  test("garbage is ignored", () => {
-    assert.equal(normalizeTelegramUpdate("bale", {}), null);
-    assert.equal(normalizeTelegramUpdate("bale", null), null);
-    assert.equal(normalizeTelegramUpdate("bale", { message: { text: "no chat" } }), null);
-  });
-});
-
-describe("normalizeRubikaUpdate", () => {
-  test("NewMessage text, file, button, StartedBot", () => {
-    const t = normalizeRubikaUpdate({ type: "NewMessage", chat_id: "b0ABC", new_message: { message_id: "11", text: "hi", time: "1700000000", sender_id: "u0X" } })!;
-    assert.equal(t.chatType, "private");
-    assert.equal(t.key, "rubika:b0ABC:11");
-    assert.equal(t.from?.id, "u0X");
-    assert.equal(t.date, new Date(1_700_000_000_000).toISOString());
-    assert.equal(normalizeRubikaUpdate({ chat_id: "g0G", new_message: { message_id: 1, file: { file_name: "a.JPG" } } })!.kind, "photo");
-    assert.equal(normalizeRubikaUpdate({ chat_id: "c0C", new_message: { message_id: 2, file: { file_name: "a.pdf" } } })!.kind, "file");
-    const b = normalizeRubikaUpdate({ inline_message: { chat_id: "b0Z", message_id: "3", text: "خرید", aux_data: { button_id: "buy" } } })!;
-    assert.equal(b.kind, "button");
-    assert.equal(b.buttonId, "buy");
-    const s = normalizeRubikaUpdate({ type: "StartedBot", chat_id: "b0Q", time: "5" })!;
-    assert.match(s.text!, /start/);
-    assert.equal(normalizeRubikaUpdate({ type: "StoppedBot" }), null);
-  });
-});
 
 // ---------------- صندوق با یک پیام‌رسان ساختگی ----------------
 function fakeProvider(script: Array<IncomingMessage[] | Error>) {

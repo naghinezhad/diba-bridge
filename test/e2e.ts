@@ -1,7 +1,11 @@
 /**
- * تست سرتاسری: یک سرور جعلی به‌جای API پیام‌رسان‌ها بالا می‌آورد،
+ * تست سرتاسری: یک سرویس آزمایشی (ProviderDef) + یک API جعلی بالا می‌آورد،
  * سرور diba-mcp را اجرا می‌کند و با کلاینت واقعی MCP ابزارها را صدا می‌زند.
  *   npm test
+ *
+ * سرویس‌های واقعی (بله، تلگرام، ...) وابسته به شبکه و حساب واقعی هستند؛ اینجا
+ * همان مسیرهای پلتفرم (engine، صندوق، تست کامل، داشبورد و MCP) با یک سرویس
+ * ساختگی پوشش داده می‌شوند و خودِ سرویس‌ها تست واحد دارند.
  */
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -9,9 +13,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
 import express from "express";
+import { z } from "zod";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { createDibaMcp } from "../src/index.js";
+import { defineTool, type IncomingMessage, type ProviderDef } from "../src/core/types.js";
 import { runSelfTest } from "../src/core/selftest.js";
 
 const listen = (app: express.Express) =>
@@ -19,71 +25,157 @@ const listen = (app: express.Express) =>
     const s = app.listen(0, "127.0.0.1", () => ok({ url: `http://127.0.0.1:${(s.address() as AddressInfo).port}`, close: () => s.close() }));
   });
 
-// ---------- API جعلی ----------
+// ---------- API جعلی سرویس آزمایشی ----------
 const seen: any[] = [];
-const tgUpdates: any[] = [];
-let nextMsgId = 1000;
-const tgUpdate = (id: number, chat: number, text: string, extra: Record<string, unknown> = {}) =>
-  tgUpdates.push({ update_id: id, message: { message_id: id, date: Math.floor(Date.now() / 1000), text, chat: { id: chat, type: "private", first_name: "مریم", ...extra }, from: { id: chat, first_name: "مریم" } } });
+const pending: any[] = [];
+let nextId = 100;
+let nextUpdate = 1;
 const mock = express();
+mock.use(express.json());
 
-/** multipart را به { field: value | {name,type,size,bytes} } تبدیل می‌کند */
-async function readForm(req: express.Request) {
-  const form = await new Request("http://x", { method: "POST", headers: req.headers as any, body: req as any, duplex: "half" } as any).formData();
-  const out: Record<string, any> = {};
-  for (const [k, v] of form as any) {
-    out[k] = typeof v === "string" ? v : { name: v.name, type: v.type, size: v.size, bytes: Buffer.from(await v.arrayBuffer()) };
-  }
-  return out;
-}
-const isMultipart = (req: express.Request) => String(req.headers["content-type"] ?? "").startsWith("multipart/");
+const tokenOf = (req: express.Request) => String(req.query.token ?? req.body?.token ?? "");
+const authorized = (req: express.Request, res: express.Response) => {
+  if (tokenOf(req) === "GOOD") return true;
+  res.status(401).json({ ok: false, error: "Unauthorized" });
+  return false;
+};
 
-// یک PNG کوچک واقعی (۱×۱)
-const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
-mock.get("/img/cat", (_req, res) => void res.type("image/png").send(PNG));
-mock.get("/go", (_req, res) => void res.redirect(302, "/img/cat"));
-mock.get("/doc.txt", (_req, res) => void res.type("text/plain").send("hello file"));
+mock.get("/me", (req, res) => {
+  if (!authorized(req, res)) return;
+  res.json({ ok: true, result: { id: 7, first_name: "حساب تست", username: "demo_user" } });
+});
 
-mock.post("/tg/:bot/:method", express.json(), async (req, res) => {
-  const body = isMultipart(req) ? await readForm(req) : req.body;
-  seen.push({ api: "tg", bot: req.params.bot, method: req.params.method, body });
-  if (req.params.bot !== "botGOOD:TOKEN") return void res.status(401).json({ ok: false, description: "Unauthorized" });
-  if (req.params.method === "getMe") return void res.json({ ok: true, result: { id: 1, username: "test_bot", first_name: "ربات تست" } });
-  if (req.params.method === "getUpdates") {
-    const offset = Number(body.offset ?? 0);
-    return void res.json({ ok: true, result: tgUpdates.filter((u) => u.update_id >= offset) });
-  }
-  if (req.params.method === "getChat") return void res.json({ ok: true, result: { id: body.chat_id, type: "private", first_name: "مریم" } });
-  res.json({ ok: true, result: { message_id: ++nextMsgId, chat: { id: body.chat_id }, text: body.text } });
+mock.get("/chat/:id", (req, res) => {
+  if (!authorized(req, res)) return;
+  res.json({ ok: true, result: { id: req.params.id, title: "مریم", type: "private" } });
 });
-mock.post("/eitaa/:token/:method", async (req, res) => {
-  seen.push({ api: "eitaa", method: req.params.method, body: await readForm(req) });
-  res.json({ ok: true, result: { message_id: 7 } });
+
+mock.post("/send", (req, res) => {
+  if (!authorized(req, res)) return;
+  seen.push({ path: "/send", body: req.body });
+  res.json({ ok: true, result: { message_id: ++nextId, chat_id: String(req.body.chat_id) } });
 });
-mock.post("/rubika-upload/:slot", async (req, res) => {
-  const body = await readForm(req);
-  seen.push({ api: "rubika-upload", slot: req.params.slot, body });
-  res.json({ status: "OK", data: { file_id: `F-${body.file?.size}` } });
+
+mock.get("/updates", (req, res) => {
+  if (!authorized(req, res)) return;
+  const offset = Number(req.query.offset ?? 0);
+  const batch = pending.filter((u) => u.id >= offset);
+  res.json({ ok: true, result: batch });
 });
-mock.post("/rubika/:token/:method", express.json(), (req, res) => {
-  seen.push({ api: "rubika", method: req.params.method, body: req.body });
-  if (req.params.method === "sendMessage") return void res.json({ status: "OK", data: { message_id: "999" } });
-  if (req.params.method === "requestSendFile")
-    return void res.json({ status: "OK", data: { upload_url: `http://${req.headers.host}/rubika-upload/${req.body.type}` } });
-  if (req.params.method === "sendFile") return void res.json({ status: "OK", data: { message_id: "1001" } });
-  res.json({ status: "INVALID_INPUT", dev_message: "bad chat" });
+
+// دیبا روتر جعلی: پاسخ SSE کند، برای تست دکمه‌ی «توقف» دستیار
+let drOpen = false;
+let drClosed = false;
+mock.post("/dr/chat/completions", (req, res) => {
+  drOpen = true;
+  res.writeHead(200, { "content-type": "text/event-stream" });
+  const timer = setInterval(() => {
+    res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: "…" } }] })}\n\n`);
+  }, 25);
+  req.on("close", () => {
+    drClosed = true;
+    clearInterval(timer);
+  });
 });
+
 const upstream = await listen(mock);
 
+// ---------- سرویس آزمایشی ----------
+const demo: ProviderDef = {
+  id: "demo",
+  name: "Demo",
+  nameFa: "سرویس آزمایشی",
+  category: "messenger",
+  color: "#2563eb",
+  glyph: "آ",
+  description: "سرویس ساختگی برای تست پلتفرم",
+  fields: [
+    { key: "token", label: "توکن", type: "secret", required: true },
+    { key: "baseUrl", label: "آدرس پایه", type: "url", default: upstream.url },
+    { key: "defaultChatId", label: "چت پیش‌فرض", type: "text" },
+  ],
+  async test(ctx) {
+    const r = await fetch(`${ctx.config.baseUrl}/me?token=${encodeURIComponent(ctx.config.token)}`);
+    if (!r.ok) throw new Error(`Unauthorized (${r.status})`);
+    return ((await r.json()) as any).result;
+  },
+  tools: [
+    defineTool({
+      name: "demo_get_me",
+      title: "اطلاعات حساب",
+      description: "Get the demo account profile.",
+      input: {},
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (_a, ctx) => {
+        const r = await fetch(`${ctx.config.baseUrl}/me?token=${encodeURIComponent(ctx.config.token)}`);
+        if (!r.ok) throw new Error("Unauthorized");
+        return ((await r.json()) as any).result;
+      },
+    }),
+    defineTool({
+      name: "demo_get_chat",
+      title: "اطلاعات چت",
+      description: "Get a chat by id.",
+      input: { chat_id: z.string().min(1) },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      handler: async (a, ctx) => {
+        const r = await fetch(`${ctx.config.baseUrl}/chat/${encodeURIComponent(a.chat_id)}?token=${encodeURIComponent(ctx.config.token)}`);
+        if (!r.ok) throw new Error("Unauthorized");
+        return ((await r.json()) as any).result;
+      },
+    }),
+    defineTool({
+      name: "demo_send_message",
+      title: "ارسال پیام",
+      description: "Send a text message via the demo service.",
+      input: { chat_id: z.string().optional(), text: z.string().min(1) },
+      annotations: { openWorldHint: true },
+      handler: async (a, ctx) => {
+        const chatId = a.chat_id || ctx.config.defaultChatId;
+        const r = await fetch(`${ctx.config.baseUrl}/send`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token: ctx.config.token, chat_id: chatId, text: a.text }),
+        });
+        if (!r.ok) throw new Error("Unauthorized");
+        return ((await r.json()) as any).result;
+      },
+    }),
+  ],
+  receive: {
+    async poll(ctx, cursor) {
+      const offset = Number(cursor ?? 0);
+      const r = await fetch(`${ctx.config.baseUrl}/updates?offset=${offset}&token=${encodeURIComponent(ctx.config.token)}`);
+      if (!r.ok) throw new Error("Unauthorized");
+      const list = ((await r.json()) as any).result as any[];
+      const messages: IncomingMessage[] = list.map((u) => ({
+        key: `demo:${u.chat_id}:${u.id}`,
+        provider: "demo",
+        chatId: String(u.chat_id),
+        chatTitle: u.title || "کاربر",
+        chatType: "private",
+        messageId: String(u.id),
+        from: { id: String(u.chat_id), name: u.title || "کاربر" },
+        text: u.text,
+        kind: "text",
+        date: new Date(u.time ?? Date.now()).toISOString(),
+        direction: "in",
+      }));
+      const next = list.length ? Math.max(...list.map((u) => u.id)) + 1 : offset;
+      return { messages, cursor: String(next) };
+    },
+  },
+};
+
+const pushUpdate = (chatId: number, text: string, title = "مریم") =>
+  pending.push({ id: nextUpdate++, chat_id: chatId, text, title, time: Date.now() });
+
 // ---------- diba-mcp ----------
+process.env.ADMIN_PASSWORD = "e2e-pass";
 const dataDir = mkdtempSync(join(tmpdir(), "diba-mcp-test-"));
-// mock روی 127.0.0.1 است، پس دانلود از آدرس داخلی فقط در تست مجاز می‌شود
-const dibaMcp = createDibaMcp({ dataDir, env: { ALLOW_PRIVATE_MEDIA_URLS: "true" } });
+const dibaMcp = createDibaMcp({ dataDir, env: { MCP_MODE: "tools" }, only: ["demo"], extraProviders: [demo] });
 const { store } = dibaMcp.engine;
-store.update("bale", { enabled: true, values: { token: "GOOD:TOKEN", baseUrl: `${upstream.url}/tg`, defaultChatId: "555" } });
-store.update("soroush", { enabled: true, values: { token: "BAD", baseUrl: `${upstream.url}/tg` } });
-store.update("eitaa", { enabled: true, values: { token: "e-tok", baseUrl: `${upstream.url}/eitaa`, defaultChatId: "mychannel" } });
-store.update("rubika", { enabled: true, values: { token: "r-tok", baseUrl: `${upstream.url}/rubika` } });
+store.update("demo", { enabled: true, values: { token: "GOOD", baseUrl: upstream.url, defaultChatId: "555" } });
 
 const app = express();
 app.use("/diba-mcp", dibaMcp.router()); // مثل الحاق به پروژه‌ی میزبان، با پیشوند
@@ -108,207 +200,128 @@ try {
     new StreamableHTTPClientTransport(mcpUrl, { requestInit: { headers: { Authorization: `Bearer ${store.mcpToken}` } } }),
   );
 
-  await step("فهرست ابزارها", async () => {
+  await step("فهرست ابزارها فقط سرویس آماده را نشان می‌دهد", async () => {
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name);
-    for (const n of ["list_services", "bale_send_message", "eitaa_send_message", "rubika_send_message", "soroush_get_me"])
+    for (const n of ["list_services", "list_chats", "demo_send_message", "demo_get_me", "demo_get_chat"])
       assert.ok(names.includes(n), `missing ${n}`);
-    assert.equal(tools.find((t) => t.name === "bale_get_me")?.annotations?.readOnlyHint, true);
+    assert.equal(tools.find((t) => t.name === "demo_get_me")?.annotations?.readOnlyHint, true);
   });
 
-  await step("بله: ارسال پیام با چت پیش‌فرض", async () => {
-    const r: any = await client.callTool({ name: "bale_send_message", arguments: { text: "سلام از تست" } });
+  await step("ارسال پیام با چت پیش‌فرض", async () => {
+    const r: any = await client.callTool({ name: "demo_send_message", arguments: { text: "سلام از تست" } });
     assert.ok(!r.isError, r.content?.[0]?.text);
     const last = seen.at(-1);
-    assert.equal(last.method, "sendMessage");
+    assert.equal(last.path, "/send");
     assert.equal(last.body.chat_id, "555");
     assert.equal(last.body.text, "سلام از تست");
   });
 
-  await step("سروش: توکن اشتباه ← خطای خوانا و بدون نشت توکن", async () => {
-    const r: any = await client.callTool({ name: "soroush_get_me", arguments: {} });
+  await step("خطای احراز هویت خوانا و بدون نشت توکن", async () => {
+    store.update("demo", { values: { token: "BAD-TOKEN" } });
+    const r: any = await client.callTool({ name: "demo_get_me", arguments: {} });
     assert.equal(r.isError, true);
     assert.match(r.content[0].text, /Unauthorized/);
+    assert.ok(!r.content[0].text.includes("BAD-TOKEN"));
+    store.update("demo", { values: { token: "GOOD" } });
   });
 
-  await step("ایتا: form-data با pin", async () => {
-    const r: any = await client.callTool({ name: "eitaa_send_message", arguments: { text: "خبر", pin: true } });
-    assert.ok(!r.isError, r.content?.[0]?.text);
-    const last = seen.at(-1);
-    assert.equal(last.api, "eitaa");
-    assert.equal(last.body.chat_id, "mychannel");
-    assert.equal(last.body.pin, "1");
+  await step("دریافت پیام خاموش است ← get_updates مستقیم از API", async () => {
+    pushUpdate(777, "سلام از سرویس");
+    // ابزار get_updates برای این سرویس تعریف نشده؛ صندوق مستقیم تست می‌شود
+    const { added } = await dibaMcp.engine.inbox.fetchOnce("demo");
+    assert.equal(added, 1);
+    const list = dibaMcp.engine.inbox.messages("demo");
+    assert.equal(list[0].chatId, "777");
+    assert.equal(list[0].chatTitle, "مریم");
+    assert.equal(list[0].direction, "in");
   });
 
-  await step("روبیکا: موفق و خطای status", async () => {
-    const ok: any = await client.callTool({ name: "rubika_send_message", arguments: { chat_id: "b0X", text: "hi" } });
-    assert.ok(!ok.isError);
-    assert.match(ok.content[0].text, /999/);
-    const bad: any = await client.callTool({ name: "rubika_get_chat", arguments: { chat_id: "zz" } });
-    assert.equal(bad.isError, true);
-    assert.match(bad.content[0].text, /bad chat/);
-  });
-
-  const DATA_URL = `data:image/png;name=${encodeURIComponent("عکس من.png")};base64,${PNG.toString("base64")}`;
-  const call = async (name: string, args: Record<string, unknown>) => {
-    const r: any = await client.callTool({ name, arguments: args });
-    assert.ok(!r.isError, `${name}: ${r.content?.[0]?.text}`);
-    return r;
-  };
-
-  await step("بله: عکس از لینک ← سرور دانلود و multipart آپلود می‌کند", async () => {
-    await call("bale_send_photo", { photo: `${upstream.url}/go`, caption: "گربه" });
-    const last = seen.at(-1);
-    assert.equal(last.method, "sendPhoto");
-    assert.equal(last.body.chat_id, "555");
-    assert.equal(last.body.caption, "گربه");
-    assert.equal(last.body.photo.type, "image/png");
-    assert.equal(last.body.photo.name, "cat.png"); // پسوند از روی نوع فایل
-    assert.ok(last.body.photo.bytes.equals(PNG));
-  });
-
-  await step("بله: عکس انتخاب‌شده از دستگاه (data URL) با نام فارسی", async () => {
-    await call("bale_send_photo", { photo: DATA_URL });
-    const last = seen.at(-1);
-    assert.equal(last.body.photo.name, "عکس من.png");
-    assert.ok(last.body.photo.bytes.equals(PNG));
-  });
-
-  await step("بله: file_id بدون آپلود، به‌صورت JSON", async () => {
-    await call("bale_send_photo", { photo: "AgACAgQAAxkBAAI" });
-    assert.equal(seen.at(-1).body.photo, "AgACAgQAAxkBAAI");
-  });
-
-  await step("بله: ارسال فایل و جلوگیری از فرستادن غیرعکس به‌جای عکس", async () => {
-    await call("bale_send_document", { document: `${upstream.url}/doc.txt`, filename: "گزارش" });
-    const last = seen.at(-1);
-    assert.equal(last.method, "sendDocument");
-    assert.equal(last.body.document.name, "گزارش.txt");
-    const bad: any = await client.callTool({ name: "bale_send_photo", arguments: { photo: `${upstream.url}/doc.txt` } });
-    assert.equal(bad.isError, true);
-    assert.match(bad.content[0].text, /عکس نیست/);
-  });
-
-  await step("روبیکا: requestSendFile ← آپلود ← sendFile", async () => {
-    const r = await call("rubika_send_photo", { chat_id: "b0X", photo: DATA_URL, caption: "سلام" });
-    const steps = seen.slice(-3);
-    assert.deepEqual(steps.map((x) => x.method ?? x.api), ["requestSendFile", "rubika-upload", "sendFile"]);
-    assert.equal(steps[0].body.type, "Image");
-    assert.equal(steps[1].body.file.size, PNG.length);
-    assert.deepEqual(steps[2].body, { chat_id: "b0X", file_id: `F-${PNG.length}`, text: "سلام" });
-    assert.match(r.content[0].text, /1001/);
-    await call("rubika_send_file", { chat_id: "b0X", file: `${upstream.url}/doc.txt`, type: "File" });
-    assert.equal(seen.at(-3).body.type, "File");
-  });
-
-  await step("ایتا: عکس و فایل با فیلد file؛ file_id رد می‌شود", async () => {
-    await call("eitaa_send_photo", { photo: DATA_URL, caption: "پست" });
-    const last = seen.at(-1);
-    assert.equal(last.method, "sendFile");
-    assert.equal(last.body.chat_id, "mychannel");
-    assert.equal(last.body.file.name, "عکس من.png");
-    const bad: any = await client.callTool({ name: "eitaa_send_file", arguments: { file: "some_file_id" } });
-    assert.equal(bad.isError, true);
-  });
-
-  await step("لاگ‌ها data URL کامل را ذخیره نمی‌کنند", async () => {
-    const big = `data:text/plain;name=big.txt;base64,${Buffer.alloc(50_000, 65).toString("base64")}`;
-    await call("eitaa_send_file", { file: big });
-    assert.equal(seen.at(-1).body.file.size, 50_000);
-    const log = dibaMcp.engine.logger.list().find((l) => l.tool === "eitaa_send_file")!;
-    const logged = String((log.args as any).file);
-    assert.match(logged, /\(49 KB\)$/);
-    assert.ok(logged.length < 200);
-  });
-
-  await step("دریافت پیام: get_updates مستقیم وقتی دریافت خاموش است", async () => {
-    tgUpdate(100, 777, "سلام ربات");
-    const r = await call("bale_get_updates", {});
-    const data = JSON.parse(r.content[0].text);
-    assert.equal(data.source, "api");
-    assert.equal(data.messages[0].chatId, "777");
-    assert.equal(data.messages[0].chatTitle, "مریم");
-  });
-
-  await step("دریافت پیام: حلقه‌ی دریافت، صندوق، list_chats و offset", async () => {
+  await step("حلقه‌ی دریافت، صندوق، list_chats و offset", async () => {
     dibaMcp.engine.inbox.idleMs = 20;
-    dibaMcp.engine.updateProvider("bale", { receive: true });
+    dibaMcp.engine.updateProvider("demo", { receive: true });
     const until = async (cond: () => boolean) => {
       for (let i = 0; i < 200 && !cond(); i++) await new Promise((r) => setTimeout(r, 15));
       assert.ok(cond(), "timeout");
     };
-    const incoming = () => dibaMcp.engine.inbox.messages("bale", { limit: 500 }).filter((m) => m.direction !== "out");
-    await until(() => incoming().length === 1);
-    tgUpdate(101, 888, "پیام دوم", { first_name: "رضا" });
-    await until(() => incoming().length === 2);
-    // offset درست جلو رفته: آخرین getUpdates با offset=102
-    const lastPoll = seen.filter((x) => x.method === "getUpdates").at(-1);
-    assert.equal(lastPoll.body.offset, 102);
-    const r = await call("bale_get_updates", { chat_id: "888" });
-    const data = JSON.parse(r.content[0].text);
-    assert.equal(data.source, "inbox");
-    assert.deepEqual(data.messages.map((m: any) => m.text), ["پیام دوم"]);
-    const chats = JSON.parse((await call("list_chats", { provider: "bale" })).content[0].text);
+    const incoming = () => dibaMcp.engine.inbox.messages("demo", { limit: 500 }).filter((m) => m.direction !== "out");
+    const before = incoming().length;
+    pushUpdate(888, "پیام دوم", "رضا");
+    await until(() => incoming().length === before + 1);
+    const chats = JSON.parse((await client.callTool({ name: "list_chats", arguments: { provider: "demo" } })).content[0].text as string);
     const ids = chats.chats.map((c: any) => c.chatId);
-    assert.ok(ids.includes("777") && ids.includes("888"), JSON.stringify(ids));
+    assert.ok(ids.includes("888") && ids.includes("777"), JSON.stringify(ids));
   });
 
-  await step("پیام‌های ارسالی ربات در گفتگو ثبت می‌شوند (منبع، نوع، لینک عکس)", async () => {
-    const out = dibaMcp.engine.inbox.messages("bale", { chatId: "555" }).filter((m) => m.direction === "out");
-    const texts = out.map((m) => m.text);
-    assert.ok(texts.includes("سلام از تست"), JSON.stringify(texts));
+  await step("پیام‌های ارسالی در گفتگو ثبت می‌شوند (منبع، جهت)", async () => {
+    const out = dibaMcp.engine.inbox.messages("demo", { chatId: "555" }).filter((m) => m.direction === "out");
+    assert.ok(out.some((m) => m.text === "سلام از تست"), JSON.stringify(out));
     assert.ok(out.every((m) => m.source === "mcp"));
-    const photo = out.find((m) => m.kind === "photo" && m.mediaUrl);
-    assert.match(photo!.mediaUrl!, /\/go$/);
-    assert.ok(!out.some((m) => (m.mediaUrl ?? "").startsWith("data:")), "data URLs are never stored");
-    // از داشبورد به یک چت دیگر
-    const r = await dibaMcp.engine.callTool("bale_send_message", { chat_id: "777", text: "جواب از داشبورد" }, "dashboard");
+    const r = await dibaMcp.engine.callTool("demo_send_message", { chat_id: "777", text: "جواب از داشبورد" }, "dashboard");
     assert.ok(r.ok);
-    const conv = dibaMcp.engine.inbox.messages("bale", { chatId: "777" });
+    const conv = dibaMcp.engine.inbox.messages("demo", { chatId: "777" });
     assert.equal(conv[0].direction, "out");
     assert.equal(conv[0].source, "dashboard");
     assert.equal(conv[0].chatTitle, "مریم"); // عنوان از پیام‌های قبلی همان چت
-    const chat = dibaMcp.engine.inbox.chats("bale").find((c) => c.chatId === "777")!;
+    const chat = dibaMcp.engine.inbox.chats("demo").find((c) => c.chatId === "777")!;
     assert.equal(chat.lastDirection, "out");
-    // ایتا دریافت ندارد ولی پیام‌های ارسالی‌اش در فهرست چت‌ها هست
-    assert.ok(dibaMcp.engine.inbox.chats().some((c) => c.provider === "eitaa" && c.chatId === "mychannel"));
   });
 
-  await step("تست کامل بله: همه‌ی قدم‌ها سبز", async () => {
-    const r = await runSelfTest(dibaMcp.engine, "bale", { send: true });
+  await step("تست کامل: مراحل پیکربندی، شبکه، احراز، چت، ارسال و دریافت", async () => {
+    const r = await runSelfTest(dibaMcp.engine, "demo", { send: true });
     const by = Object.fromEntries(r.steps.map((s) => [s.id, s.status]));
-    assert.deepEqual(by, { config: "ok", network: "ok", auth: "ok", chat: "ok", send_text: "ok", send_photo: "ok", receive: "ok" }, r.text);
+    assert.deepEqual(by, { config: "ok", network: "ok", auth: "ok", chat: "ok", send_text: "ok", send_photo: "skip", receive: "ok" }, r.text);
     assert.equal(r.ok, true);
-    assert.match(r.text, /✅ ارسال عکس/);
-    const photo = seen.filter((x) => x.method === "sendPhoto").at(-1);
-    assert.equal(photo.body.photo.type, "image/png");
-    assert.ok(!r.text.includes("GOOD:TOKEN"));
-  });
-
-  await step("تست کامل سروش با توکن اشتباه: خطا + راهنما + بقیه رد می‌شوند", async () => {
-    const r = await runSelfTest(dibaMcp.engine, "soroush", { send: true });
-    const auth = r.steps.find((s) => s.id === "auth")!;
-    assert.equal(auth.status, "fail");
-    assert.match(auth.hint!, /توکن/);
-    assert.ok(r.steps.filter((s) => ["chat", "send_text", "send_photo", "receive"].includes(s.id)).every((s) => s.status === "skip"));
-    assert.equal(r.ok, false);
+    assert.ok(!r.text.includes("GOOD"));
   });
 
   await step("ورودی نامعتبر", async () => {
-    const r: any = await client.callTool({ name: "bale_send_message", arguments: { text: "" } });
+    const r: any = await client.callTool({ name: "demo_send_message", arguments: { text: "" } });
     assert.equal(r.isError, true);
   });
 
-  await step("غیرفعال کردن سرویس ← ابزار حذف می‌شود", async () => {
-    store.update("rubika", { enabled: false });
+  await step("خاموش کردن حساب ← ابزار حذف می‌شود", async () => {
+    store.update("demo", { enabled: false });
     const { tools } = await client.listTools();
-    assert.ok(!tools.some((t) => t.name.startsWith("rubika_")));
+    assert.ok(!tools.some((t) => t.name.startsWith("demo_")));
+    store.update("demo", { enabled: true });
   });
 
-  await step("لاگ ثبت شده", async () => {
+  await step("لاگ‌ها ثبت شده و توکن در آن‌ها نیست", async () => {
     const logs = dibaMcp.engine.logger.list();
     assert.ok(logs.length >= 5);
-    assert.ok(logs.every((l) => !JSON.stringify(l).includes("GOOD:TOKEN")));
+    assert.ok(logs.every((l) => !JSON.stringify(l).includes("GOOD-TOKEN")));
+  });
+
+  await step("توقف دستیار: بستن اتصال، درخواست مدل را قطع می‌کند", async () => {
+    store.updateDibarouter({ baseUrl: `${upstream.url}/dr`, apiKey: "e2e-key", model: "e2e-model" });
+    const login = await fetch(`${srv.url}/diba-mcp/api/auth/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password: "e2e-pass" }),
+    });
+    assert.equal(login.status, 200);
+    const cookie = login.headers.getSetCookie()[0].split(";")[0];
+
+    const ac = new AbortController();
+    const pendingRes = fetch(`${srv.url}/diba-mcp/api/agent/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify({ messages: [{ role: "user", content: "سلام" }], stream: true, conversationId: "e2e" }),
+      signal: ac.signal,
+    });
+    const res = await pendingRes;
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type") ?? "", /text\/event-stream/);
+    const reader = res.body!.getReader();
+    await reader.read(); // اولین رویداد استریم
+    ac.abort(); // همان چیزی که دکمه‌ی «توقف» انجام می‌دهد
+    await reader.cancel().catch(() => {});
+
+    const end = Date.now() + 2000;
+    while (!drClosed && Date.now() < end) await new Promise((r) => setTimeout(r, 20));
+    assert.equal(drOpen, true, "درخواست باید به مدل رسیده باشد");
+    assert.equal(drClosed, true, "با توقف کاربر، اتصال به مدل باید بسته شود");
   });
 
   await step("داشبورد: بدون ورود ← 401، صفحه در دسترس", async () => {

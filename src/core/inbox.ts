@@ -165,7 +165,7 @@ export class Inbox {
     return [...out.values()].sort((a, b) => b.lastDate.localeCompare(a.lastDate));
   }
 
-  /** پیامی که خود ربات فرستاده را ثبت می‌کند تا در گفتگو دیده شود */
+  /** پیامی که خود حساب فرستاده را ثبت می‌کند تا در گفتگو دیده شود */
   recordOutgoing(
     id: string,
     m: { chatId: string; messageId?: string; text?: string; kind: IncomingMessage["kind"]; source: "mcp" | "dashboard"; mediaUrl?: string },

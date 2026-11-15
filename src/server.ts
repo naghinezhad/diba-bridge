@@ -4,6 +4,7 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import express from "express";
 import type { Server } from "node:http";
+import { Writable } from "node:stream";
 import { runNetcheck } from "./core/netcheck.js";
 import { createDibaMcp } from "./index.js";
 
@@ -47,14 +48,35 @@ export function startHttp(opts: HttpOptions = {}): Promise<{ url: string; server
   });
 }
 
-/** اجرا با stdio (Claude Desktop و ...). هیچ چیزی روی stdout چاپ نمی‌شود. */
+/**
+ * اجرا با stdio (Claude Desktop و ...). هیچ چیزی روی stdout چاپ نمی‌شود.
+ * MCP روی stdout پیام JSON-RPC رد و بدل می‌کند؛ برای همین هر لاگ کتابخانه‌ها
+ * (مثل pino/Baileys که مستقیم روی stdout می‌نویسند) به stderr هدایت می‌شود.
+ */
 export async function startStdio(opts: { dataDir?: string } = {}) {
-  // پروتکل stdio روی stdout کار می‌کند؛ لاگ‌های کتابخانه‌های کلاینت نباید آن را خراب کنند
+  const protocolStdout = process.stdout;
+  const writeProtocol = protocolStdout.write.bind(protocolStdout);
+  const guardedStdout = new Writable({
+    write(chunk, encoding, callback) {
+      writeProtocol(chunk as any, encoding as BufferEncoding, callback);
+    },
+  });
+
+  process.stdout.write = ((chunk: any, encoding?: any, callback?: any) => {
+    if (typeof encoding === "function") {
+      callback = encoding;
+      encoding = undefined;
+    }
+    return process.stderr.write(chunk, encoding, callback);
+  }) as typeof process.stdout.write;
+
   console.log = (...args: any[]) => console.error(...args);
   console.info = (...args: any[]) => console.error(...args);
   console.debug = (...args: any[]) => console.error(...args);
   const dibaMcp = createDibaMcp({ dataDir: opts.dataDir });
-  await dibaMcp.createMcpServer().connect(new StdioServerTransport());
+  // ابزار list_chats و دریافت پیام‌ها در حالت stdio هم کار کنند
+  dibaMcp.engine.inbox.start();
+  await dibaMcp.createMcpServer().connect(new StdioServerTransport(process.stdin, guardedStdout));
   console.error(`[diba-mcp] stdio آماده است — ${dibaMcp.engine.activeTools().length} ابزار فعال — داده: ${dibaMcp.dataDir}`);
 }
 

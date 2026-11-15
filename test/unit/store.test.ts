@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, test } from "node:test";
 import { ConfigStore, envKey } from "../../src/core/store.ts";
-import { bale, rubika } from "../../src/providers/index.ts";
+import { baleClient, rubikaClient } from "../../src/providers/index.ts";
 
 const dir = () => mkdtempSync(join(tmpdir(), "diba-store-"));
 
@@ -17,45 +17,45 @@ describe("envKey", () => {
 });
 
 describe("ConfigStore", () => {
-  test("creates config with a token, session secret and 600 permissions", () => {
+  test("creates config with a token and session secret", () => {
     const d = dir();
     const s = new ConfigStore(d, {});
     assert.match(s.mcpToken, /^dmcp_/);
     assert.ok(s.sessionSecret.length >= 32);
-    assert.equal(statSync(join(d, "config.json")).mode & 0o777, 0o600);
+    // ویندوز حالت فایل POSIX ندارد؛ مجوز ۶۰۰ فقط روی لینوکس/مک قابل بررسی است
+    if (process.platform !== "win32") assert.equal(statSync(join(d, "config.json")).mode & 0o777, 0o600);
   });
 
   test("values persist across instances", () => {
     const d = dir();
-    new ConfigStore(d, {}).update("bale", { enabled: true, values: { token: "  abc:def  " } });
+    new ConfigStore(d, {}).update("bale_client", { enabled: true, values: { session: "  abc:def  " } });
     const s2 = new ConfigStore(d, {});
-    assert.equal(s2.resolve(bale).values.token, "abc:def"); // trim شده
-    assert.equal(s2.isReady(bale), true);
+    assert.equal(s2.resolve(baleClient).values.session, "abc:def"); // trim شده
+    assert.equal(s2.isReady(baleClient), true);
   });
 
   test("env overrides file and is reported as fromEnv", () => {
     const d = dir();
-    const s = new ConfigStore(d, { BALE_TOKEN: "from-env", BALE_ENABLED: "true" });
-    s.update("bale", { enabled: false, values: { token: "from-file" } });
-    const r = s.resolve(bale);
-    assert.equal(r.values.token, "from-env");
-    assert.equal(r.fromEnv.token, true);
-    assert.equal(s.isEnabled(bale), true);
+    const s = new ConfigStore(d, { BALE_CLIENT_SESSION: "from-env", BALE_CLIENT_ENABLED: "true" });
+    s.update("bale_client", { enabled: false, values: { session: "from-file" } });
+    const r = s.resolve(baleClient);
+    assert.equal(r.values.session, "from-env");
+    assert.equal(r.fromEnv.session, true);
+    assert.equal(s.isEnabled(baleClient), true);
   });
 
-  test("defaults fill empty fields, missing required fields block readiness", () => {
+  test("missing required fields block readiness", () => {
     const s = new ConfigStore(dir(), {});
-    s.update("rubika", { enabled: true });
-    assert.equal(s.resolve(rubika).values.baseUrl, "https://botapi.rubika.ir/v3");
-    assert.deepEqual(s.missingFields(rubika), ["token"]);
-    assert.equal(s.isReady(rubika), false);
+    s.update("rubika_client", { enabled: true });
+    assert.deepEqual(s.missingFields(rubikaClient), ["session"]);
+    assert.equal(s.isReady(rubikaClient), false);
   });
 
   test("empty string clears a stored value", () => {
     const s = new ConfigStore(dir(), {});
-    s.update("bale", { values: { token: "x" } });
-    s.update("bale", { values: { token: "" } });
-    assert.equal(s.resolve(bale).values.token, "");
+    s.update("bale_client", { values: { session: "x" } });
+    s.update("bale_client", { values: { session: "" } });
+    assert.equal(s.resolve(baleClient).values.session, "");
   });
 
   test("corrupt config is backed up instead of silently lost", () => {

@@ -28,7 +28,7 @@
 { "provider": "*", "chatType": "private", "contains": "قیمت, تعرفه, خرید", "toolName": "*" }
 ```
 
-- `provider`: `*` یا شناسه‌ی سرویس مثل `bale`، `telegram`، `instagram`.
+- `provider`: `*` یا شناسه‌ی سرویس مثل `bale_client`، `telegram_client`، `instagram`.
 - `chatType`: `*` / `private` / `group` / `channel`.
 - `contains`: فهرست کلمات با کاما؛ هر کلمه می‌تواند الگوی `*` داشته باشد. خالی = همه‌ی پیام‌ها.
 - `toolName`: برای رویدادهای ابزار؛ مثلاً `*_send_*` یا `*_publish_*`.

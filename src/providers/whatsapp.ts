@@ -4,7 +4,7 @@
  * QR مستقیم از پروتکل WhatsApp Web تولید می‌شود؛ بدون مرورگر، OpenWA،
  * API Token یا کد لینک. برای اسکن از WhatsApp → Linked devices استفاده کنید.
  */
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
@@ -138,9 +138,49 @@ function chatKind(id: string): ChatRecord["kind"] {
   return "private";
 }
 
+function unwrapMessage(m: any): any {
+  let c = m?.message ?? {};
+  for (let i = 0; i < 3; i += 1) {
+    const next = c?.viewOnceMessage?.message
+      ?? c?.viewOnceMessageV2?.message
+      ?? c?.viewOnceMessageV2Extension?.message
+      ?? c?.ephemeralMessage?.message
+      ?? c?.documentWithCaptionMessage?.message
+      ?? c?.editedMessage?.message;
+    if (!next) break;
+    c = next;
+  }
+  return c;
+}
+
 function textOfMessage(m: any): string | undefined {
-  const c = m?.message ?? {};
-  return c.conversation ?? c.extendedTextMessage?.text ?? c.imageMessage?.caption ?? c.videoMessage?.caption ?? c.documentMessage?.caption;
+  const c = unwrapMessage(m);
+  const candidates = [
+    c?.conversation,
+    c?.extendedTextMessage?.text,
+    c?.imageMessage?.caption,
+    c?.videoMessage?.caption,
+    c?.documentMessage?.caption,
+    c?.buttonsMessage?.contentText,
+    c?.buttonsMessage?.headerText,
+    c?.buttonsMessage?.footerText,
+    c?.templateMessage?.hydratedTemplate?.hydratedContentText,
+    c?.templateMessage?.hydratedTemplate?.hydratedTitleText,
+    c?.templateMessage?.hydratedFourRowTemplate?.hydratedContentText,
+    c?.templateMessage?.fourRowTemplate?.content?.text,
+    c?.interactiveMessage?.body?.text,
+    c?.interactiveMessage?.header?.title,
+    c?.interactiveMessage?.footer?.text,
+    c?.listMessage?.title,
+    c?.listMessage?.description,
+    c?.buttonsResponseMessage?.selectedDisplayText,
+    c?.listResponseMessage?.title,
+    c?.listResponseMessage?.singleSelectReply?.selectedRowId,
+  ];
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) return value;
+  }
+  return undefined;
 }
 
 function mergeChat(target: Managed, raw: any) {
@@ -188,6 +228,16 @@ function recordMessage(target: Managed, raw: any) {
 function messageFromUpsert(m: any): IncomingMessage | null {
   if (!m?.key?.remoteJid) return null;
   const text = textOfMessage(m);
+  if (!text && process.env.WHATSAPP_DEBUG_RAW === "1") {
+    try {
+      writeFileSync(resolve("data", "whatsapp-raw-last.json"), JSON.stringify({
+        message: m?.message,
+        messageStubType: m?.messageStubType,
+        messageStubParameters: m?.messageStubParameters,
+        messageTimestamp: m?.messageTimestamp,
+      }, null, 2));
+    } catch { /* debug only */ }
+  }
   const c = m.message ?? {};
   const kind: IncomingMessage["kind"] = c.imageMessage ? "photo" : c.videoMessage ? "video" : c.audioMessage ? "voice" : c.documentMessage ? "file" : text !== undefined ? "text" : "other";
   return {

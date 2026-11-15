@@ -7,15 +7,19 @@ const state = {
   overview: null,
   logs: [],
   logFilter: { ok: "all", provider: "" },
+  logPage: 1,
+  logPageSize: 20,
+  logTotal: 0,
+  logTotalPages: 1,
   openPlatform: null,
-  activeTab: {}, // platformKey -> 'client' | 'bot'
   timer: null,
   authTx: {},
   openToolProvider: null,
-  agent: { open: true, busy: false, messages: [], config: null, unread: 0, full: false },
+  agent: { open: true, busy: false, messages: [], config: null, unread: 0, full: false, abort: null },
 };
 const AGENT_HISTORY_KEY = "diba.agent.history.v1";
 const AGENT_PREFS_KEY = "diba.agent.prefs.v1";
+const AGENT_GREETING = "سلام! من دستیار دیبا هستم. درباره‌ی وضعیت پیام‌رسان‌ها، دلیل آماده نبودن یک سرویس، دریافت پیام‌ها، ابزارها یا اتصال MCP بپرسید.";
 function loadAgentHistory() {
   try {
     const raw = JSON.parse(localStorage.getItem(AGENT_HISTORY_KEY) || "[]");
@@ -334,6 +338,7 @@ const icons = {
   cross: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   dash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 12h10"/></svg>',
   send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 4L3 11l7 2 2 7z"/><path d="M10 13l10-9"/></svg>',
+  stop: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="6.5" width="11" height="11" rx="2.2"/></svg>',
   playground: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"/></svg>',
   logs: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h10M4 18h13"/></svg>',
   search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>',
@@ -347,13 +352,15 @@ const icons = {
   file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>',
   refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>',
   user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>',
-  bot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="10" rx="3"/><circle cx="8.5" cy="16" r="1.5" fill="currentColor"/><circle cx="15.5" cy="16" r="1.5" fill="currentColor"/><path d="M12 2v4M8 6h8M2 15h1M21 15h1"/></svg>',
   external: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>',
   sparkles: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8zM19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9zM5 16l.9 2.1L8 19l-2.1.9L5 22l-.9-2.1L2 19l2.1-.9z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
   shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
   maximize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>',
   minimize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v3a2 2 0 0 1-2 2H3M16 3v3a2 2 0 0 0 2 2h3M8 21v-3a2 2 0 0 0-2-2H3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>',
   alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3L2.8 20h18.4L12 3z"/><path d="M12 9v5"/><circle cx="12" cy="17.4" r=".8" fill="currentColor" stroke="none"/></svg>',
+  tools: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>',
 };
 // کلید منو با شناسه‌ی صفحه یکی است
 icons.triggers = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
@@ -375,8 +382,7 @@ const pages = [
 const iranianProviders = ["bale", "eitaa", "rubika", "soroush"];
 
 /**
- * راهنمای اتصال هر سرویس. برای هر حالت (client / bot) مراحل جداگانه داریم
- * تا پایین کارت همان تبِ باز، راهنمای درست نمایش داده شود.
+ * راهنمای اتصال هر سرویس با حساب کاربری.
  */
 const providerTutorials = {
   bale: {
@@ -385,22 +391,12 @@ const providerTutorials = {
       "کد پیامکی و در صورت نیاز رمز دومرحله‌ای را تکمیل کنید.",
       "پس از اتصال، فهرست گفتگوها و ابزارهای حساب کاربری فعال می‌شوند.",
     ],
-    bot: [
-      "در بله به ربات رسمی BotFather پیام دهید و یک ربات بسازید.",
-      "توکن ربات را کپی و در فیلد «توکن ربات» ذخیره کنید.",
-      "برای گروه/کانال، ربات را ادمین کنید تا ابزارهای مدیریتی فعال شوند.",
-    ],
   },
   eitaa: {
     client: [
       "پل EitaaBun را روی سرور اجرا کنید (پورت پیش‌فرض ۱۲۳۴).",
       "آدرس پل را در فیلد «آدرس پل» وارد و ذخیره کنید.",
       "با شماره ایتا وارد شوید و کد پیامکی را تأیید کنید.",
-    ],
-    bot: [
-      "در ایتا یک ربات رسمی بسازید و توکن آن را دریافت کنید.",
-      "توکن و آدرس API را در فرم همین کارت ذخیره کنید.",
-      "برای دریافت پیام‌ها، ربات را در گروه/کانال یا چت قرار دهید.",
     ],
   },
   rubika: {
@@ -409,22 +405,12 @@ const providerTutorials = {
       "کد ارسال‌شده در روبیکا را تأیید و در صورت نیاز رمز دومرحله‌ای را وارد کنید.",
       "پس از اتصال، گفتگوها و ابزارهای مدیریت گروه/کانال در دسترس هستند.",
     ],
-    bot: [
-      "در روبیکا به BotFather پیام دهید و یک ربات بسازید.",
-      "توکن ربات را در فیلد مربوطه ذخیره کنید.",
-      "ربات را در گروه/کانال ادمین کنید تا ارسال و مدیریت ممکن شود.",
-    ],
   },
   soroush: {
     client: [
       "شماره حساب سروش‌پلاس را در فرم ورود وارد کنید.",
       "کد پیامکی و رمز دومرحله‌ای را در صورت فعال بودن تکمیل کنید.",
       "نشست در سرور ذخیره می‌شود و ابزارهای حساب کاربری فعال می‌شوند.",
-    ],
-    bot: [
-      "در سروش‌پلاس یک ربات رسمی بسازید و توکن آن را بگیرید.",
-      "توکن و آدرس API را در همین فرم ذخیره کنید.",
-      "ربات را در گروه/کانال ادمین کنید تا پیام‌ها را دریافت کند.",
     ],
   },
   telegram: {
@@ -434,19 +420,14 @@ const providerTutorials = {
       "API ID و API Hash پیش‌فرض برای شروع کافی است؛ در صورت نیاز از my.telegram.org مقدار اختصاصی بگیرید.",
       "پس از اتصال، گفتگوها، گروه‌ها و کانال‌ها در دسترس هستند.",
     ],
-    bot: [
-      "در تلگرام به @BotFather پیام دهید و دستور /newbot را اجرا کنید.",
-      "نام و یوزرنیم ربات را انتخاب کنید و توکن دریافتی را کپی کنید.",
-      "توکن را در فیلد «توکن ربات» ذخیره و «تست اتصال» را بزنید.",
-      "برای مدیریت گروه/کانال، ربات را ادمین کنید.",
-    ],
   },
   instagram: {
-    bot: [
-      "اکانت اینستاگرام را به حالت Business یا Creator تبدیل کنید.",
-      "در Meta for Developers یک اپ بسازید و دسترسی instagram_basic و instagram_content_publish بگیرید.",
-      "Access Token و Instagram Business Account ID را در همین فرم وارد کنید.",
-      "نشر عکس نیازمند یک آدرس تصویر عمومی (https) است.",
+    client: [
+      "نام کاربری اینستاگرام را بدون @ وارد کنید و «ادامه» را بزنید.",
+      "رمز عبور حساب را وارد کنید؛ اگر 2FA فعال است کد Authenticator، واتس‌اپ یا پیامک را وارد کنید.",
+      "اگر اینستاگرام تأیید امنیتی (Checkpoint) خواست، کد ارسال‌شده به ایمیل/شماره را وارد کنید.",
+      "نشست روی سرور ذخیره می‌شود و ابزارهای پروفایل، مدیا، کامنت و انتشار عکس فعال می‌شوند؛ نیازی به API Key یا Meta Developer Portal نیست.",
+      "اگر خطای «نسخه قدیمی» یا 429/Timeout گرفتید، اول پراکسی http یا socks5 فعال کنید؛ اگر باز هم نشد از «ورود با کوکی مرورگر» استفاده کنید (sessionid و csrftoken و ds_user_id از DevTools).",
     ],
   },
   whatsapp: {
@@ -469,7 +450,7 @@ const providerTutorials = {
   },
   linkedin: {
     appUrl: "https://www.linkedin.com/developers/apps/new",
-    bot: [
+    client: [
       "در LinkedIn Developer Portal یک App بسازید و آن را به یک LinkedIn Page معتبر متصل کنید.",
       "در بخش Products، «Share on LinkedIn» و در صورت نیاز «Sign In with LinkedIn using OpenID Connect» را فعال کنید.",
       "در Auth، یک Redirect URL ثبت کنید (مثلاً https://your-domain/callback) و OAuth 2.0 را با scopes «openid profile w_member_social» اجرا کنید.",
@@ -562,8 +543,8 @@ const platformMeta = {
     nameEn: "Instagram",
     logo: "assets/instagram.svg",
     color: "#d62976",
-    description: "Instagram Graph API — پروفایل، مدیا و انتشار عکس برای اکانت Business/Creator",
-    docsUrl: "https://developers.facebook.com/docs/instagram-platform",
+    description: "ورود با نام کاربری و رمز اینستاگرام — پروفایل، مدیا، کامنت و انتشار عکس بدون API Key",
+    docsUrl: "https://github.com/dilame/instagram-private-api",
   },
   whatsapp: {
     key: "whatsapp",
@@ -595,14 +576,9 @@ const platformMeta = {
 };
 
 function parseProvider(p) {
-  const isClient = p.id.endsWith("_client") || Boolean(p.auth);
   const platformKey = p.id.replace(/_client$/, "");
-  return { isClient, platformKey };
+  return { platformKey };
 }
-
-/** این پلتفرم‌ها BotFather دارند؛ بقیه API رسمی/پل هستند. */
-const botFatherPlatforms = new Set(["bale", "eitaa", "rubika", "soroush", "telegram"]);
-const isBotFatherPlatform = (key) => botFatherPlatforms.has(key);
 
 /** لوگوی رسمی پلتفرم به‌جای حرف/گلیف */
 function providerLogo(p) {
@@ -615,7 +591,7 @@ function providerLogo(p) {
 function groupProviders(providers) {
   const map = new Map();
   for (const p of providers) {
-    const { isClient, platformKey } = parseProvider(p);
+    const { platformKey } = parseProvider(p);
     if (!map.has(platformKey)) {
       const meta = platformMeta[platformKey] || {
         key: platformKey,
@@ -628,13 +604,12 @@ function groupProviders(providers) {
       };
       map.set(platformKey, {
         ...meta,
-        client: null,
-        bot: null,
+        provider: null,
       });
     }
     const item = map.get(platformKey);
-    if (isClient) item.client = p;
-    else item.bot = p;
+    // هر پلتفرم فقط یک اتصال دارد: حساب کاربری (یا API رسمی، مثل لینکدین)
+    if (!item.provider) item.provider = p;
   }
   return Array.from(map.values());
 }
@@ -666,7 +641,7 @@ function renderAuth(needsSetup) {
         <div class="auth-brand-copy">
           <span class="eyebrow">زیرساخت ارتباط یکپارچه</span>
           <h1>همه‌ی پیام‌رسان‌ها، یک داشبورد.</h1>
-          <p>حساب‌های کاربری، ربات‌ها و ابزارهای هوش مصنوعی را از یک نقطه مدیریت کنید.</p>
+          <p>حساب‌های کاربری پیام‌رسان‌ها و ابزارهای هوش مصنوعی را از یک نقطه مدیریت کنید.</p>
         </div>
         <ul class="auth-points">
           <li><span class="auth-check">${icons.check}</span><div><b>پیام‌رسان‌های ایرانی و خارجی</b><small>بله، ایتا، روبیکا، سروش، تلگرام، واتس‌اپ و بیشتر</small></div></li>
@@ -829,6 +804,7 @@ function agentDockHtml() {
           <small id="agent-status">در حال بررسی اتصال…</small>
         </div>
         <div class="agent-head-actions">
+          <button class="btn btn-icon btn-quiet" id="agent-clear" type="button" aria-label="پاک کردن گفتگو" title="پاک کردن گفتگو" disabled>${icons.trash}</button>
           <button class="btn btn-icon btn-quiet" id="agent-full" type="button" aria-label="${a.full ? "خروج از تمام‌صفحه" : "تمام‌صفحه"}">${a.full ? icons.minimize : icons.maximize}</button>
           <button class="btn btn-icon btn-quiet" id="agent-close" type="button" aria-label="بستن دستیار">${icons.cross}</button>
         </div>
@@ -836,6 +812,7 @@ function agentDockHtml() {
       <div class="agent-messages" id="agent-messages" aria-live="polite"></div>
       <form class="agent-form" id="agent-form">
         <textarea id="agent-input" rows="1" placeholder="درباره‌ی سیستم بپرس…" aria-label="سؤال از دستیار"></textarea>
+        <button class="btn btn-ghost btn-icon agent-stop" id="agent-stop" type="button" aria-label="توقف پاسخ" title="توقف پاسخ (Esc)" hidden>${icons.stop}</button>
         <button class="btn btn-primary btn-icon" id="agent-send" type="submit" aria-label="ارسال">${icons.send}</button>
       </form>
       <div class="agent-foot">
@@ -876,10 +853,14 @@ function renderAgentMessages() {
             ? `<span class="agent-stream-status">${esc(m.status || "در حال فکر کردن…")}</span>`
             : "";
         const statusLine = m.streaming && m.content && m.status ? `<div class="agent-stream-status">${esc(m.status)}</div>` : "";
+        const stopped = m.stopped ? `<div class="agent-stopped">${icons.stop}<span>پاسخ متوقف شد</span></div>` : "";
         const trace = Array.isArray(m.toolTrace) && m.toolTrace.length
           ? `<div class="agent-tool-trace">${m.toolTrace.map((t) => `<span class="${t.ok ? "ok" : "fail"}">${t.ok ? icons.check : "!"} ${esc(t.name)}</span>`).join("")}</div>`
           : "";
-        return `<div class="agent-msg ${m.role === "user" ? "is-user" : "is-bot"}"><div class="agent-bubble">${body}${statusLine}${trace}</div></div>`;
+        const actions = !m.streaming && Array.isArray(m.actions) && m.actions.length
+          ? `<div class="agent-actions">${m.actions.map((a) => `<button type="button" data-agent-action="${esc(a.value)}">${esc(a.label)}</button>`).join("")}</div>`
+          : "";
+        return `<div class="agent-msg ${m.role === "user" ? "is-user" : "is-bot"}"><div class="agent-bubble">${body}${statusLine}${stopped}${trace}${actions}</div></div>`;
       })
       .join("") +
     (state.agent.messages.length <= 1 && !state.agent.busy
@@ -891,6 +872,22 @@ function renderAgentMessages() {
       : "") +
     (state.agent.busy && !hasStreaming ? `<div class="agent-msg is-bot"><div class="agent-bubble agent-typing"><i></i><i></i><i></i></div></div>` : "");
   box.scrollTop = box.scrollHeight;
+  const clearBtn = document.getElementById("agent-clear");
+  if (clearBtn) {
+    const hasConversation = state.agent.messages.some((m) => m.role === "user") || state.agent.messages.length > 1;
+    clearBtn.disabled = state.agent.busy || !hasConversation;
+    clearBtn.title = state.agent.busy ? "تا پایان پاسخ صبر کنید" : hasConversation ? "پاک کردن گفتگو" : "گفتگویی برای پاک کردن نیست";
+  }
+  const sendBtn = document.getElementById("agent-send");
+  if (sendBtn) {
+    sendBtn.hidden = state.agent.busy;
+    sendBtn.disabled = state.agent.busy;
+  }
+  const stopBtn = document.getElementById("agent-stop");
+  if (stopBtn) {
+    stopBtn.hidden = !state.agent.busy;
+    stopBtn.disabled = !state.agent.busy;
+  }
 }
 
 async function refreshAgentConfig() {
@@ -909,22 +906,40 @@ async function refreshAgentConfig() {
 
 function initAgent() {
   if (!state.agent.messages.length) {
-    state.agent.messages.push({
-      role: "assistant",
-      content: "سلام! من دستیار دیبا هستم. درباره‌ی وضعیت پیام‌رسان‌ها، دلیل آماده نبودن یک سرویس، دریافت پیام‌ها، ابزارها یا اتصال MCP بپرسید.",
-    });
+    state.agent.messages.push({ role: "assistant", content: AGENT_GREETING });
   }
   renderAgentMessages();
   refreshAgentConfig();
+  // اگر حافظه‌ی محلی خالی است، تاریخچه‌ی سرور را برای همین دستگاه بارگذاری کن
+  if (state.agent.messages.length <= 1) {
+    api("agent/history?limit=40&conversationId=dashboard")
+      .then((r) => {
+        if (!Array.isArray(r.messages) || !r.messages.length) return;
+        if (state.agent.busy || state.agent.messages.some((m) => m.role === "user")) return;
+        state.agent.messages = r.messages.map((m) => ({ role: m.role, content: m.content }));
+        saveAgentHistory();
+        renderAgentMessages();
+      })
+      .catch(() => {});
+  }
 
   const dock = document.getElementById("agent-dock");
   const panel = document.getElementById("agent-panel");
   const toggle = document.getElementById("agent-toggle");
   const close = document.getElementById("agent-close");
   const fullBtn = document.getElementById("agent-full");
+  const clearBtn = document.getElementById("agent-clear");
   const input = document.getElementById("agent-input");
   const form = document.getElementById("agent-form");
+  const stopBtn = document.getElementById("agent-stop");
   if (!dock || !panel || !form) return;
+
+  /** توقف پاسخ در جریان: هم درخواست مرورگر و هم کار سرور لغو می‌شود */
+  const stopRun = () => {
+    if (!state.agent.busy) return;
+    state.agent.abort?.abort();
+  };
+  if (stopBtn) stopBtn.onclick = stopRun;
 
   const applyLayout = () => {
     dock.classList.toggle("full", state.agent.full);
@@ -952,9 +967,32 @@ function initAgent() {
   toggle.onclick = () => setOpen(!state.agent.open);
   close.onclick = () => setOpen(false);
   if (fullBtn) fullBtn.onclick = () => setFull(!state.agent.full);
+  if (clearBtn) {
+    clearBtn.onclick = async () => {
+      if (state.agent.busy) return;
+      const confirmed = await openModal({
+        title: "پاک کردن گفتگو",
+        message: "همه‌ی پیام‌های این گفتگو پاک می‌شود و دستیار از نو شروع می‌کند.",
+        confirmText: "پاک کن",
+        tone: "danger",
+      });
+      if (!confirmed) return;
+      await api("agent/history", { method: "DELETE", body: { conversationId: "dashboard" } }).catch(() => {});
+      state.agent.messages = [{ role: "assistant", content: AGENT_GREETING }];
+      if (input) {
+        input.value = "";
+        input.style.height = "40px";
+      }
+      saveAgentHistory();
+      renderAgentMessages();
+      input?.focus();
+      toast("گفتگو پاک شد");
+    };
+  }
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && state.agent.open) {
-      if (state.agent.full) setFull(false);
+      if (state.agent.busy) stopRun();
+      else if (state.agent.full) setFull(false);
       else setOpen(false);
     }
   });
@@ -967,18 +1005,23 @@ function initAgent() {
     input.value = "";
     input.style.height = "40px";
     state.agent.messages.push({ role: "user", content: text });
+    for (const m of state.agent.messages) if (m.role === "assistant") m.actions = undefined;
     saveAgentHistory();
     const historyToSend = state.agent.messages.slice(-20);
     const botMsg = { role: "assistant", content: "", streaming: true, status: "در حال اتصال…", toolTrace: [] };
     state.agent.messages.push(botMsg);
     state.agent.busy = true;
+    const controller = new AbortController();
+    state.agent.abort = controller;
+    let finished = false;
     renderAgentMessages();
     try {
       const res = await fetch("/api/agent/chat", {
         method: "POST",
         credentials: "same-origin",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: historyToSend, stream: true }),
+        signal: controller.signal,
+        body: JSON.stringify({ messages: historyToSend, stream: true, conversationId: "dashboard" }),
       });
       const ct = (res.headers.get("content-type") || "").toLowerCase();
       if (!res.ok) {
@@ -990,6 +1033,7 @@ function initAgent() {
         botMsg.streaming = false;
         botMsg.content = r.reply || "پاسخی دریافت نشد.";
         botMsg.toolTrace = r.toolTrace || [];
+        botMsg.actions = Array.isArray(r.actions) ? r.actions : [];
       } else {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -1012,10 +1056,12 @@ function initAgent() {
           } else if (ev === "tool") {
             botMsg.toolTrace.push(payload);
           } else if (ev === "done") {
+            finished = true;
             botMsg.streaming = false;
             botMsg.status = "";
             if (payload.reply) botMsg.content = payload.reply;
             if (Array.isArray(payload.toolTrace)) botMsg.toolTrace = payload.toolTrace;
+            botMsg.actions = Array.isArray(payload.actions) ? payload.actions : [];
             if (!botMsg.content) botMsg.content = "پاسخی دریافت نشد.";
           } else if (ev === "error") {
             throw new Error(payload.error || "خطا در دریافت پاسخ");
@@ -1041,10 +1087,16 @@ function initAgent() {
     } catch (err) {
       botMsg.streaming = false;
       botMsg.status = "";
-      const hint = /دیبا روتر|کلید/.test(err.message) ? "\n\nاز تب «دیبا روتر» اتصال را تنظیم کنید." : "";
-      botMsg.content = `⚠️ ${err.message}${hint}`;
+      if (controller.signal.aborted && !finished) {
+        botMsg.stopped = true;
+        if (!botMsg.content) botMsg.content = "پاسخ پیش از کامل شدن متوقف شد.";
+      } else {
+        const hint = /دیبا روتر|کلید/.test(err.message) ? "\n\nاز تب «دیبا روتر» اتصال را تنظیم کنید." : "";
+        botMsg.content = `⚠️ ${err.message}${hint}`;
+      }
     } finally {
       state.agent.busy = false;
+      if (state.agent.abort === controller) state.agent.abort = null;
       renderAgentMessages();
       saveAgentHistory();
     }
@@ -1061,8 +1113,14 @@ function initAgent() {
   });
   document.getElementById("agent-messages").addEventListener("click", (e) => {
     const chip = e.target.closest("[data-agent-suggest]");
-    if (!chip) return;
-    input.value = chip.dataset.agentSuggest;
+    if (chip) {
+      input.value = chip.dataset.agentSuggest;
+      form.requestSubmit();
+      return;
+    }
+    const action = e.target.closest("[data-agent-action]");
+    if (!action || state.agent.busy) return;
+    input.value = action.dataset.agentAction;
     form.requestSubmit();
   });
 
@@ -1328,8 +1386,8 @@ function authHtml(p) {
       <div class="auth-row">
         ${a.codeInput === false ? "" : `<input class="input ltr-input" data-auth-code placeholder="کد تأیید ورود" inputmode="numeric" autocomplete="one-time-code" aria-label="کد ورود">`}
         <button class="btn btn-primary" type="button" data-auth-verify-code>${a.codeInput === false ? "بررسی اتصال" : "تأیید کد"}</button>
-        <button class="btn btn-ghost" type="button" data-auth-resend>ارسال دوباره کد</button>
-        <button class="btn btn-ghost" type="button" data-auth-back>تغییر شماره</button>
+        ${a.credentials === "username" ? "" : `<button class="btn btn-ghost" type="button" data-auth-resend>ارسال دوباره کد</button>`}
+        <button class="btn btn-ghost" type="button" data-auth-back>${a.credentials === "username" ? "تغییر نام کاربری" : "تغییر شماره"}</button>
       </div>
       <span class="hint" data-auth-code-hint>کد فرستاده شد.</span>
     </div>
@@ -1340,6 +1398,23 @@ function authHtml(p) {
       </div>
       <span class="hint">${esc(a.passwordHint || "این حساب دارای تأیید دو مرحله‌ای است. رمز را وارد کنید.")}</span>
     </div>
+    ${!logged && a.browserLogin ? `<div class="auth-browser-login" data-auth-browser>
+      <div class="auth-browser-head">
+        <b>${esc(a.browserLogin.title)}</b>
+        <span class="pill pill-dev">توصیه‌شده</span>
+      </div>
+      <p class="hint">${esc(a.browserLogin.hint)}</p>
+      <button class="btn btn-primary" type="button" data-auth-browser-start>باز کردن پنجره‌ی ورود</button>
+      <div class="test-out" data-auth-browser-out></div>
+    </div>` : ""}
+    ${!logged && a.sessionImport ? `<details class="auth-import" data-auth-import-box>
+      <summary>${esc(a.sessionImport.title)}</summary>
+      <p class="hint">${esc(a.sessionImport.hint)}</p>
+      <textarea class="textarea ltr-input" data-auth-import-input rows="3" placeholder="${esc(a.sessionImport.placeholder)}" aria-label="${esc(a.sessionImport.title)}" spellcheck="false"></textarea>
+      <div class="auth-row">
+        <button class="btn btn-ghost" type="button" data-auth-import>ورود با نشست</button>
+      </div>
+    </details>` : ""}
     ${logged ? `<div class="prov-actions" style="margin-top:10px"><button class="btn btn-ghost btn-danger" type="button" data-auth-logout>خروج از حساب کاربری</button></div>` : ""}
     <div class="test-out" data-auth-out></div>
   </div>`;
@@ -1366,28 +1441,24 @@ function selfTestHtml(r) {
     </ol>`;
 }
 
-function renderProviderMode(p, role, plat) {
+function renderProviderMode(p, _plat) {
   if (!p) {
-    return `<div class="empty"><b>این پیام‌رسان فاقد حالت ${role === "client" ? "حساب کاربری" : "ربات رسمی"} است.</b></div>`;
+    return `<div class="empty"><b>این پیام‌رسان هنوز اتصالی ندارد.</b></div>`;
   }
   const fields = p.auth ? p.fields.filter((f) => f.key !== p.auth.sessionField) : p.fields;
-  const isClient = role === "client";
-  const platformKey = parseProvider(p).platformKey;
-  const botApiMode = isBotFatherPlatform(platformKey);
+  const isAccount = Boolean(p.auth);
   return `
     <div class="prov-mode-container" data-id="${p.id}">
       <div class="prov-mode-banner">
         <div class="prov-mode-meta">
-          <span class="mode-tag ${isClient ? "mode-tag-client" : "mode-tag-bot"}">
-            ${isClient ? icons.user : icons.bot}
-            ${isClient ? "حساب کاربری (کلاینت)" : botApiMode ? "ربات رسمی (Bot API)" : "API رسمی"}
+          <span class="mode-tag ${isAccount ? "mode-tag-client" : "mode-tag-bot"}">
+            ${isAccount ? icons.user : icons.shield}
+            ${isAccount ? "حساب کاربری (کلاینت)" : "API رسمی"}
           </span>
           <p class="prov-mode-desc">
-            ${isClient
+            ${isAccount
       ? "اتصال از طریق پروتکل وب؛ ارسال و دریافت دوطرفه پیام‌ها به عنوان کاربر واقعی با دسترسی به مخاطبان و گروه‌ها."
-      : botApiMode
-        ? "اتصال با توکن اختصاصی BotFather؛ ارسال پیام، محتوای چندرسانه‌ای و دکمه‌های شیشه‌ای برای کسب‌وکار."
-        : p.description || "اتصال با API رسمی سرویس؛ تنظیمات را از این بخش وارد کنید."}
+      : p.description || "اتصال با API رسمی سرویس؛ تنظیمات را از این بخش وارد کنید."}
           </p>
         </div>
         <div class="prov-mode-controls">
@@ -1444,25 +1515,24 @@ function renderProviderMode(p, role, plat) {
     </div>`;
 }
 
-function providerTutorialHtml(plat, mode, activeMode = mode) {
+function providerTutorialHtml(plat) {
   const tutorial = providerTutorials[plat.key];
-  if (!tutorial) return "";
-  const steps = tutorial[mode] || tutorial.bot || tutorial.client || [];
-  if (!steps.length) return "";
+  if (!tutorial?.client?.length) return "";
+  const isAccount = Boolean(plat.provider?.auth);
   return `
-    <section class="prov-tutorial ${mode === activeMode ? "active" : ""}" data-tutorial-mode="${mode}" aria-label="راهنمای اتصال ${esc(plat.nameFa)}">
+    <section class="prov-tutorial active" aria-label="راهنمای اتصال ${esc(plat.nameFa)}">
       <div class="prov-tutorial-head">
         <span class="prov-tutorial-mark">${icons.check}</span>
         <div>
           <b>راهنمای اتصال ${esc(plat.nameFa)}</b>
-          <small>${mode === "client" ? "ورود با حساب کاربری" : isBotFatherPlatform(plat.key) ? "دریافت توکن و اتصال ربات" : "پیکربندی API"}</small>
+          <small>${isAccount ? "ورود با حساب کاربری" : "پیکربندی API"}</small>
         </div>
       </div>
       <ol class="prov-tutorial-steps">
-        ${steps.map((step) => `<li>${esc(step)}</li>`).join("")}
+        ${tutorial.client.map((step) => `<li>${esc(step)}</li>`).join("")}
       </ol>
       <div class="prov-tutorial-foot">
-        <span>${icons.shield} توکن‌ها فقط در سرور ذخیره می‌شوند.</span>
+        <span>${icons.shield} نشست‌ها و توکن‌ها فقط در سرور ذخیره می‌شوند.</span>
         <span class="prov-tutorial-links">
           ${tutorial.appUrl ? `<a href="${esc(tutorial.appUrl)}" target="_blank" rel="noopener">${icons.external} ساخت اپ</a>` : ""}
           ${plat.docsUrl ? `<a href="${esc(plat.docsUrl)}" target="_blank" rel="noopener">${icons.external} مستندات رسمی</a>` : ""}
@@ -1473,15 +1543,9 @@ function providerTutorialHtml(plat, mode, activeMode = mode) {
 
 function platformAccordionHtml(plat) {
   const isOpen = state.openPlatform === plat.key;
-  // Pick a tab that actually exists (bot-only providers have no client panel)
-  const requested = state.activeTab[plat.key];
-  const activeTab = requested === "client" && plat.client
-    ? "client"
-    : requested === "bot" && plat.bot
-      ? "bot"
-      : plat.client ? "client" : "bot";
-  const hasBoth = Boolean(plat.client && plat.bot);
-  const isReady = (plat.client && plat.client.ready) || (plat.bot && plat.bot.ready);
+  const p = plat.provider;
+  const isAccount = Boolean(p?.auth);
+  const isReady = Boolean(p?.ready);
 
   return `
   <article class="prov-card ${isOpen ? "open" : ""} ${isReady ? "is-ready" : ""}" data-plat="${plat.key}">
@@ -1496,10 +1560,14 @@ function platformAccordionHtml(plat) {
       </div>
 
       <div class="prov-summary-badges">
-        ${plat.client ? `<span class="mode-badge ${plat.client.ready ? "ready" : ""}">کلاینت: ${status(plat.client)}</span>` : ""}
-        ${plat.bot ? `<span class="mode-badge ${plat.bot.ready ? "ready" : ""}">${isBotFatherPlatform(plat.key) ? "ربات" : "API"}: ${status(plat.bot)}</span>` : ""}
-        ${!plat.client?.enabled && !plat.bot?.enabled ? `<span class="dev-badge">در حال توسعه</span>` : ""}
+        <span class="mode-badge ${p?.ready ? "ready" : ""}">${isAccount ? "حساب کاربری" : "API"}: ${status(p)}</span>
+        ${p && !p.enabled ? `<span class="dev-badge">در حال توسعه</span>` : ""}
       </div>
+
+      ${p ? `<label class="switch prov-quick-toggle" title="${p.enabledFromEnv ? "از env کنترل می‌شود" : p.enabled ? "خاموش کردن این حساب" : "روشن کردن این حساب"}">
+        <input type="checkbox" data-toggle data-id="${p.id}" ${p.enabled ? "checked" : ""} ${p.enabledFromEnv ? "disabled" : ""} aria-label="${p.enabled ? "خاموش کردن" : "روشن کردن"} ${esc(p.nameFa)}">
+        <span></span>
+      </label>` : ""}
 
       <button type="button" class="btn btn-icon btn-quiet prov-toggle-btn" data-plat-expand="${plat.key}" aria-expanded="${isOpen}" aria-label="تنظیمات ${esc(plat.nameFa)}">
         ${icons.chevron}
@@ -1508,35 +1576,12 @@ function platformAccordionHtml(plat) {
 
     <div class="prov-card-body">
       <div class="prov-card-content">
-        ${hasBoth ? `
-          <div class="plat-tabs-bar" role="tablist">
-            <button type="button" class="plat-tab ${activeTab === "client" ? "active" : ""}" data-plat-tab="client" data-plat="${plat.key}" role="tab" aria-selected="${activeTab === "client"}">
-              <span class="plat-tab-icon">${icons.user}</span>
-              <span class="plat-tab-title">حساب کاربری (کلاینت)</span>
-              ${status(plat.client)}
-            </button>
-            <button type="button" class="plat-tab ${activeTab === "bot" ? "active" : ""}" data-plat-tab="bot" data-plat="${plat.key}" role="tab" aria-selected="${activeTab === "bot"}">
-              <span class="plat-tab-icon">${icons.bot}</span>
-              <span class="plat-tab-title">ربات رسمی (Bot API)</span>
-              ${status(plat.bot)}
-            </button>
-          </div>
-        ` : ""}
-
         <div class="plat-panels">
-          ${plat.client ? `
-            <div class="plat-panel ${activeTab === "client" ? "active" : ""}" data-plat-panel="client" data-plat="${plat.key}">
-              ${renderProviderMode(plat.client, "client", plat)}
-            </div>
-          ` : ""}
-          ${plat.bot ? `
-            <div class="plat-panel ${activeTab === "bot" ? "active" : ""}" data-plat-panel="bot" data-plat="${plat.key}">
-              ${renderProviderMode(plat.bot, "bot", plat)}
-            </div>
-          ` : ""}
+          <div class="plat-panel active">
+            ${renderProviderMode(p, plat)}
+          </div>
         </div>
-        ${providerTutorialHtml(plat, "client", activeTab)}
-        ${providerTutorialHtml(plat, "bot", activeTab)}
+        ${providerTutorialHtml(plat)}
       </div>
     </div>
   </article>`;
@@ -1554,20 +1599,16 @@ async function pageProviders(main, q) {
   const open = q.get("open");
   if (focus) {
     state.openPlatform = focus;
-    state.activeTab[focus] = "client";
   } else if (open) {
-    const target = open;
-    const { platformKey, isClient } = parseProvider({ id: target, auth: target.endsWith("_client") });
-    state.openPlatform = platformKey;
-    state.activeTab[platformKey] = isClient ? "client" : "bot";
+    state.openPlatform = parseProvider({ id: open }).platformKey;
   }
 
   const title = region === "iran" ? "پیام‌رسان‌های ایرانی" : region === "other" ? "پیام‌رسان‌های خارجی" : "پیام‌رسان‌ها";
   const desc = region === "iran"
-    ? "سرویس‌های ایرانی متصل به این سرور؛ حساب کاربری و ربات رسمی."
+    ? "سرویس‌های ایرانی متصل به این سرور با حساب کاربری."
     : region === "other"
-      ? "سرویس‌های غیرایرانی متصل به این سرور؛ حساب کاربری و ربات رسمی."
-      : "مدیریت حساب‌های کاربری و ربات‌های رسمی پیام‌رسان‌ها در یک آکاردئون یکپارچه. تب کلاینت به‌صورت پیش‌فرض فعال است.";
+      ? "سرویس‌های غیرایرانی متصل به این سرور با حساب کاربری."
+      : "مدیریت حساب‌های کاربری پیام‌رسان‌ها در یک آکاردئون یکپارچه. هر حساب با یک کلید روشن یا خاموش می‌شود.";
   main.innerHTML = `
     ${head(title, desc, "مدیریت سرویس‌ها")}
     <div class="providers-accordion-list" id="provs">
@@ -1589,7 +1630,7 @@ async function pageProviders(main, q) {
   list.addEventListener("click", async (e) => {
     // 1. Accordion Header Click or Chevron
     const header = e.target.closest("[data-plat-header]");
-    if (header && !e.target.closest("input, button.plat-tab, a, .switch")) {
+    if (header && !e.target.closest("input, a, .switch")) {
       const platKey = header.dataset.platHeader;
       state.openPlatform = state.openPlatform === platKey ? null : platKey;
       list.querySelectorAll(".prov-card").forEach((card) => {
@@ -1601,30 +1642,7 @@ async function pageProviders(main, q) {
       return;
     }
 
-    // 2. Tab switching inside platform accordion (Client vs Bot)
-    const tabBtn = e.target.closest("[data-plat-tab]");
-    if (tabBtn) {
-      const platKey = tabBtn.dataset.plat;
-      const tabName = tabBtn.dataset.platTab;
-      state.activeTab[platKey] = tabName;
-      const card = list.querySelector(`[data-plat="${platKey}"]`);
-      if (card) {
-        card.querySelectorAll("[data-plat-tab]").forEach((btn) => {
-          const isActive = btn.dataset.platTab === tabName;
-          btn.classList.toggle("active", isActive);
-          btn.setAttribute("aria-selected", isActive);
-        });
-        card.querySelectorAll("[data-plat-panel]").forEach((panel) => {
-          panel.classList.toggle("active", panel.dataset.platPanel === tabName);
-        });
-        card.querySelectorAll(".prov-tutorial").forEach((tutorial) => {
-          tutorial.classList.toggle("active", tutorial.dataset.tutorialMode === tabName);
-        });
-      }
-      return;
-    }
-
-    // 3. Eye reveal for secrets
+    // 2. Eye reveal for secrets
     const reveal = e.target.closest("[data-reveal]");
     if (reveal) {
       const inp = document.getElementById(reveal.dataset.reveal);
@@ -1865,7 +1883,15 @@ async function pageProviders(main, q) {
           toast("QR جدید ساخته شد");
           return;
         }
+        if (r.result.step === "password") {
+          showStep("password");
+          authBox.querySelector("[data-auth-password]")?.focus();
+          toast("دوباره رمز عبور را وارد کنید");
+          return;
+        }
+        showStep("code");
         if (r.result.hint && authBox.querySelector("[data-auth-code-hint]")) authBox.querySelector("[data-auth-code-hint]").textContent = r.result.hint;
+        authBox.querySelector("[data-auth-code]")?.focus();
         toast("کد ورود دوباره ارسال شد");
       } catch (ex) {
         authFail(ex.message);
@@ -1894,6 +1920,13 @@ async function pageProviders(main, q) {
           authBox.querySelector("[data-auth-password]").focus();
           return;
         }
+        if (r.result.step !== "done") {
+          // مثلاً کد تازه فرستاده شده یا مرحله هنوز تمام نشده است
+          if (r.result.transactionHash) state.authTx[authId] = r.result.transactionHash;
+          if (r.result.hint && authBox.querySelector("[data-auth-code-hint]")) authBox.querySelector("[data-auth-code-hint]").textContent = r.result.hint;
+          authBox.querySelector("[data-auth-code]")?.focus();
+          return;
+        }
         delete state.authTx[authId];
         await refreshAuth();
         toast(`ورود به حساب ${p.nameFa} با موفقیت انجام شد`);
@@ -1917,9 +1950,77 @@ async function pageProviders(main, q) {
           authBox.querySelector("[data-auth-code]")?.focus();
           return;
         }
+        if (r.result.step !== "done") {
+          if (r.result.step === "password") {
+            showStep("password");
+            authBox.querySelector("[data-auth-password]")?.focus();
+          }
+          if (r.result.hint) authFail(r.result.hint);
+          return;
+        }
         delete state.authTx[authId];
         await refreshAuth();
         toast(`ورود به حساب ${p.nameFa} با موفقیت انجام شد`);
+      } catch (ex) {
+        authFail(ex.message);
+      }
+    }
+
+    if (e.target.closest("[data-auth-browser-start]")) {
+      const btn = e.target.closest("[data-auth-browser-start]");
+      const browserOut = authBox.querySelector("[data-auth-browser-out]");
+      if (authBox._browserTimer) clearInterval(authBox._browserTimer);
+      browserOut.innerHTML = `<div class="hint">در حال باز کردن پنجره‌ی ورود…</div>`;
+      try {
+        const started = await busy(btn, () => api(`providers/${authId}/auth/browser/start`, { body: {} }));
+        if (!started.ok) { browserOut.innerHTML = `<div class="err-box">${esc(started.error)}</div>`; return; }
+        const jobId = started.result?.jobId;
+        if (!jobId) { browserOut.innerHTML = `<div class="err-box">شناسه‌ی جلسه‌ی ورود دریافت نشد.</div>`; return; }
+        browserOut.innerHTML = `<div class="hint">${esc(started.result?.hint || "در پنجره‌ی Chrome وارد شوید…")}</div>`;
+        const poll = async () => {
+          if (!document.body.contains(authBox)) { clearInterval(authBox._browserTimer); return; }
+          try {
+            const r = await api(`providers/${authId}/auth/browser/${encodeURIComponent(jobId)}`);
+            if (!r.ok) {
+              clearInterval(authBox._browserTimer);
+              browserOut.innerHTML = `<div class="err-box">${esc(r.error)}</div>`;
+              return;
+            }
+            if (r.result?.pending) {
+              browserOut.innerHTML = `<div class="hint">${esc(r.result.hint || "منتظر تکمیل ورود در پنجره‌ی Chrome هستیم…")}</div>`;
+              return;
+            }
+            if (r.result?.step === "done") {
+              clearInterval(authBox._browserTimer);
+              delete state.authTx[authId];
+              await refreshAuth();
+              toast(`ورود به حساب ${p.nameFa} با مرورگر انجام شد`);
+            }
+          } catch (ex) {
+            clearInterval(authBox._browserTimer);
+            browserOut.innerHTML = `<div class="err-box">${esc(ex.message)}</div>`;
+          }
+        };
+        authBox._browserTimer = setInterval(poll, 2000);
+        await poll();
+      } catch (ex) {
+        browserOut.innerHTML = `<div class="err-box">${esc(ex.message)}</div>`;
+      }
+      return;
+    }
+
+    if (e.target.closest("[data-auth-import]")) {
+      const raw = authBox.querySelector("[data-auth-import-input]")?.value ?? "";
+      authOut.innerHTML = "";
+      if (!raw.trim()) return authFail("کوکی یا sessionid را وارد کنید.");
+      try {
+        const r = await busy(e.target.closest("[data-auth-import]"), () =>
+          api(`providers/${authId}/auth/import`, { body: { session: raw } }),
+        );
+        if (!r.ok) return authFail(r.error);
+        delete state.authTx[authId];
+        await refreshAuth();
+        toast(`ورود به حساب ${p.nameFa} با نشست انجام شد`);
       } catch (ex) {
         authFail(ex.message);
       }
@@ -2489,7 +2590,7 @@ async function pageInbox(main, q) {
       const who = out
         ? m.source === "account"
           ? `<b>شما</b><span>از حساب کاربر</span>`
-          : `<b>ربات</b><span>${m.source === "mcp" ? "منتقل‌شده به مدل" : "از داشبورد"}</span>`
+          : `<b>حساب</b><span>${m.source === "mcp" ? "منتقل‌شده به مدل" : "از داشبورد"}</span>`
         : `${m.from?.name ? `<b dir="auto">${esc(m.from.name)}</b>` : ""}${m.from?.username ? `<span class="ltr">@${esc(m.from.username)}</span>` : ""}`;
       const img = out && m.kind === "photo" && m.mediaUrl ? `<img class="msg-img" src="${esc(m.mediaUrl)}" alt="" loading="lazy" onerror="this.remove()">` : "";
       html.push(`<li class="msg${out ? " out" : ""}">
@@ -2863,7 +2964,7 @@ const trgSamples = [
       match: { provider: "*", chatType: "*", contains: "فوری, مهم, اضطراری, urgent", toolName: "*" },
       action: {
         type: "forward",
-        targetProvider: "bale",
+        targetProvider: "bale_client",
         targetChatId: "",
         template: "🚨 پیام فوری از {{provider}} ({{sender}} | چت {{chatId}}):\n{{text}}",
       },
@@ -2879,10 +2980,10 @@ const trgSamples = [
       description: "همه‌ی پیام‌های ورودی بله را برای تیم فنی به چت پیش‌فرض تلگرام می‌فرستد.",
       category: "forward",
       event: "incoming_message",
-      match: { provider: "bale", chatType: "*", contains: "", toolName: "*" },
+      match: { provider: "bale_client", chatType: "*", contains: "", toolName: "*" },
       action: {
         type: "forward",
-        targetProvider: "telegram",
+        targetProvider: "telegram_client",
         targetChatId: "",
         template: "📩 از بله ({{sender}}):\n{{text}}",
       },
@@ -2901,7 +3002,7 @@ const trgSamples = [
       match: { provider: "*", chatType: "*", contains: "", toolName: "*" },
       action: {
         type: "forward",
-        targetProvider: "bale",
+        targetProvider: "bale_client",
         targetChatId: "",
         template: "⚠️ خطا در اجرای ابزار {{toolName}}:\n{{error}}",
       },
@@ -2910,18 +3011,18 @@ const trgSamples = [
   {
     id: "sample-tool",
     badge: "اجرای ابزار",
-    title: "دستور /ping سلامت ربات",
+    title: "دستور /ping سلامت حساب",
     sub: "فراخوانی ابزار با آرگومان JSON",
     data: {
-      name: "پاسخ سلامت ربات با دستور /ping",
+      name: "پاسخ سلامت حساب با دستور /ping",
       description: "با دریافت /ping ابزار ارسال پیام را صدا می‌زند و وضعیت را تایید می‌کند.",
       category: "mcp",
       event: "incoming_message",
-      match: { provider: "*", chatType: "*", contains: "/ping, تست ربات", toolName: "*" },
+      match: { provider: "*", chatType: "*", contains: "/ping, تست حساب", toolName: "*" },
       action: {
         type: "call_tool",
-        toolName: "bale_send_message",
-        toolArgs: '{"chat_id":"{{chatId}}","text":"✅ ربات فعال است — {{provider}} | {{sender}}"}',
+        toolName: "bale_client_send_message",
+        toolArgs: '{"chat_id":"{{chatId}}","text":"✅ حساب متصل است — {{provider}} | {{sender}}"}',
       },
     },
   },
@@ -3076,7 +3177,7 @@ async function pageTriggers(main, q) {
 
           <div class="trg-action-fields" data-ac-group="forward" ${ac2 === "forward" ? "" : "hidden"}>
             <div class="trg-grid">
-              <label><span>سرویس مقصد</span><input class="input ltr-input" name="targetProvider" value="${esc(t.action?.targetProvider || "bale")}" placeholder="bale / telegram / rubika"></label>
+              <label><span>سرویس مقصد</span><input class="input ltr-input" name="targetProvider" value="${esc(t.action?.targetProvider || "bale_client")}" placeholder="bale_client / telegram_client / rubika_client"></label>
               <label><span>شناسه‌ی چت مقصد (اختیاری)</span><input class="input ltr-input" name="targetChatId" value="${esc(t.action?.targetChatId || "")}" placeholder="خالی = چت پیش‌فرض سرویس"></label>
             </div>
             <label><span>متن پیام فوروارد</span><textarea class="textarea" name="forwardTemplate" rows="3" placeholder="📩 از {{provider}}: {{text}}">${esc(t.action?.template || "")}</textarea></label>
@@ -3086,7 +3187,7 @@ async function pageTriggers(main, q) {
             <div class="trg-grid">
               <label><span>نام ابزار MCP</span>
                 <div class="tool-pick-row">
-                  <input class="input ltr-input" name="actionToolName" value="${esc(t.action?.toolName || "")}" placeholder="bale_send_message">
+                  <input class="input ltr-input" name="actionToolName" value="${esc(t.action?.toolName || "")}" placeholder="bale_client_send_message">
                   <button class="btn btn-ghost" type="button" data-pick-tool>انتخاب از سرویس‌ها</button>
                 </div>
               </label>
@@ -3474,7 +3575,7 @@ async function pageTriggers(main, q) {
         type: act,
         template: act === "forward" ? String(fd.get("forwardTemplate") || "") : String(fd.get("template") || ""),
         systemPrompt: String(fd.get("systemPrompt") || ""),
-        targetProvider: String(fd.get("targetProvider") || "bale").trim(),
+        targetProvider: String(fd.get("targetProvider") || "bale_client").trim(),
         targetChatId: String(fd.get("targetChatId") || "").trim(),
         webhookUrl: String(fd.get("webhookUrl") || "").trim(),
         toolName: String(fd.get("actionToolName") || "").trim(),
@@ -3592,9 +3693,51 @@ async function pageSettings(main) {
 }
 
 // ---------------------------------------------------------------- logs
+/** صفحه‌بندی گزارش‌ها: شماره‌ی صفحه‌ی جاری، بازه و تعداد هر صفحه */
+function logPagerHtml() {
+  const page = state.logPage;
+  const size = state.logPageSize;
+  const total = state.logTotal;
+  const totalPages = state.logTotalPages;
+  const from = total ? (page - 1) * size + 1 : 0;
+  const to = total ? Math.min(total, page * size) : 0;
+  const numbers = [...new Set([1, totalPages, page - 1, page, page + 1])]
+    .filter((n) => n >= 1 && n <= totalPages)
+    .sort((a, b) => a - b);
+  let pages = "";
+  let previous = 0;
+  for (const n of numbers) {
+    if (previous && n - previous > 1) pages += `<span class="pager-gap" aria-hidden="true">…</span>`;
+    pages += `<button type="button" class="pager-btn ${n === page ? "is-active" : ""}" data-page="${n}" ${n === page ? 'aria-current="page"' : ""} aria-label="صفحه ${fa(n)}">${fa(n)}</button>`;
+    previous = n;
+  }
+  return `<span class="pager-info">${total
+      ? `نمایش ${fa(from)}–${fa(to)} از ${fa(total)} گزارش`
+      : "گزارشی با این مشخصات ثبت نشده است"
+    }</span>
+    <nav class="pager-pages" aria-label="صفحه‌بندی گزارش‌ها">
+      <button type="button" class="pager-btn pager-step" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""} aria-label="صفحه‌ی قبل">قبلی</button>
+      ${pages}
+      <button type="button" class="pager-btn pager-step" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""} aria-label="صفحه‌ی بعد">بعدی</button>
+    </nav>
+    <label class="pager-size">در هر صفحه
+      <select class="select" data-page-size aria-label="تعداد گزارش در هر صفحه">
+        ${[10, 20, 50, 100].map((n) => `<option value="${n}" ${size === n ? "selected" : ""}>${fa(n)}</option>`).join("")}
+      </select>
+    </label>`;
+}
+
+function logResultHtml(value) {
+  try {
+    return `<pre class="json">${jsonHtml(value ? JSON.parse(value) : null)}</pre>`;
+  } catch {
+    return `<pre class="json">${esc(value || "")}</pre>`;
+  }
+}
+
 async function pageLogs(main) {
   if (!state.providers.length) state.providers = await api("providers");
-  main.innerHTML = `${head("گزارش فراخوانی‌ها", "گزارش کامل ۳۰۰ فراخوانی اخیر مدل‌های هوش مصنوعی و داشبورد به تفکیک پیام‌رسان و وضعیت.", "رویدادها و لاگ‌ها",
+  main.innerHTML = `${head("گزارش فراخوانی‌ها", "گزارش فراخوانی‌های مدل‌های هوش مصنوعی و داشبورد به تفکیک پیام‌رسان و وضعیت، با صفحه‌بندی برای مرور همه‌ی رویدادها.", "رویدادها و لاگ‌ها",
     `<div class="toolbar" style="margin:0">
       <button class="btn btn-icon btn-ghost" id="reload" aria-label="به‌روزرسانی">${icons.refresh}</button>
       <button class="btn btn-ghost btn-danger btn-sm" id="clear">پاک کردن گزارش‌ها</button>
@@ -3614,23 +3757,57 @@ async function pageLogs(main) {
         </div>
       </div>
     </div>
-    <div class="calls" id="log-list"></div>`;
+    <div class="calls" id="log-list"></div>
+    <div class="pager" id="log-pager"></div>`;
 
   const list = document.getElementById("log-list");
+  const pager = document.getElementById("log-pager");
   let openId = null;
   const draw = () => {
-    const f = state.logFilter;
-    const rows = state.logs.filter((l) => (f.ok === "all" || (f.ok === "ok") === l.ok) && (!f.provider || l.provider === f.provider));
-    list.innerHTML = rows.length
-      ? rows.map((l) => callRow(l, true) + (l.id === openId ? `<div class="call-detail"><div class="tool-form" style="padding-top:14px">
+    list.innerHTML = state.logs.length
+      ? `<div class="call call-head" aria-hidden="true">
+          <span></span><span class="col-label">ابزار</span><span class="src">منبع</span><span class="meta call-dur">مدت</span><span class="meta call-ago">زمان</span>
+        </div>` + state.logs.map((l) => callRow(l, true) + (l.id === openId ? `<div class="call-detail"><div class="tool-form" style="padding-top:14px">
           <div><div class="hint">آرگومان‌های ورودی به مدل</div><pre class="json">${jsonHtml(l.args)}</pre></div>
-          <div><div class="hint">${l.ok ? "خروجی موفق" : "پیام خطا"}</div>${l.ok ? `<pre class="json">${l.result ? jsonHtml(JSON.parse(l.result)) : ""}</pre>` : `<div class="err-box">${esc(l.error)}</div>`}</div>
+          <div><div class="hint">${l.ok ? "خروجی موفق" : "پیام خطا"}</div>${l.ok ? logResultHtml(l.result) : `<div class="err-box">${esc(l.error)}</div>`}</div>
         </div></div>` : "")).join("")
       : `<div class="empty"><b>گزارشی با این مشخصات یافت نشد</b>فیلترها را تغییر داده یا ابزاری را فراخوانی کنید.</div>`;
+    pager.innerHTML = logPagerHtml();
+    pager.hidden = state.logTotal === 0;
   };
-  const load = async () => { state.logs = await api("logs?limit=300"); draw(); };
+  /**
+   * صفحه‌ی جاری را از سرور می‌گیرد (فیلترها سمت سرور اعمال می‌شوند تا شمارش و
+   * شماره‌ی صفحه‌ها درست باشد). silent برای به‌روزرسانی خودکار است.
+   */
+  const load = async (silent = false) => {
+    const f = state.logFilter;
+    const qs = new URLSearchParams({ page: String(state.logPage), pageSize: String(state.logPageSize) });
+    if (f.ok !== "all") qs.set("ok", f.ok);
+    if (f.provider) qs.set("provider", f.provider);
+    try {
+      const r = await api(`logs?${qs.toString()}`);
+      if (Array.isArray(r)) {
+        // پاسخ قدیمی (بدون صفحه‌بندی)
+        state.logs = r;
+        state.logTotal = r.length;
+        state.logTotalPages = Math.max(1, Math.ceil(r.length / state.logPageSize));
+      } else {
+        state.logs = Array.isArray(r.items) ? r.items : [];
+        state.logPage = Number(r.page) || 1;
+        state.logPageSize = Number(r.pageSize) || state.logPageSize;
+        state.logTotal = Number(r.total) || 0;
+        state.logTotalPages = Number(r.totalPages) || 1;
+      }
+      draw();
+    } catch (err) {
+      if (!silent) throw err;
+    }
+  };
   await load();
-  state.timer = setInterval(() => { if (!openId) load().catch(() => { }); }, 5000);
+  state.timer = setInterval(() => {
+    // در صفحه‌های قدیمی محتوا را جابه‌جا نکن؛ به‌روزرسانی خودکار فقط برای صفحه‌ی اول
+    if (!openId && state.logPage === 1 && document.body.contains(list)) load(true);
+  }, 5000);
 
   list.addEventListener("click", (e) => {
     const r = e.target.closest("[data-log]");
@@ -3641,8 +3818,10 @@ async function pageLogs(main) {
     const b = e.target.closest("[data-ok]");
     if (!b) return;
     state.logFilter.ok = b.dataset.ok;
+    state.logPage = 1;
+    openId = null;
     main.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", x === b));
-    draw();
+    load().catch((ex) => toast(ex.message, true));
   });
   const pf = document.getElementById("pf");
   const pfTrigger = pf.querySelector("[data-select-trigger]");
@@ -3669,7 +3848,9 @@ async function pageLogs(main) {
         x.setAttribute("aria-selected", String(active));
       });
       closePf();
-      draw();
+      state.logPage = 1;
+      openId = null;
+      load().catch((ex) => toast(ex.message, true));
     });
   });
   pf.addEventListener("keydown", (e) => {
@@ -3688,7 +3869,27 @@ async function pageLogs(main) {
   main.addEventListener("click", (e) => {
     if (!pf.contains(e.target)) closePf();
   });
-  document.getElementById("reload").onclick = (e) => busy(e.currentTarget, load);
+
+  pager.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-page]");
+    if (!btn || btn.disabled) return;
+    const next = Number(btn.dataset.page);
+    if (!Number.isFinite(next) || next === state.logPage) return;
+    state.logPage = next;
+    openId = null;
+    load().catch((ex) => toast(ex.message, true));
+  });
+  pager.addEventListener("change", (e) => {
+    if (!e.target.matches("[data-page-size]")) return;
+    const size = Number(e.target.value);
+    if (!Number.isFinite(size) || size === state.logPageSize) return;
+    state.logPageSize = size;
+    state.logPage = 1;
+    openId = null;
+    load().catch((ex) => toast(ex.message, true));
+  });
+
+  document.getElementById("reload").onclick = (e) => busy(e.currentTarget, () => load());
   document.getElementById("clear").onclick = async () => {
     if (!(await openModal({
       title: "پاک کردن گزارش‌ها",
@@ -3697,8 +3898,513 @@ async function pageLogs(main) {
       tone: "danger",
     }))) return;
     await api("logs", { method: "DELETE" });
+    state.logPage = 1;
+    openId = null;
     await load();
     toast("تمام گزارش‌ها پاک شدند");
+  };
+}
+
+// ---------------------------------------------------------------- diba router model picker
+const DR_MODELS_TTL = 10 * 60 * 1000;
+const DR_DEFAULT_MODEL = "dibachain/diba-router-free";
+let drModelsCache = { at: 0, models: [] };
+
+/** فهرست مدل‌های چت/بینایی دیبا روتر را می‌گیرد (پاسخ در حافظه کش می‌شود) */
+async function drLoadModels(force = false) {
+  if (!force && drModelsCache.models.length && Date.now() - drModelsCache.at < DR_MODELS_TTL) return drModelsCache.models;
+  const r = await api("dibarouter/models");
+  const models = Array.isArray(r.models) ? r.models.filter((m) => m && m.id) : [];
+  drModelsCache = { at: Date.now(), models };
+  return models;
+}
+
+const DR_DIGITS_FA = "۰۱۲۳۴۵۶۷۸۹";
+const DR_DIGITS_AR = "٠١٢٣٤٥٦٧٨٩";
+// جستجو را با فارسی/عربی و ارقام یکسان می‌کند تا «ي» و «ی» و «۳» و «3» یکی باشند
+const drNorm = (value) =>
+  String(value ?? "")
+    .toLowerCase()
+    .replace(/ي/g, "ی")
+    .replace(/ك/g, "ک")
+    .replace(/[۰-۹]/g, (d) => String(DR_DIGITS_FA.indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String(DR_DIGITS_AR.indexOf(d)));
+
+const drContextShort = (n) => {
+  if (!n) return "";
+  if (n >= 1048576) return `${fa(Math.round(n / 1048576))}M`;
+  if (n >= 1024) return `${fa(Math.round(n / 1024))}K`;
+  return fa(n);
+};
+const drProvider = (id) => String(id ?? "").split("/")[0] || String(id ?? "");
+const drMonogram = (id) => (drProvider(id).match(/[a-z0-9]/i)?.[0] || "?").toUpperCase();
+const drIsVision = (m) => String(m?.category ?? "").toLowerCase() === "vision";
+const drRank = (m) => (m.id === DR_DEFAULT_MODEL ? 0 : m.is_free ? 1 : 2);
+
+/**
+ * انتخابگر مدل با جستجو و فیلتر — دکمه‌ی trigger + پنل listbox.
+ * مقدار انتخاب‌شده در input[type=hidden] نگه داشته می‌شود تا فرم مثل قبل بخواندش.
+ */
+function initDibaModelPicker(field, opts = {}) {
+  const root = field.querySelector(".dr-picker");
+  const hidden = field.querySelector('input[type="hidden"]');
+  const hint = field.querySelector(".hint");
+  const note = field.querySelector(".dr-note");
+  if (!root || !hidden) return null;
+
+  const disabled = Boolean(opts.disabled);
+  const load = typeof opts.load === "function" ? opts.load : drLoadModels;
+  const ac = new AbortController();
+  const signal = ac.signal;
+
+  let models = [];
+  let selected = String(opts.value || DR_DEFAULT_MODEL);
+  let savedValue = selected;
+  let query = "";
+  let filter = "all";
+  let active = -1;
+  let visible = 120;
+  let open = false;
+  let loading = false;
+  let refreshing = false;
+  let error = "";
+  let loaded = false;
+
+  hidden.value = selected;
+  root.innerHTML = `
+    <button type="button" class="dr-trigger" id="dr-model-picker" aria-haspopup="listbox" aria-expanded="false" aria-controls="dr-model-listbox" aria-describedby="dr-model-hint" ${disabled ? "disabled" : ""}>
+      <span class="dr-trigger-text" data-trigger-text></span>
+      <span class="dr-trigger-chevron" aria-hidden="true">${icons.chevron}</span>
+    </button>
+    <div class="dr-panel" hidden>
+      <div class="dr-panel-head">
+        <div class="dr-search">
+          <span class="dr-search-icon" aria-hidden="true">${icons.search}</span>
+          <input class="dr-search-input" type="text" role="combobox" autocomplete="off" spellcheck="false" placeholder="جستجوی مدل…" aria-label="جستجوی مدل" aria-autocomplete="list" aria-controls="dr-model-listbox" aria-expanded="false">
+          <button type="button" class="dr-search-clear" aria-label="پاک کردن جستجو" hidden>${icons.cross}</button>
+        </div>
+        <div class="dr-chips" role="group" aria-label="فیلتر مدل‌ها" data-chips></div>
+      </div>
+      <div class="dr-list" id="dr-model-listbox" role="listbox" aria-label="فهرست مدل‌ها" data-list></div>
+      <div class="dr-panel-foot">
+        <span class="dr-foot-count" data-count aria-live="polite"></span>
+        <div class="dr-foot-actions">
+          <button type="button" class="dr-foot-btn" data-more hidden>بیشتر</button>
+          <button type="button" class="dr-foot-btn" data-refresh>${icons.refresh}<span>بروزرسانی</span></button>
+        </div>
+      </div>
+    </div>`;
+
+  const trigger = root.querySelector(".dr-trigger");
+  const triggerText = root.querySelector("[data-trigger-text]");
+  const panel = root.querySelector(".dr-panel");
+  const search = root.querySelector(".dr-search-input");
+  const clearBtn = root.querySelector(".dr-search-clear");
+  const chips = root.querySelector("[data-chips]");
+  const list = root.querySelector("[data-list]");
+  const countEl = root.querySelector("[data-count]");
+  const moreBtn = root.querySelector("[data-more]");
+  const refreshBtn = root.querySelector("[data-refresh]");
+
+  const modelById = (id) => models.find((m) => m.id === id);
+
+  function filteredModels() {
+    const tokens = drNorm(query).trim().split(/\s+/).filter(Boolean);
+    const out = [];
+    for (const m of models) {
+      if (filter === "free" && !m.is_free) continue;
+      if (filter === "tools" && !m.supports_tools) continue;
+      if (filter === "vision" && !drIsVision(m)) continue;
+      if (tokens.length) {
+        const hay = drNorm(`${m.name} ${m.id}`);
+        if (!tokens.every((t) => hay.includes(t))) continue;
+      }
+      out.push(m);
+    }
+    out.sort((a, b) => drRank(a) - drRank(b) || String(a.name).localeCompare(String(b.name), "en", { sensitivity: "base" }));
+    return out;
+  }
+
+  function customId() {
+    const q = query.trim();
+    if (!q) return "";
+    return models.some((m) => m.id.toLowerCase() === q.toLowerCase()) ? "" : q;
+  }
+
+  function counts() {
+    let free = 0;
+    let tools = 0;
+    let vision = 0;
+    for (const m of models) {
+      if (m.is_free) free++;
+      if (m.supports_tools) tools++;
+      if (drIsVision(m)) vision++;
+    }
+    return { all: models.length, free, tools, vision };
+  }
+
+  function paintTrigger() {
+    const model = modelById(selected);
+    const name = (model && model.name) || selected || "انتخاب مدل";
+    const showId = Boolean(model && model.name && model.name !== selected);
+    triggerText.innerHTML = `<span class="dr-trigger-name">${esc(name)}</span>${showId ? `<span class="dr-trigger-id">${esc(selected)}</span>` : ""}`;
+    trigger.title = selected;
+  }
+
+  function paintHint() {
+    if (!hint) return;
+    hint.classList.remove("hint-dirty");
+    if (disabled) {
+      hint.textContent = "مدل از متغیر محیطی خوانده می‌شود و از داشبورد تغییر نمی‌کند.";
+      return;
+    }
+    if (loading && !models.length) {
+      hint.textContent = "در حال دریافت فهرست مدل‌ها از دیبا روتر…";
+      return;
+    }
+    if (error && !models.length) {
+      hint.textContent = "فهرست مدل‌ها دریافت نشد؛ از دکمهٔ «بروزرسانی» در انتخابگر دوباره تلاش کنید.";
+      return;
+    }
+    if (selected !== savedValue) {
+      hint.textContent = "تغییر ذخیره نشده؛ برای اعمال، «ذخیره اتصال» را بزنید.";
+      hint.classList.add("hint-dirty");
+      return;
+    }
+    if (!models.length) {
+      hint.textContent = "انتخابگر مدل را باز کنید و نام یا شناسهٔ مدل را جستجو کنید.";
+      return;
+    }
+    const free = counts().free;
+    hint.innerHTML = `${fa(models.length)} مدل چت و بینایی${free ? ` · ${fa(free)} مدل رایگان` : ""} · بر اساس نام یا شناسه جستجو کنید`;
+  }
+
+  function paintNote() {
+    if (!note) return;
+    const model = modelById(selected);
+    if (!model) {
+      note.hidden = true;
+      note.innerHTML = "";
+      return;
+    }
+    const bits = [];
+    if (model.is_free) bits.push(`<span class="dr-note-free">رایگان</span>`);
+    if (model.context_length) bits.push(`<span>زمینهٔ ${fa(model.context_length)} توکن</span>`);
+    if (model.supports_tools) bits.push(`<span>فراخوانی ابزار</span>`);
+    if (drIsVision(model)) bits.push(`<span>درک تصویر</span>`);
+    note.innerHTML = `${bits.length ? `<div class="dr-note-meta">${bits.join(`<span class="dr-note-sep" aria-hidden="true">·</span>`)}</div>` : ""}${model.description ? `<p class="dr-note-desc">${esc(model.description)}</p>` : ""}`;
+    note.hidden = !note.innerHTML;
+  }
+
+  function paintChips() {
+    if (!models.length) {
+      chips.innerHTML = "";
+      return;
+    }
+    const c = counts();
+    const defs = [
+      ["all", "همه", c.all],
+      ["free", "رایگان", c.free],
+      ["tools", "ابزار", c.tools],
+      ["vision", "بینایی", c.vision],
+    ].filter(([key, , n]) => key === "all" || key === "free" || n > 0);
+    chips.innerHTML = defs
+      .map(([key, label, n]) => `<button type="button" class="dr-chip" data-filter="${key}" aria-pressed="${filter === key}">${label}<span class="dr-chip-count">${fa(n)}</span></button>`)
+      .join("");
+  }
+
+  function optionHtml(m, index) {
+    const isSelected = m.id === selected;
+    return `<div class="dr-opt${index === active ? " active" : ""}" role="option" id="dr-opt-${index}" data-opt-index="${index}" data-id="${esc(m.id)}" aria-selected="${isSelected}" tabindex="-1">
+      <span class="dr-opt-mark" aria-hidden="true">${esc(drMonogram(m.id))}</span>
+      <span class="dr-opt-body">
+        <span class="dr-opt-name">${esc(m.name)}</span>
+        <span class="dr-opt-meta">
+          <span class="dr-opt-id">${esc(m.id)}</span>
+          ${m.context_length ? `<span class="dr-opt-sep" aria-hidden="true">·</span><span title="زمینهٔ ${fa(m.context_length)} توکن">${drContextShort(m.context_length)}</span>` : ""}
+          ${m.supports_tools ? `<span class="dr-opt-flag" role="img" aria-label="فراخوانی ابزار" title="فراخوانی ابزار">${icons.tools}</span>` : ""}
+          ${drIsVision(m) ? `<span class="dr-opt-flag" role="img" aria-label="درک تصویر" title="درک تصویر">${icons.image}</span>` : ""}
+        </span>
+      </span>
+      <span class="dr-opt-end">
+        ${m.is_free ? `<span class="dr-opt-free">رایگان</span>` : ""}
+        <span class="dr-opt-check" aria-hidden="true">${icons.check}</span>
+      </span>
+    </div>`;
+  }
+
+  function customHtml(index, id) {
+    return `<div class="dr-opt dr-opt-custom${index === active ? " active" : ""}" role="option" id="dr-opt-custom" data-opt-index="${index}" data-custom="1" aria-selected="${selected === id}" tabindex="-1">
+      <span class="dr-opt-mark" aria-hidden="true">${icons.plus}</span>
+      <span class="dr-opt-body">
+        <span class="dr-opt-name">استفاده از «<span class="dr-custom-id">${esc(id)}</span>»</span>
+        <span class="dr-opt-meta">شناسهٔ دلخواه مدل</span>
+      </span>
+      <span class="dr-opt-end"><span class="dr-opt-check" aria-hidden="true">${icons.check}</span></span>
+    </div>`;
+  }
+
+  function paintList() {
+    if (!open) return;
+    const rows = filteredModels();
+    const custom = customId();
+    const shown = Math.min(rows.length, visible);
+    const optionCount = shown + (custom ? 1 : 0);
+    if (!optionCount) active = -1;
+    else if (active < 0 || active >= optionCount) active = 0;
+
+    if (loading && !models.length) {
+      list.innerHTML = `<div class="dr-state"><span class="dr-spinner" aria-hidden="true"></span><span>در حال دریافت فهرست مدل‌ها…</span></div>`;
+    } else if (error && !models.length) {
+      list.innerHTML = `<div class="dr-state dr-state-error"><span class="dr-state-icon">${icons.alert}</span><b>فهرست مدل‌ها دریافت نشد</b><span>${esc(error)}</span><button type="button" class="btn btn-ghost btn-sm" data-retry>تلاش دوباره</button></div>`;
+    } else if (!rows.length && !custom) {
+      list.innerHTML = models.length
+        ? `<div class="dr-state"><span class="dr-state-icon">${icons.search}</span><b>مدلی پیدا نشد</b><span>نام یا شناسهٔ دیگری را امتحان کنید.</span></div>`
+        : `<div class="dr-state"><span class="dr-state-icon">${icons.alert}</span><b>فهرست خالی است</b><span>دیبا روتر مدلی برنگرداند.</span></div>`;
+    } else {
+      list.innerHTML = rows.slice(0, shown).map((m, i) => optionHtml(m, i)).join("") + (custom ? customHtml(shown, custom) : "");
+    }
+
+    const activeEl = active >= 0 ? list.querySelector(`[data-opt-index="${active}"]`) : null;
+    search.setAttribute("aria-activedescendant", activeEl?.id || "");
+    activeEl?.scrollIntoView({ block: "nearest" });
+
+    countEl.textContent =
+      loading && !models.length
+        ? ""
+        : refreshing
+          ? "در حال بروزرسانی…"
+          : rows.length > shown
+            ? `نمایش ${fa(shown)} از ${fa(rows.length)} مدل`
+            : `${fa(rows.length)} مدل`;
+    moreBtn.hidden = rows.length <= shown;
+    refreshBtn.disabled = loading || refreshing;
+    clearBtn.hidden = !search.value;
+  }
+
+  async function loadModels(force = false) {
+    if (loading) return;
+    loading = true;
+    refreshing = models.length > 0;
+    error = "";
+    paintHint();
+    paintList();
+    try {
+      const list_ = await load(force);
+      models = Array.isArray(list_) ? list_ : [];
+      loaded = true;
+      if (filter === "tools" && !models.some((m) => m.supports_tools)) filter = "all";
+      if (filter === "vision" && !models.some(drIsVision)) filter = "all";
+    } catch (err) {
+      error = String(err?.message ?? err);
+    } finally {
+      loading = false;
+      refreshing = false;
+      paintChips();
+      paintTrigger();
+      paintNote();
+      paintHint();
+      paintList();
+    }
+  }
+
+  function openPanel() {
+    if (disabled || open) return;
+    open = true;
+    root.classList.add("open");
+    panel.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+    search.setAttribute("aria-expanded", "true");
+    fitPanel();
+    query = "";
+    search.value = "";
+    visible = 120;
+    paintChips();
+    const rows = filteredModels();
+    const index = rows.findIndex((m) => m.id === selected);
+    if (index >= 0) {
+      visible = Math.max(visible, Math.ceil((index + 1) / 120) * 120);
+      active = index;
+    } else {
+      active = rows.length ? 0 : customId() ? 0 : -1;
+    }
+    paintList();
+    search.focus({ preventScroll: true });
+    if (!loaded && !loading && !error) loadModels();
+  }
+
+  /** پنل را در فضای آزاد بالا/پایین دکمه جا می‌دهد */
+  function fitPanel() {
+    if (!open) return;
+    const rect = trigger.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
+    const up = spaceBelow < 420 && spaceAbove > spaceBelow;
+    root.classList.toggle("drop-up", up);
+    const space = Math.max(220, Math.min(460, up ? spaceAbove : spaceBelow));
+    panel.style.maxHeight = `${space}px`;
+  }
+
+  function closePanel(refocus = false) {
+    if (!open) return;
+    open = false;
+    root.classList.remove("open");
+    panel.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+    search.setAttribute("aria-expanded", "false");
+    search.setAttribute("aria-activedescendant", "");
+    if (refocus && !disabled) trigger.focus({ preventScroll: true });
+  }
+
+  function apply(id) {
+    if (!id) return;
+    selected = id;
+    hidden.value = id;
+    paintTrigger();
+    paintNote();
+    paintHint();
+    closePanel(true);
+  }
+
+  function moveActive(delta) {
+    const rows = filteredModels();
+    const count = Math.min(rows.length, visible) + (customId() ? 1 : 0);
+    if (!count) return;
+    active = active < 0 ? 0 : Math.max(0, Math.min(count - 1, active + delta));
+    paintList();
+  }
+
+  trigger.addEventListener(
+    "click",
+    () => {
+      if (disabled) return;
+      if (open) closePanel(true);
+      else openPanel();
+    },
+    { signal },
+  );
+
+  search.addEventListener(
+    "input",
+    () => {
+      query = search.value;
+      visible = 120;
+      active = 0;
+      paintList();
+    },
+    { signal },
+  );
+
+  search.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        moveActive(e.key === "ArrowDown" ? 1 : -1);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        const rows = filteredModels();
+        const shown = Math.min(rows.length, visible);
+        const custom = customId();
+        if (active >= 0 && active < shown) apply(rows[active].id);
+        else if (custom && active === shown) apply(custom);
+        else if (rows.length === 1) apply(rows[0].id);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        closePanel(true);
+      } else if (e.key === "Tab") {
+        closePanel(false);
+      }
+    },
+    { signal },
+  );
+
+  clearBtn.addEventListener(
+    "click",
+    () => {
+      search.value = "";
+      query = "";
+      visible = 120;
+      active = models.length ? 0 : -1;
+      paintList();
+      search.focus({ preventScroll: true });
+    },
+    { signal },
+  );
+
+  chips.addEventListener(
+    "click",
+    (e) => {
+      const btn = e.target.closest("[data-filter]");
+      if (!btn) return;
+      filter = btn.dataset.filter;
+      visible = 120;
+      active = 0;
+      paintChips();
+      paintList();
+      search.focus({ preventScroll: true });
+    },
+    { signal },
+  );
+
+  list.addEventListener(
+    "click",
+    (e) => {
+      if (e.target.closest("[data-retry]")) {
+        loadModels(true);
+        return;
+      }
+      const opt = e.target.closest(".dr-opt");
+      if (!opt) return;
+      if (opt.dataset.custom) {
+        const id = customId();
+        if (id) apply(id);
+        return;
+      }
+      if (opt.dataset.id) apply(opt.dataset.id);
+    },
+    { signal },
+  );
+
+  moreBtn.addEventListener(
+    "click",
+    () => {
+      visible += 120;
+      paintList();
+      search.focus({ preventScroll: true });
+    },
+    { signal },
+  );
+
+  refreshBtn.addEventListener("click", () => loadModels(true), { signal });
+
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (!open || root.contains(e.target)) return;
+      closePanel(false);
+    },
+    { signal },
+  );
+  window.addEventListener("resize", fitPanel, { signal });
+  window.addEventListener("scroll", fitPanel, { passive: true, signal });
+
+  paintTrigger();
+  paintNote();
+  paintHint();
+  paintChips();
+  loadModels();
+
+  return {
+    saved() {
+      savedValue = selected;
+      paintHint();
+    },
+    reload: () => loadModels(true),
+    get value() {
+      return selected;
+    },
+    destroy: () => ac.abort(),
   };
 }
 
@@ -3735,16 +4441,16 @@ async function pageDibaRouter(main) {
           </div>
           <span class="hint">${d.hasApiKey ? "کلید ذخیره شده است؛ برای تغییر مقدار جدید را وارد کنید." : `کلید را از <a href="${esc(d.keysUrl)}" target="_blank" rel="noopener">پنل دیبا روتر</a> بسازید.`}</span>
         </div>
-        <div class="field">
-          <label for="dr-model">مدل ${d.modelFromEnv ? '<span class="env-badge">از env</span>' : ""}</label>
-          <input class="input ltr-input" id="dr-model" value="${esc(d.model)}" list="dr-models" ${d.modelFromEnv ? "disabled" : ""} placeholder="dibachain/diba-router-free">
-          <datalist id="dr-models"></datalist>
-          <span class="hint">پیش‌فرض <code class="ltr">dibachain/diba-router-free</code> رایگان و خودکار است. با «دریافت مدل‌ها» فهرست را ببینید.</span>
+        <div class="field dr-model-field" id="dr-model-field">
+          <label for="dr-model-picker">مدل ${d.modelFromEnv ? '<span class="env-badge">از env</span>' : ""}</label>
+          <input type="hidden" id="dr-model" value="${esc(d.model)}">
+          <div class="dr-picker"></div>
+          <div class="dr-note" hidden></div>
+          <span class="hint" id="dr-model-hint"></span>
         </div>
         <div class="prov-actions">
           <button class="btn btn-primary" type="submit">ذخیره اتصال</button>
           <button class="btn btn-ghost" type="button" id="dr-test">تست اتصال</button>
-          <button class="btn btn-ghost" type="button" id="dr-models-btn">دریافت مدل‌ها</button>
         </div>
         <div class="test-out" id="dr-out"></div>
       </form>
@@ -3755,7 +4461,7 @@ async function pageDibaRouter(main) {
         <span class="eyebrow">سازگار با OpenAI</span>
         <h3>اتصال در چند خط</h3>
         <p class="hint">همان کلید و مدلی که اینجا ذخیره می‌کنید، در SDKهای OpenAI، LangChain و Vercel AI هم قابل استفاده است.</p>
-        <pre class="json ltr">${esc(`base_url = "${d.defaultBase}"\napi_key  = "sk-dc-v1-..."\nmodel    = "${d.defaultModel}"`)}</pre>
+        <pre class="json ltr">${esc(`base_url = "${d.defaultBase}"\napi_key  = "sk-dc-v1-..."\nmodel    = "${d.model}"`)}</pre>
         <div class="dr-links">
           <a href="${esc(d.keysUrl)}" target="_blank" rel="noopener">ساخت کلید API</a>
           <a href="https://dibarouter.ir/docs" target="_blank" rel="noopener">مستندات API</a>
@@ -3778,6 +4484,12 @@ async function pageDibaRouter(main) {
   const key = document.getElementById("dr-key");
   const base = document.getElementById("dr-base");
   const model = document.getElementById("dr-model");
+  const picker = initDibaModelPicker(document.getElementById("dr-model-field"), {
+    value: d.model,
+    disabled: d.modelFromEnv,
+    load: (force) => drLoadModels(force),
+  });
+  pageDispose = () => picker?.destroy();
 
   document.querySelector("[data-dr-reveal]").onclick = () => {
     key.type = key.type === "password" ? "text" : "password";
@@ -3803,6 +4515,7 @@ async function pageDibaRouter(main) {
       key.value = "";
       key.placeholder = r.apiKeyMasked || "sk-dc-v1-…";
       refreshPill(r.configured);
+      picker?.saved();
       window.dispatchEvent(new Event("dibarouter-config"));
       toast(r.configured ? "اتصال دیبا روتر ذخیره شد" : "تنظیمات ذخیره شد؛ کلید API را وارد کنید");
       show(`اتصال ذخیره شد. مدل: <code class="ltr">${esc(r.model)}</code>`);
@@ -3819,18 +4532,6 @@ async function pageDibaRouter(main) {
       show(esc(ex.message), false);
     }
   };
-
-  document.getElementById("dr-models-btn").onclick = async (e) => {
-    try {
-      const r = await busy(e.currentTarget, () => api("dibarouter/models"));
-      const list = document.getElementById("dr-models");
-      list.innerHTML = r.models.map((m) => `<option value="${esc(m.id)}">${esc(m.name || m.id)}</option>`).join("");
-      const free = r.models.filter((m) => m.is_free).length;
-      show(`${fa(r.count)} مدل چت/بینایی دریافت شد${free ? ` · ${fa(free)} مدل رایگان` : ""}`);
-    } catch (ex) {
-      show(esc(ex.message), false);
-    }
-  };
 }
 
 // ---------------------------------------------------------------- connect
@@ -3843,12 +4544,12 @@ async function pageConnect(main) {
     "Cursor / کلاینت‌های JSON": { lang: "json", code: JSON.stringify({ mcpServers: { "diba-mcp": { url, headers: { Authorization: `Bearer ${c.token}` } } } }, null, 2) },
     "Claude Desktop (stdio)": {
       lang: "json",
-      code: JSON.stringify({ mcpServers: { "diba-mcp": { command: "npx", args: ["-y", "diba-mcp", "stdio"] } } }, null, 2),
-      note: "در حالت stdio سرور روی سیستم شما اجرا شده و تنظیمات را مستقیماً از پوشه ~/.diba-mcp می‌خواند؛ نیازی به توکن نیست.",
+      code: JSON.stringify({ mcpServers: { "diba-mcp": { command: "npx", args: ["-y", "diba-mcp", "stdio", "--data", c.dataDir] } } }, null, 2),
+      note: "در حالت stdio سرور روی همین سیستم اجرا می‌شود و از همان پوشه‌ی داده‌ی داشبورد استفاده می‌کند؛ نیازی به توکن نیست. حالت HTTP و stdio را هم‌زمان برای یک حساب اجرا نکنید.",
     },
     "اسکریپت Express / Node.js": {
       lang: "js",
-      code: `import express from "express";\nimport { createDibaMcp } from "diba-mcp";\n\nconst app = express();\nconst dibaMcp = createDibaMcp({ dataDir: "./data/diba-mcp" });\n\n// اتصال داشبورد و اندپوینت MCP به پروژه اکسپرس شما\napp.use("/diba-mcp", dibaMcp.router());\n\n// یا فراخوانی مستقیم بدون هوش مصنوعی:\nawait dibaMcp.engine.callTool("bale_send_message", { text: "سفارش جدید ثبت شد" }, "dashboard");`,
+      code: `import express from "express";\nimport { createDibaMcp } from "diba-mcp";\n\nconst app = express();\nconst dibaMcp = createDibaMcp({ dataDir: "./data/diba-mcp" });\n\n// اتصال داشبورد و اندپوینت MCP به پروژه اکسپرس شما\napp.use("/diba-mcp", dibaMcp.router());\n\n// یا فراخوانی مستقیم بدون هوش مصنوعی:\nawait dibaMcp.engine.callTool("bale_client_send_message", { text: "سفارش جدید ثبت شد" }, "dashboard");`,
     },
     "تست دستی با curl": {
       lang: "bash",
@@ -3861,8 +4562,11 @@ async function pageConnect(main) {
     <div class="conn-grid">
       <section class="panel">
         <div class="field"><label for="ep">آدرس اندپوینت Streamable HTTP</label>
-          <div class="endpoint"><input id="ep" class="input ltr-input" readonly value="${esc(url)}"><button class="btn btn-ghost" data-copy="${esc(url)}">کپی آدرس</button></div>
-          <span class="hint">پروتکل انتقال: HTTP POST بدون نشست با پشتیبانی از SSE.</span></div>
+          <div class="endpoint"><input id="ep" class="input ltr-input" readonly value="${esc(url)}"><button class="btn btn-ghost" data-copy="${esc(url)}">کپی آدرس</button><button class="btn btn-ghost" type="button" id="mcp-test">تست اتصال</button></div>
+          <span class="hint">پروتکل انتقال: HTTP POST بدون نشست با پشتیبانی از SSE.</span>
+          <span class="hint">برای کلاینت ابری (مثل Claude.ai) این آدرس باید از اینترنت در دسترس باشد؛ از دامنه یا تانل استفاده کنید. برای Claude Code/Desktop روی همین سیستم، <code class="ltr">127.0.0.1</code> کافی است. حالت HTTP و stdio را هم‌زمان اجرا نکنید.</span>
+          <div class="test-out" id="mcp-test-out"></div>
+        </div>
         <div class="field" style="margin-top:18px"><label for="tk">توکن دسترسی Bearer Token${c.fromEnv ? '<span class="env-badge">از env</span>' : ""}</label>
           <div class="endpoint">
             <div class="input-wrap"><input id="tk" type="password" class="input ltr-input" readonly value="${esc(c.token)}"><button class="btn btn-icon btn-quiet" data-reveal="tk" aria-label="نمایش توکن">${icons.eye}</button></div>
@@ -3891,6 +4595,16 @@ async function pageConnect(main) {
     if (rv) { const i = document.getElementById(rv.dataset.reveal); i.type = i.type === "password" ? "text" : "password"; }
     const tb = e.target.closest("[data-tab]");
     if (tb) { tab = tb.dataset.tab; main.querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-selected", b === tb)); drawSnip(); }
+    if (e.target.closest("#mcp-test")) {
+      const out = document.getElementById("mcp-test-out");
+      out.innerHTML = "";
+      try {
+        const r = await busy(e.target.closest("#mcp-test"), () => api("connection/test", { body: {} }));
+        out.innerHTML = `<div class="call"><span class="dot" style="background:var(--success)"></span><span>اتصال MCP برقرار است — ${fa(r.tools)} ابزار در ${fa(r.ms)} میلی‌ثانیه</span><span class="src ltr mono">${esc(r.url)}</span><span></span><span></span></div>`;
+      } catch (ex) {
+        out.innerHTML = `<div class="err-box">${esc(ex.message)}</div>`;
+      }
+    }
     if (e.target.closest("#rotate") && await openModal({
       title: "ساخت توکن جدید",
       message: "آیا توکن دسترسی کنونی باطل شود؟ تمام کلاینت‌های متصل باید با توکن جدید تنظیم شوند.",

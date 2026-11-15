@@ -5,3 +5,8 @@ data/
 *.log
 .eitaa-bridge/
 .tmp/
+# نشست‌های ذخیره‌شده‌ی کلاینت‌ها (اینستاگرام و ...) — هرگز کامیت نشوند
+session.json
+*.session
+.agents/
+skills-lock.json

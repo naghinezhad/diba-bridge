@@ -37,17 +37,17 @@ export function hintFor(error: string, step: string): string | undefined {
   const e = error.toLowerCase();
   if (/نشست|session expired|login/.test(e))
     return "نشست حساب کاربری معتبر نیست. در «پیام‌رسان‌ها» کارت همان سرویس را باز کنید و دکمه‌ی «ورود با حساب ...» را دوباره بزنید.";
-  if (/webhook/.test(e)) return "روی این ربات وبهوک تنظیم شده و تا وقتی هست، دریافت پیام کار نمی‌کند. از صفحه‌ی «پیام‌ها» دکمه‌ی «حذف وبهوک» را بزنید.";
-  if (/conflict|terminated by other getupdates/.test(e)) return "برنامه‌ی دیگری هم همزمان پیام‌های این ربات را می‌خواند. فقط یکی از آن‌ها باید روشن باشد.";
+  if (/webhook/.test(e)) return "روی این حساب وبهوک تنظیم شده و تا وقتی هست، دریافت پیام کار نمی‌کند. آن را از پنل همان پیام‌رسان بردارید.";
+  if (/conflict|terminated by other getupdates/.test(e)) return "برنامه‌ی دیگری هم همزمان پیام‌های این حساب را می‌خواند. فقط یکی از آن‌ها باید روشن باشد.";
   if (/پراکسی/.test(error)) return "تنظیمات SOCKS_PROXY یا HTTPS_PROXY را بررسی کنید.";
   if (/dns|enotfound|eai_again/.test(e)) return "آدرس API پیدا نشد. آدرس پایه را در تنظیمات و DNS سرور را بررسی کنید.";
   if (/محدودیت ip|timeout|زمان/.test(e)) return "سرور به API پیام‌رسان نمی‌رسد. اگر سرور خارج از ایران است، پراکسی به یک سرور ایران تنظیم کنید (DEPLOY.md، «مسیر ب»).";
   if (/econnrefused|اتصال رد شد/.test(e)) return "سرور مقصد اتصال را رد کرد. آدرس پایه را بررسی کنید.";
-  if (/401|unauthorized|invalid_access|invalid token|توکن/.test(e)) return "توکن اشتباه است یا باطل شده. توکن را دوباره از BotFather همان پیام‌رسان بگیرید و ذخیره کنید.";
+  if (/401|unauthorized|invalid_access|invalid token|توکن|نشست/.test(e)) return "نشست یا توکن اشتباه است یا باطل شده. دوباره با حساب کاربری وارد شوید و نشست را ذخیره کنید.";
   if (/chat not found|chat_not_found|invalid_input|bad chat|peer|not found/.test(e) && step !== "auth")
-    return "شناسه‌ی چت اشتباه است، یا کاربر هنوز ربات را استارت نکرده، یا ربات عضو آن گروه/کانال نیست.";
+    return "شناسه‌ی چت اشتباه است، یا این حساب به آن چت دسترسی ندارد، یا عضو آن گروه/کانال نیست.";
   if (/403|forbidden|blocked|kicked|not enough rights|not a member|admin/.test(e))
-    return "ربات اجازه‌ی ارسال ندارد: کاربر ربات را بلاک کرده یا ربات در آن کانال/گروه ادمین نیست.";
+    return "حساب اجازه‌ی ارسال ندارد: کاربر شما را بلاک کرده یا حساب در آن کانال/گروه دسترسی ادمین ندارد.";
   if (/404|not found/.test(e) && step === "auth") return "آدرس پایه‌ی API اشتباه است یا این متد را ندارد. مقدار پیش‌فرض را امتحان کنید.";
   if (/عکس نیست|مگابایت/.test(error)) return undefined;
   if (/http 5\d\d/.test(e)) return "سرور پیام‌رسان خطای داخلی داد. چند دقیقه بعد دوباره امتحان کنید.";
@@ -115,7 +115,7 @@ export async function runSelfTest(
     return { detail: `HTTP ${r.status}` };
   });
 
-  await step("auth", p.auth ? "ورود و اطلاعات حساب" : "توکن و اطلاعات ربات", async () => {
+  await step("auth", p.auth ? "ورود و اطلاعات حساب" : "توکن و اطلاعات سرویس", async () => {
     const r = await engine.testProvider(p.id);
     if (!r.ok) throw new Error(r.error);
     return { detail: summarize(r.result), result: r.result };
@@ -151,7 +151,7 @@ export async function runSelfTest(
       return { detail: `دریافت خودکار روشن است؛ ${st.received} پیام جدید از آخرین شروع` };
     }
     const { added } = await engine.inbox.fetchOnce(p.id);
-    return { detail: added ? `${added} پیام جدید دریافت شد (در صفحه‌ی «پیام‌ها»)` : "کار می‌کند؛ پیام جدیدی نبود. یک پیام به ربات بدهید و دوباره امتحان کنید." };
+    return { detail: added ? `${added} پیام جدید دریافت شد (در صفحه‌ی «پیام‌ها»)` : "کار می‌کند؛ پیام جدیدی نبود. یک پیام به این حساب بدهید و دوباره امتحان کنید." };
   });
 
   const ok = steps.every((s) => s.status !== "fail");
