@@ -1,7 +1,7 @@
 {
   "name": "diba-mcp",
   "version": "5.0.0",
-  "description": "MCP server for Iranian messengers and social services (Bale, Eitaa, Rubika, Soroush Plus, Telegram, WhatsApp, Instagram, X, LinkedIn) and WordPress, with a built-in Persian dashboard",
+  "description": "MCP server for Iranian messengers and social services (Bale, Eitaa, Rubika, Soroush Plus, Telegram, WhatsApp, Instagram, X, LinkedIn), banking and crypto exchanges (BluBank, Binance, Bybit, OKX, KuCoin, Kraken) and WordPress, with a built-in Persian dashboard",
   "keywords": [
     "mcp",
     "model-context-protocol",
@@ -16,6 +16,12 @@
     "wordpress",
     "telegram",
     "whatsapp",
+    "binance",
+    "bybit",
+    "okx",
+    "kucoin",
+    "kraken",
+    "crypto-exchange",
     "dibachain"
   ],
   "homepage": "https://github.com/Dibachain-Company/diba-bridge#readme",
