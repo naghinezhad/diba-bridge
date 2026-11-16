@@ -10,11 +10,16 @@ services:
     build: .
     container_name: diba-mcp
     restart: unless-stopped
-    env_file: .env
+    init: true
+    stop_grace_period: 15s
+    env_file:
+      - path: .env
+        required: false
     environment:
       HOST: 0.0.0.0
       PORT: 3790
       DATA_DIR: /app/data
+      DOCKER_CONTAINER: "1"
     ports:
       # پیش‌فرض فقط روی localhost سرور باز است (دسترسی با تونل SSH یا از طریق Caddy).
       # برای تست سریع با IP عمومی در .env بگذارید: BIND_ADDR=0.0.0.0

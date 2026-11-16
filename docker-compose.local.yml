@@ -1,0 +1,12 @@
+# Local development override: use the repository's ./data directory so the
+# container sees the same providers, sessions, triggers and settings as the
+# local Node process.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+#
+# On production, use the default named volume instead:
+#   docker compose up -d --build
+services:
+  diba-mcp:
+    volumes:
+      - ./data:/app/data

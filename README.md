@@ -109,17 +109,23 @@ diba-mcp
 ```
 
 #### ۳. اجرا با داکر (Docker)
+ ساخت و اجرا از سورس همین مخزن:
+
 ```bash
-docker run -d --name diba-bridge -p 127.0.0.1:3790:3790 \
-  -e ADMIN_PASSWORD=your-secure-password \
-  -v diba-bridge-data:/app/data \
-  ghcr.io/yunessfa/diba-mcp:latest
+docker compose up -d --build
+```
+
+برای استفاده از داده‌های همین پوشه (`./data`) در کانتینر:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 ```
 
 سپس داشبورد را در مرورگر باز کنید:  
 👉 **http://127.0.0.1:3790**
 
-> **کد راه‌اندازی اولیه:** در اجرای اول (در صورت عدم تعیین `ADMIN_PASSWORD`)، یک کد راه‌اندازی شش‌حرفی در کنسول نمایش داده می‌شود که با استفاده از آن می‌توانید رمز عبور داشبورد را ثبت نمایید.
+> **کد راه‌اندازی اولیه:** در اجرای اول (در صورت عدم تعیین `ADMIN_PASSWORD`)، یک کد راه‌اندازی شش‌حرفی در کنسول نمایش داده می‌شود که با استفاده از آن می‌توانید رمز عبور داشبورد را ثبت نمایید.  
+> برای رد شدن کامل از این مرحله، `ADMIN_PASSWORD` را در `.env` تنظیم کنید.
 
 ---
 
@@ -364,10 +370,23 @@ docker run -d --name diba-bridge -p 127.0.0.1:3790:3790 \
   ghcr.io/yunessfa/diba-mcp:latest
 ```
 
+Or build and run from this repository:
+
+```bash
+docker compose up -d --build
+```
+
+To use this checkout's `./data` directory inside the container:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+```
+
 Access the dashboard at:  
 👉 **http://127.0.0.1:3790**
 
-> **Initial Setup:** On first launch without `ADMIN_PASSWORD` in your environment, a 6-character setup code is printed to the console. Enter this code in the dashboard to set your administrative password.
+> **Initial Setup:** On first launch without `ADMIN_PASSWORD` in your environment, a 6-character setup code is printed to the console. Enter this code in the dashboard to set your administrative password.  
+> To skip this step entirely, set `ADMIN_PASSWORD` in `.env`.
 
 ---
 

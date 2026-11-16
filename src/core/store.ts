@@ -44,9 +44,14 @@ export function readStoredSettings(dataDir: string): AppSettingsStored {
   }
 }
 
+export function dockerizeLocalProxy(value: string): string {
+  if (process.env.DOCKER_CONTAINER !== "1" || !value) return value;
+  return value.replace(/\/\/(127\.0\.0\.1|localhost|0\.0\.0\.0)(?=[:/]|$)/i, "//host.docker.internal");
+}
+
 export function proxyEnvOf(settings: AppSettingsStored): Record<string, string> {
-  if (settings.proxyType === "socks5" && settings.proxyUrl) return { SOCKS_PROXY: settings.proxyUrl };
-  if (settings.proxyType === "http" && settings.proxyUrl) return { HTTPS_PROXY: settings.proxyUrl };
+  if (settings.proxyType === "socks5" && settings.proxyUrl) return { SOCKS_PROXY: dockerizeLocalProxy(settings.proxyUrl) };
+  if (settings.proxyType === "http" && settings.proxyUrl) return { HTTPS_PROXY: dockerizeLocalProxy(settings.proxyUrl) };
   return {};
 }
 

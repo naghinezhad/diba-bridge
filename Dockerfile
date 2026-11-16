@@ -1,6 +1,8 @@
 # ---------- build ----------
-FROM node:22-alpine AS build
+FROM node:24-slim AS build
 WORKDIR /app
+ENV NPM_CONFIG_FUND=false \
+    NPM_CONFIG_AUDIT=false
 COPY package*.json ./
 RUN npm ci --ignore-scripts
 COPY tsconfig.json ./
@@ -9,7 +11,7 @@ COPY vendor ./vendor
 RUN npm run build && npm prune --omit=dev
 
 # ---------- run ----------
-FROM node:22-alpine
+FROM node:24-slim
 WORKDIR /app
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
@@ -26,5 +28,5 @@ USER node
 VOLUME ["/app/data"]
 EXPOSE 3790
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:${PORT}/healthz >/dev/null || exit 1
+  CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || '3790') + '/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 CMD ["node", "dist/main.js"]

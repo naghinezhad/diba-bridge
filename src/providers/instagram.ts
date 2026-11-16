@@ -18,6 +18,7 @@ import { SocksProxyAgent } from "socks-proxy-agent";
 import { z } from "zod";
 import { cancelAllBrowserLogins, startBrowserLogin, pollBrowserLogin } from "../core/browser-login.js";
 import { loadMedia, mediaField } from "../core/media.js";
+import { dockerizeLocalProxy } from "../core/store.js";
 import { defineTool, ProviderError, type AuthBrowserLogin, type ProviderAuthDef, type ProviderContext, type ProviderDef } from "../core/types.js";
 
 const InstagrapiClient = (InstagrapiPkg as any).InstagrapiClient as new (options?: { proxy?: string }) => any;
@@ -83,9 +84,9 @@ function normalizeUsername(raw: string): string {
  */
 function currentProxy(ctx: ProviderContext): string {
   const fromField = ctx.config.proxyUrl?.trim();
-  if (fromField) return fromField;
+  if (fromField) return dockerizeLocalProxy(fromField);
   const env = process.env;
-  return (
+  return dockerizeLocalProxy((
     env.SOCKS_PROXY ||
     env.socks_proxy ||
     env.HTTPS_PROXY ||
@@ -93,7 +94,7 @@ function currentProxy(ctx: ProviderContext): string {
     env.HTTP_PROXY ||
     env.http_proxy ||
     ""
-  ).trim();
+  ).trim());
 }
 
 function normalizeProxy(raw: string): string {
