@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { looksLikePhone, matchName, phoneticKey } from "../../src/core/name-match.ts";
+import { looksLikePhone, matchName, phoneticKey } from "../../src/core/assistant/name-match.ts";
 
 describe("name matching", () => {
   test("کلید آوایی فارسی و انگلیسی یکی می‌شود", () => {

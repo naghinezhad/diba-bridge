@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, test } from "node:test";
 import { z } from "zod";
-import { handleSendReply, parseSendIntent, prepareSend } from "../../src/core/agent-send.ts";
+import { handleSendReply, parseSendIntent, prepareSend } from "../../src/core/assistant/chat-flow.ts";
 import type { DibaRouterConfig } from "../../src/core/dibarouter.ts";
 import { DibaMcpEngine } from "../../src/core/engine.ts";
 import { defineTool, type ProviderDef } from "../../src/core/types.ts";

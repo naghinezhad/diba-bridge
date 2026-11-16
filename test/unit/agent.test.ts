@@ -8,8 +8,8 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { z } from "zod";
 import { DibaMcpEngine } from "../../src/core/engine.ts";
-import { McpAgent } from "../../src/core/mcp-agent.ts";
-import { enrichChatTitles } from "../../src/core/resolver.ts";
+import { DibaAgent } from "../../src/core/assistant/agent.ts";
+import { enrichChatTitles } from "../../src/core/assistant/resolver.ts";
 import { defineTool, type ProviderDef } from "../../src/core/types.ts";
 
 const now = new Date().toISOString();
@@ -154,7 +154,7 @@ async function mockDibaRouter() {
 describe("Diba assistant", () => {
   test("یک جمله‌ی ساده با نام انگلیسی → ارسال فوری به مخاطب درست", async () => {
     const s = setup();
-    const agent = new McpAgent(s.engine);
+    const agent = new DibaAgent(s.engine);
     try {
       const r = await agent.handle({ request: "به John در تلگرام پیام بده که فردا جلسه داریم." });
       assert.equal(r.status, "done", JSON.stringify(r));
@@ -176,7 +176,7 @@ describe("Diba assistant", () => {
 
   test("نام مبهم → فهرست گزینه‌ها بدون شناسه، سپس انتخاب با شماره و ارسال", async () => {
     const s = setup();
-    const agent = new McpAgent(s.engine);
+    const agent = new DibaAgent(s.engine);
     try {
       const multi = await agent.handle({ request: "به علی پیام بده که فردا می‌بینمت", conversation_id: "t2" });
       assert.equal(multi.status, "need_person", JSON.stringify(multi));
@@ -199,7 +199,7 @@ describe("Diba assistant", () => {
     const s = setup();
     const model = await mockDibaRouter();
     s.engine.store.updateDibarouter({ baseUrl: model.baseUrl, apiKey: "test", model: "mock" });
-    const agent = new McpAgent(s.engine);
+    const agent = new DibaAgent(s.engine);
     try {
       const prep = await agent.handle({ request: "به جان اسمیت پیام بده", conversation_id: "t3" });
       assert.equal(prep.status, "need_confirmation", JSON.stringify(prep));
@@ -221,14 +221,14 @@ describe("Diba assistant", () => {
     const s = setup();
     const model = await mockDibaRouter();
     s.engine.store.updateDibarouter({ baseUrl: model.baseUrl, apiKey: "test", model: "mock" });
-    const agent = new McpAgent(s.engine);
+    const agent = new DibaAgent(s.engine);
     try {
       const prep = await agent.handle({ request: "به جان اسمیت پیام بده", conversation_id: "t4" });
       assert.equal(prep.status, "need_confirmation", JSON.stringify(prep));
 
       const revised = await agent.handle({ request: "فردا ساعت ۵ می‌بینمت", conversation_id: "t4" });
       assert.equal(revised.status, "need_confirmation", JSON.stringify(revised));
-      assert.match(revised.draft ?? "", /ساعت ?5/);
+      assert.match(revised.draft ?? "", /ساعت ?[5۵]/);
       assert.equal(s.sends(), 0);
 
       const sent = await agent.handle({ request: "بله", conversation_id: "t4" });
@@ -242,7 +242,7 @@ describe("Diba assistant", () => {
 
   test("فهرست چت‌ها، خواندن پیام‌ها، وضعیت و توانایی‌ها", async () => {
     const s = setup();
-    const agent = new McpAgent(s.engine);
+    const agent = new DibaAgent(s.engine);
     try {
       const list = await agent.handle({ request: "چت‌های تلگرام" });
       assert.equal(list.status, "done", JSON.stringify(list));
@@ -272,7 +272,7 @@ describe("Diba assistant", () => {
 
   test("اجرای مستقیم ابزار سرویس (read-only) بدون تأیید", async () => {
     const s = setup();
-    const agent = new McpAgent(s.engine);
+    const agent = new DibaAgent(s.engine);
     try {
       const r = await agent.handle({ request: "", tool: "telegram_client_get_chats", args: { limit: 5 } });
       assert.equal(r.status, "done", JSON.stringify(r));
@@ -285,7 +285,7 @@ describe("Diba assistant", () => {
 
   test("dry_run ارسال نمی‌کند", async () => {
     const s = setup();
-    const agent = new McpAgent(s.engine);
+    const agent = new DibaAgent(s.engine);
     try {
       const r = await agent.handle({ request: "به جان اسمیت پیام بده که سلام", dry_run: true });
       assert.equal(r.status, "done", JSON.stringify(r));
@@ -298,7 +298,7 @@ describe("Diba assistant", () => {
 
   test("عنوان زنده‌ی چت بر عنوان عددی صندوق اولویت دارد", async () => {
     const s = setup(true);
-    const agent = new McpAgent(s.engine);
+    const agent = new DibaAgent(s.engine);
     try {
       const list = await agent.handle({ request: "چت‌های تلگرام" });
       assert.equal(list.status, "done", JSON.stringify(list));
@@ -313,7 +313,7 @@ describe("Diba assistant", () => {
     const s = setup();
     const model = await mockDibaRouter();
     s.engine.store.updateDibarouter({ baseUrl: model.baseUrl, apiKey: "test", model: "mock" });
-    const agent = new McpAgent(s.engine);
+    const agent = new DibaAgent(s.engine);
     try {
       const prep = await agent.handle({ request: "به جان اسمیت پیام بده", conversation_id: "t5" });
       assert.equal(prep.status, "need_confirmation", JSON.stringify(prep));
@@ -332,7 +332,7 @@ describe("Diba assistant", () => {
 
   test("فهرست گزینه‌های قدیمی با درخواست کامل تازه بازسازی می‌شود", async () => {
     const s = setup();
-    const agent = new McpAgent(s.engine);
+    const agent = new DibaAgent(s.engine);
     try {
       const multi = await agent.handle({ request: "به علی پیام بده", conversation_id: "t6" });
       assert.equal(multi.status, "need_person", JSON.stringify(multi));
@@ -350,7 +350,7 @@ describe("Diba assistant", () => {
 
   test("درخواست کامل تازه پیش‌نویس/فهرست قبلی را می‌بلعد و متن جدید را می‌فرستد", async () => {
     const s = setup();
-    const agent = new McpAgent(s.engine);
+    const agent = new DibaAgent(s.engine);
     try {
       const multi = await agent.handle({ request: "به علی پیام بده که فردا می‌بینمت", conversation_id: "t7" });
       assert.equal(multi.status, "need_person", JSON.stringify(multi));
@@ -368,7 +368,7 @@ describe("Diba assistant", () => {
 
   test("dry_run هیچ وضعیتی ذخیره نمی‌کند که بعداً ناخواسته ارسال شود", async () => {
     const s = setup();
-    const agent = new McpAgent(s.engine);
+    const agent = new DibaAgent(s.engine);
     try {
       const preview = await agent.handle({ request: "به علی پیام بده", dry_run: true, conversation_id: "t8" });
       assert.equal(preview.status, "need_person", JSON.stringify(preview));
@@ -386,7 +386,7 @@ describe("Diba assistant", () => {
 
   test("چت بی‌نام با نام واقعی اکانت نمایش داده می‌شود", async () => {
     const s = setup();
-    const agent = new McpAgent(s.engine);
+    const agent = new DibaAgent(s.engine);
     try {
       const list = await agent.handle({ request: "چت‌های تلگرام" });
       assert.equal(list.status, "done", JSON.stringify(list));
@@ -448,6 +448,102 @@ describe("Diba assistant", () => {
       await client.close();
       await server.close();
       s.close();
+    }
+  });
+
+  test("ضمیر («بهش») به آخرین مخاطب همان گفتگو برمی‌گردد", async () => {
+    const s = setup();
+    const agent = new DibaAgent(s.engine);
+    try {
+      const first = await agent.handle({ request: "به جان اسمیت پیام بده که فردا جلسه داریم", conversation_id: "p1" });
+      assert.equal(first.status, "done", JSON.stringify(first));
+      assert.equal(s.lastChat(), "42");
+
+      const again = await agent.handle({ request: "بهش بگو ساعت ۵ منتظرتم", conversation_id: "p1" });
+      assert.equal(again.status, "done", JSON.stringify(again));
+      assert.equal(s.lastChat(), "42");
+      assert.match(s.lastText(), /منتظرتم/);
+      assert.equal(s.sends(), 2);
+    } finally {
+      s.close();
+    }
+  });
+
+  test("ابزار نوشتنی فقط با توکن همان درخواست اجرا می‌شود (confirm تنها کافی نیست)", async () => {
+    const s = setup();
+    const agent = new DibaAgent(s.engine);
+    const call = { request: "", tool: "telegram_client_send_message", args: { chat_id: "42", text: "سلام جان، وقت بخیر" } };
+    try {
+      const blind = await agent.handle({ ...call, confirm: true });
+      assert.equal(blind.status, "error", JSON.stringify(blind));
+      assert.equal(s.sends(), 0);
+
+      const ask = await agent.handle(call);
+      assert.equal(ask.status, "need_confirmation", JSON.stringify(ask));
+      assert.ok(ask.confirmation_token);
+      assert.equal(s.sends(), 0);
+
+      const other = await agent.handle({ ...call, args: { chat_id: "43", text: "سلام" }, confirm: true, confirmation_token: ask.confirmation_token });
+      assert.equal(other.status, "error", JSON.stringify(other));
+      assert.equal(s.sends(), 0);
+
+      const done = await agent.handle({ ...call, confirm: true, confirmation_token: ask.confirmation_token });
+      assert.equal(done.status, "done", JSON.stringify(done));
+      assert.equal(s.sends(), 1);
+    } finally {
+      s.close();
+    }
+  });
+
+  test("پس از ارسال، فهرست انتخاب قبلی پاک می‌شود و شماره‌ی بعدی دوباره ارسال نمی‌کند", async () => {
+    const s = setup();
+    const agent = new DibaAgent(s.engine);
+    try {
+      await agent.handle({ request: "به علی پیام بده که فردا می‌بینمت", conversation_id: "p3" });
+      const chosen = await agent.handle({ request: "۱", conversation_id: "p3" });
+      assert.equal(chosen.status, "done", JSON.stringify(chosen));
+      assert.equal(s.sends(), 1);
+      assert.equal(s.engine.memory.getPending("p3"), undefined);
+
+      const stray = await agent.handle({ request: "۲", conversation_id: "p3" });
+      assert.notEqual(stray.status, "done", JSON.stringify(stray));
+      assert.equal(s.sends(), 1);
+    } finally {
+      s.close();
+    }
+  });
+
+  test("خواندن پیام‌ها پشت فهرست انتخابِ باز گیر نمی‌کند", async () => {
+    const s = setup();
+    const agent = new DibaAgent(s.engine);
+    try {
+      const multi = await agent.handle({ request: "به علی پیام بده", conversation_id: "p4" });
+      assert.equal(multi.status, "need_person", JSON.stringify(multi));
+      const read = await agent.handle({ request: "پیام‌های جان اسمیت در تلگرام را بخوان", conversation_id: "p4" });
+      assert.equal(read.action, "read", JSON.stringify(read));
+      assert.equal(read.status, "done", JSON.stringify(read));
+      assert.equal(s.sends(), 0);
+    } finally {
+      s.close();
+    }
+  });
+
+  test("موتور یک نمونه‌ی دستیار نگه می‌دارد و کش مخاطبین هر موتور جداست", async () => {
+    const a = setup();
+    const b = setup();
+    try {
+      assert.equal(a.engine.assistant, a.engine.assistant);
+      assert.notEqual(a.engine.assistant, b.engine.assistant);
+      const first = await a.engine.resolveRecipient("مریم");
+      assert.equal(first.best?.chatId, "47");
+      // حذف ابزار فهرست چت در موتور دوم نباید با کش موتور اول پوشانده شود
+      const tools = b.engine.provider("telegram_client")!.tools;
+      tools.splice(tools.findIndex((tool) => tool.name === "telegram_client_get_chats"), 1);
+      const second = await b.engine.resolveRecipient("مریم");
+      assert.equal(second.best, undefined, JSON.stringify(second.candidates));
+    } finally {
+      a.close();
+      b.close();
     }
   });
 });

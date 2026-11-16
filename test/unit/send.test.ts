@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, test } from "node:test";
 import { z } from "zod";
-import { checkMessageQuality, resolveRecipient } from "../../src/core/contacts.ts";
+import { checkMessageQuality } from "../../src/core/assistant/policy.ts";
 import { DibaMcpEngine } from "../../src/core/engine.ts";
 import { defineTool, type ProviderDef } from "../../src/core/types.ts";
 
@@ -71,17 +71,17 @@ describe("recipient resolution & quality", () => {
       { chat_id: "43", title: "مریم", type: "private", last_message: "خوبی؟", last_date: now },
     ]);
     try {
-      const r = await resolveRecipient(s.engine, "علي");
+      const r = await s.engine.resolveRecipient("علي");
       assert.equal(r.best?.chatId, "42");
       assert.equal(r.ambiguous, false);
       assert.ok(r.confidence >= 85);
 
-      const placeholder = await resolveRecipient(s.engine, "فلانی");
+      const placeholder = await s.engine.resolveRecipient("فلانی");
       assert.equal(placeholder.fallback, true);
       assert.ok(placeholder.candidates.length > 0);
       assert.match(placeholder.reason ?? "", /نزدیک‌ترین/);
 
-      const unknown = await resolveRecipient(s.engine, "کسی که وجود ندارد");
+      const unknown = await s.engine.resolveRecipient("کسی که وجود ندارد");
       assert.equal(unknown.fallback, true);
       assert.ok(unknown.candidates.length > 0);
     } finally {

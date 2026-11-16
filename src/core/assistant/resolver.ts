@@ -9,9 +9,10 @@
  * تطبیق نام با کلید آوایی انجام می‌شود، پس «عماد» و «Emad» یکی هستند.
  * همه‌ی فراخوانی‌های شبکه‌ای کوتاه‌مدت کش می‌شوند تا هر پیام چند صد درخواست نسازد.
  */
-import type { DibaMcpEngine } from "./engine.js";
-import { isGroupLike } from "./contacts.js";
+import type { DibaMcpEngine } from "../engine.js";
 import { cleanText, matchName, looksLikePhone } from "./name-match.js";
+import { canSendWith, isGroupLike } from "./policy.js";
+import { timeValue } from "./text.js";
 
 export type CandidateSource = "chat" | "contact" | "memory" | "search";
 
@@ -39,6 +40,8 @@ export interface Resolution {
   fallback: boolean;
   sources: CandidateSource[];
   note?: string;
+  /** توضیح کوتاه وقتی مخاطب با اطمینان مشخص نشده است */
+  reason?: string;
 }
 
 interface RawCandidate {
@@ -73,22 +76,39 @@ const CHAT_CACHE_MS = 60_000;
 const CONTACT_CACHE_MS = 120_000;
 const TOOL_TIMEOUT_MS = 8_000;
 
-const chatCache = new Map<string, { at: number; items: RawCandidate[] }>();
-const contactCache = new Map<string, { at: number; items: RawCandidate[] }>();
-
-export function clearResolverCache(provider?: string) {
-  if (provider) {
-    chatCache.delete(provider);
-    contactCache.delete(provider);
-    return;
-  }
-  chatCache.clear();
-  contactCache.clear();
+/**
+ * کش‌ها به ازای هر موتور نگه داشته می‌شوند (نه سراسری)، تا دو نمونه‌ی موتور
+ * — مثلاً در تست‌ها یا چند حساب — فهرست چت یکدیگر را نبینند.
+ */
+interface ResolverCaches {
+  chats: Map<string, { at: number; items: RawCandidate[] }>;
+  contacts: Map<string, { at: number; items: RawCandidate[] }>;
+  names: Map<string, { at: number; name: string }>;
 }
 
-function timeValue(value?: string): number {
-  const parsed = Date.parse(String(value ?? ""));
-  return Number.isFinite(parsed) ? parsed : 0;
+const cachesByEngine = new WeakMap<object, ResolverCaches>();
+
+function cachesOf(engine: DibaMcpEngine): ResolverCaches {
+  let caches = cachesByEngine.get(engine);
+  if (!caches) {
+    caches = { chats: new Map(), contacts: new Map(), names: new Map() };
+    cachesByEngine.set(engine, caches);
+  }
+  return caches;
+}
+
+/** پاک کردن کش مخاطبین یک موتور (بعد از ورود/خروج حساب یا برای جستجوی تازه) */
+export function clearResolverCache(engine: DibaMcpEngine, provider?: string): void {
+  const caches = cachesOf(engine);
+  if (!provider) {
+    caches.chats.clear();
+    caches.contacts.clear();
+    caches.names.clear();
+    return;
+  }
+  caches.chats.delete(provider);
+  for (const key of [...caches.contacts.keys()]) if (key.startsWith(`${provider}:`)) caches.contacts.delete(key);
+  for (const key of [...caches.names.keys()]) if (key.startsWith(`${provider}:`)) caches.names.delete(key);
 }
 
 function asArray(value: any): any[] {
@@ -144,8 +164,7 @@ function withTimeout<T>(promise: Promise<T>, ms = TOOL_TIMEOUT_MS): Promise<T> {
 }
 
 // ---------------- پیدا کردن نام واقعی چت‌های بی‌نام ----------------
-/** نام‌های کش‌شده؛ مقدار خالی یعنی «جستجو شد و نامی نبود» تا هر بار دوباره پرسیده نشود */
-const nameCache = new Map<string, { at: number; name: string }>();
+/** در کش نام، مقدار خالی یعنی «جستجو شد و نامی نبود» تا هر بار دوباره پرسیده نشود */
 const NAME_CACHE_MS = 10 * 60_000;
 const NAME_LOOKUP_LIMIT = 10;
 
@@ -198,6 +217,7 @@ async function enrichNames(
   if (!anonymous.length) return;
   const provider = engine.provider(providerId);
   const tool = provider?.tools.find((candidate) => candidate.name === `${providerId}_get_chat`);
+  const nameCache = cachesOf(engine).names;
 
   await Promise.all(
     anonymous.map(async (item) => {
@@ -239,14 +259,6 @@ export async function enrichChatTitles<T extends { provider: string; chatId: str
   return chats;
 }
 
-export function clearNameCache(provider?: string): void {
-  if (!provider) {
-    nameCache.clear();
-    return;
-  }
-  for (const key of [...nameCache.keys()]) if (key.startsWith(`${provider}:`)) nameCache.delete(key);
-}
-
 function fromInbox(engine: DibaMcpEngine, provider?: string): RawCandidate[] {
   return engine.inbox.chats(provider).map((chat) => ({
     provider: chat.provider,
@@ -260,6 +272,7 @@ function fromInbox(engine: DibaMcpEngine, provider?: string): RawCandidate[] {
 }
 
 async function liveChats(engine: DibaMcpEngine, providerId: string): Promise<RawCandidate[]> {
+  const chatCache = cachesOf(engine).chats;
   const cached = chatCache.get(providerId);
   if (cached && Date.now() - cached.at < CHAT_CACHE_MS) return cached.items;
   const provider = engine.provider(providerId);
@@ -287,6 +300,7 @@ async function serviceContacts(engine: DibaMcpEngine, providerId: string, query:
   const toolNames = new Set(provider.tools.map((tool) => tool.name));
   const specs = (CONTACT_TOOL_SPECS[providerId] ?? []).filter((spec) => toolNames.has(spec.tool));
   if (!specs.length) return [];
+  const contactCache = cachesOf(engine).contacts;
   const items: RawCandidate[] = [];
   for (const spec of specs) {
     const cacheKey = `${providerId}:${spec.tool}`;
@@ -391,6 +405,15 @@ function scoreOf(candidate: RawCandidate, query: string, allowGroup: boolean): {
   const match = matchName(query, [candidate.title, candidate.username]);
   let score = match.score;
   let reason = match.reason;
+  // شماره یا شناسه‌ی عددی (حداقل ۶ رقم) که در شناسه/عنوان چت هست، تطبیق قطعی حساب می‌شود
+  const digits = cleanText(query).replace(/\D/g, "");
+  if (digits.length >= 6) {
+    const haystack = `${candidate.chatId} ${candidate.title}`.replace(/\D/g, "");
+    if (haystack.includes(digits) && score < 95) {
+      score = 95;
+      reason = "digits";
+    }
+  }
   if (!score) return { score: 0, reason: "" };
 
   if (candidate.source === "memory") score += 6;
@@ -418,8 +441,12 @@ export async function listChatCandidates(engine: DibaMcpEngine, providerId: stri
 export interface ResolveOptions {
   provider?: string;
   allowGroup?: boolean;
-  /** پیام قبلی همین گفتگو، برای وقتی نام ناقص است */
+  /** حداکثر تعداد گزینه‌های برگشتی (پیش‌فرض ۸) */
   limit?: number;
+  /** فقط سرویس‌هایی که ابزار ارسال متن دارند */
+  sendableOnly?: boolean;
+  /** کش فهرست چت/مخاطب را نادیده بگیر و از سرویس تازه بخوان */
+  force?: boolean;
 }
 
 export async function resolveRecipient(
@@ -430,12 +457,23 @@ export async function resolveRecipient(
   const clean = cleanText(query);
   const allowGroup = opts.allowGroup === true;
   if (!clean) {
-    return { query: clean, candidates: [], confidence: 0, confident: false, exact: false, ambiguous: false, fallback: false, sources: [] };
+    return {
+      query: clean,
+      candidates: [],
+      confidence: 0,
+      confident: false,
+      exact: false,
+      ambiguous: false,
+      fallback: false,
+      sources: [],
+      reason: "نام مخاطب خالی است.",
+    };
   }
+  if (opts.force) clearResolverCache(engine, opts.provider);
 
   const providers = engine
     .describeProviders()
-    .filter((p) => p.ready && (!opts.provider || p.id === opts.provider))
+    .filter((p) => p.ready && (!opts.provider || p.id === opts.provider) && (!opts.sendableOnly || canSendWith(p.id)))
     .map((p) => p.id);
 
   const pool: RawCandidate[] = [...memoryCandidates(engine, opts.provider), ...fromInbox(engine, opts.provider)];
@@ -491,6 +529,15 @@ export async function resolveRecipient(
   const confident = Boolean(best && !fallback && best.score >= 88 && (gap >= 8 || !second));
   const ambiguous = !fallback && top.length > 1 && !confident;
   const sources = [...new Set(top.map((candidate) => candidate.source))];
+  const reason = !best
+    ? "مخاطبی با این نام/شناسه پیدا نشد."
+    : fallback
+      ? "مخاطبی با این نام پیدا نشد؛ نزدیک‌ترین چت‌های اخیر را نشان می‌دهم."
+      : ambiguous
+        ? "چند مخاطب نزدیک پیدا شد؛ باید یکی انتخاب شود."
+        : !confident
+          ? "تطبیق نام با اطمینان کافی انجام نشد."
+          : undefined;
 
   return {
     query: clean,
@@ -503,5 +550,6 @@ export async function resolveRecipient(
     fallback,
     sources,
     note,
+    reason,
   };
 }

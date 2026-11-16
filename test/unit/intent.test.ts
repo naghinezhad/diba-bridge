@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { isSmallTalk, parseRequest } from "../../src/core/intent.ts";
+import { parseRequest } from "../../src/core/assistant/intent.ts";
+import { isSmallTalk } from "../../src/core/assistant/text.ts";
 
 const providers = [
   { id: "telegram_client", words: ["تلگرام", "telegram", "tg"] },
@@ -66,5 +67,28 @@ describe("intent parsing", () => {
     const parsed = parseRequest("John", providers);
     assert.equal(parsed.action, "find");
     assert.equal(parsed.selection, undefined);
+  });
+
+  test("نام شخصی که با نام یک سرویس یکی است، مخاطب حساب می‌شود نه سرویس", () => {
+    const withSoroush = [...providers, { id: "soroush_client", words: ["سروش", "سروش پلاس", "soroush"] }];
+    const parsed = parseRequest("به سروش پیام بده که فردا می‌بینمت", withSoroush);
+    assert.equal(parsed.action, "send");
+    assert.equal(parsed.person, "سروش");
+    assert.deepEqual(parsed.providerHints, []);
+    // املای کاربر (نیم‌فاصله) در متن پیام حفظ می‌شود
+  assert.equal(parsed.message, "فردا می‌بینمت");
+  assert.equal(parseRequest("به عماد پیام بده که ساعت ۵ می‌آیم.", providers).message, "ساعت ۵ می‌آیم");
+
+    const onTelegram = parseRequest("به سروش در تلگرام پیام بده که سلام رفیق", withSoroush);
+    assert.equal(onTelegram.person, "سروش");
+    assert.deepEqual(onTelegram.providerHints, ["telegram_client"]);
+  });
+
+  test("واژه‌ی کوتاه سرویس با ابتدای کلمه‌های دیگر اشتباه گرفته نمی‌شود", () => {
+    const parsed = parseRequest("send John a message that wait for me, ignore the rest", providers);
+    assert.equal(parsed.action, "send");
+    assert.deepEqual(parsed.providerHints, []);
+    // پسوند کوتاه فارسی همچنان پذیرفته می‌شود
+    assert.deepEqual(parseRequest("به عماد توی تلگرامش پیام بده که سلام", providers).providerHints, ["telegram_client"]);
   });
 });

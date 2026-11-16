@@ -3,14 +3,14 @@ import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { hashPassword, RateLimiter, safeEqual, SignedSessions, verifyPassword } from "../core/auth.js";
-import { handleSendReply, parseSendIntent, prepareSend } from "../core/agent-send.js";
+import { handleSendReply, parseSendIntent, prepareSend } from "../core/assistant/chat-flow.js";
 import { dibaRouterChat, dibaRouterModels, dibaRouterTest, type DibaRouterMessage, type DibaRouterTool } from "../core/dibarouter.js";
 import { compactConversation, compactToolResult, extractContextLimit, fitContextToBudget, isContextLimitError, selectAndCompactTools, summarizeContextError } from "../core/context.js";
 import { SERVER_VERSION, type DibaMcpEngine } from "../core/engine.js";
 import { configureProxy } from "../core/net.js";
 import { proxyEnvOf, type AppProxyType } from "../core/store.js";
 import { runNetcheck } from "../core/netcheck.js";
-import { enrichChatTitles } from "../core/resolver.js";
+import { enrichChatTitles } from "../core/assistant/resolver.js";
 import { hintFor, runSelfTest } from "../core/selftest.js";
 import { handleEitaaBridgeWebhook } from "../providers/eitaa-client.js";
 

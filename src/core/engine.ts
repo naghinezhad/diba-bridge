@@ -4,12 +4,15 @@ import { redact } from "./http.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { RateLimiter } from "./auth.js";
-import { checkMessageQuality, resolveRecipient, SEND_TOOLS, type RecipientCandidate } from "./contacts.js";
+import { DibaAgent } from "./assistant/agent.js";
+import { splitProviderHint } from "./assistant/intent.js";
+import { checkMessageQuality, isGroupLike, SEND_TOOLS } from "./assistant/policy.js";
+import { providerWords } from "./assistant/provider-words.js";
+import { resolveRecipient, type ResolvedCandidate } from "./assistant/resolver.js";
 import { Inbox } from "./inbox.js";
 import { TriggerEngine } from "./triggers.js";
 import { CallLogger } from "./logger.js";
 import { AssistantMemory, publicTitle } from "./memory.js";
-import { McpAgent } from "./mcp-agent.js";
 import { summarizeForLog } from "./media.js";
 import { ConfigStore, envKey } from "./store.js";
 import { ProviderError, type AuthStep, type ProviderContext, type ProviderDef, type ToolDef } from "./types.js";
@@ -159,11 +162,25 @@ export class DibaMcpEngine {
   }
 
   /** پیدا کردن مخاطب با نام/شماره/نام کاربری در همه‌ی سرویس‌های آماده */
-  async resolveRecipient(name: string, opts: { provider?: string; force?: boolean } = {}) {
-    return resolveRecipient(this, name, opts);
+  async resolveRecipient(name: string, opts: { provider?: string; force?: boolean; allowGroup?: boolean } = {}) {
+    // «علی در تلگرام» → نام و سرویس جدا می‌شوند، مگر اینکه سرویس صریح داده شده باشد
+    const target = opts.provider ? { name, provider: opts.provider } : splitProviderHint(name, providerWords(this));
+    return resolveRecipient(this, target.name, {
+      provider: target.provider,
+      force: opts.force,
+      allowGroup: opts.allowGroup,
+      sendableOnly: true,
+    });
   }
 
-  private candidatesBrief(candidates: RecipientCandidate[]): string {
+  /** دستیار دیبا؛ یک نمونه برای کل موتور تا کش و وضعیتش بین درخواست‌ها بماند */
+  get assistant(): DibaAgent {
+    this.agent ??= new DibaAgent(this);
+    return this.agent;
+  }
+  private agent?: DibaAgent;
+
+  private candidatesBrief(candidates: ResolvedCandidate[]): string {
     return candidates
       .slice(0, 6)
       .map((c) => `${c.title} — ${c.provider} (${c.type})`)
@@ -192,8 +209,8 @@ export class DibaMcpEngine {
     if (!recipient && !input.chatId) return { ok: false, ms: 0, error: "نام مخاطب را مشخص کن." };
     if (!text) return { ok: false, ms: 0, error: "متن پیام خالی است." };
 
-    let best: RecipientCandidate | undefined;
-    let candidates: RecipientCandidate[] = [];
+    let best: ResolvedCandidate | undefined;
+    let candidates: ResolvedCandidate[] = [];
     let ambiguous = false;
     let confidence = 100;
     let resolutionReason: string | undefined;
@@ -205,9 +222,14 @@ export class DibaMcpEngine {
         title: input.title || recipient || input.chatId,
         type: input.type || "unknown",
         source: "memory",
+        score: 100,
+        reason: "resolved",
       };
     } else {
-      const resolution = await this.resolveRecipient(recipient, { provider: input.provider });
+      const resolution = await this.resolveRecipient(recipient, {
+        provider: input.provider,
+        allowGroup: input.allowGroup === true,
+      });
       candidates = resolution.candidates;
       best = resolution.best;
       ambiguous = resolution.ambiguous;
@@ -226,6 +248,15 @@ export class DibaMcpEngine {
         result: { candidates },
       };
     }
+    // گروه/کانال قبل از بررسی اطمینان رد می‌شود تا دلیلِ درست به کاربر گفته شود
+    if (isGroupLike(best.type) && !input.allowGroup) {
+      return {
+        ok: false,
+        ms: ms(),
+        error: `«${best.title}» یک گروه/کانال است، نه چت خصوصی. ارسال به گروه/کانال فقط با درخواست صریح و allow_group مجاز است.`,
+        result: { candidate: best },
+      };
+    }
     if (ambiguous || confidence < 85) {
       return {
         ok: false,
@@ -235,16 +266,6 @@ export class DibaMcpEngine {
           `${near ? `گزینه‌ها: ${near}. ` : ""}` +
           "برای جلوگیری از ارسال به فرد اشتباه، نام/سرویس دقیق را بپرس.",
         result: { candidates },
-      };
-    }
-
-    const groupLike = !["private", "user", "dm", "direct", "unknown"].includes(best.type);
-    if (groupLike && !input.allowGroup) {
-      return {
-        ok: false,
-        ms: ms(),
-        error: `«${best.title}» یک گروه/کانال است، نه چت خصوصی. ارسال به گروه/کانال فقط با درخواست صریح و allow_group مجاز است.`,
-        result: { candidate: best },
       };
     }
 
@@ -618,7 +639,7 @@ export class DibaMcpEngine {
     );
 
     if (agentMode) {
-      const agent = new McpAgent(this);
+      const agent = this.assistant;
       server.registerTool(
         "diba_agent",
         {

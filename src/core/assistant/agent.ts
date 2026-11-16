@@ -18,16 +18,18 @@
  * محدودیت‌ها: بدون افشای chat_id، با کش کوتاه‌مدت، خروجی فشرده برای کانتکست.
  */
 import { createHmac } from "node:crypto";
-import { buildDraft } from "./agent-send.js";
-import { SEND_TOOLS } from "./contacts.js";
-import { dibaRouterChat } from "./dibarouter.js";
-import type { DibaMcpEngine } from "./engine.js";
-import { parseRequest, isSmallTalk, type ParsedRequest, type ProviderWord } from "./intent.js";
-import { publicTitle, providerLabel } from "./memory.js";
+import { dibaRouterChat } from "../dibarouter.js";
+import type { DibaMcpEngine } from "../engine.js";
+import { publicTitle, type PendingSend } from "../memory.js";
+import { buildDraft } from "./draft.js";
+import { parseRequest, type ParsedRequest } from "./intent.js";
 import { cleanText, matchName } from "./name-match.js";
+import { canSendWith, isGroupLike } from "./policy.js";
+import { normalizeProviderId, providerName, providerWords } from "./provider-words.js";
 import { listChatCandidates, resolveRecipient, type Resolution, type ResolvedCandidate } from "./resolver.js";
+import { clip, faNum, isSmallTalk, timeValue, typeLabel } from "./text.js";
 
-export type McpAgentAction =
+export type AgentAction =
   | "send"
   | "find"
   | "read"
@@ -39,7 +41,7 @@ export type McpAgentAction =
   | "cancel"
   | "confirm";
 
-export interface McpAgentInput {
+export interface AgentInput {
   request: string;
   provider?: string;
   recipient?: string;
@@ -54,7 +56,7 @@ export interface McpAgentInput {
   args?: Record<string, unknown>;
 }
 
-export interface McpAgentProvider {
+export interface AgentProvider {
   id: string;
   name: string;
   ready: boolean;
@@ -64,7 +66,7 @@ export interface McpAgentProvider {
   can_send?: boolean;
 }
 
-export interface McpAgentCandidate {
+export interface AgentCandidate {
   index: number;
   name: string;
   provider_id: string;
@@ -75,7 +77,7 @@ export interface McpAgentCandidate {
   selection_token: string;
 }
 
-export interface McpAgentRecipient {
+export interface AgentRecipient {
   name: string;
   provider_id: string;
   provider: string;
@@ -83,14 +85,14 @@ export interface McpAgentRecipient {
   selection_token: string;
 }
 
-export interface McpAgentResult {
+export interface AgentResult {
   status: "done" | "need_provider" | "need_person" | "need_confirmation" | "need_info" | "error";
-  action: McpAgentAction;
+  action: AgentAction;
   message: string;
   conversation_id: string;
-  providers?: McpAgentProvider[];
-  candidates?: McpAgentCandidate[];
-  recipient?: McpAgentRecipient;
+  providers?: AgentProvider[];
+  candidates?: AgentCandidate[];
+  recipient?: AgentRecipient;
   draft?: string;
   confirmation_token?: string;
   chats?: Array<{ name: string; type: string; provider: string; last_message?: string }>;
@@ -104,42 +106,9 @@ export interface McpAgentResult {
   result?: unknown;
 }
 
-const EXTRA_WORDS: Record<string, string[]> = {
-  bale_client: ["بله", "bale", "پیام‌رسان بله"],
-  eitaa_client: ["ایتا", "ایتایار", "eitaa"],
-  rubika_client: ["روبیکا", "rubika"],
-  soroush_client: ["سروش", "سروش پلاس", "سروش‌پلاس", "soroush", "splus"],
-  telegram_client: ["تلگرام", "telegram", "tg"],
-  whatsapp: ["واتس‌اپ", "واتساپ", "واتس اپ", "واتس", "whatsapp", "wa"],
-  instagram: ["اینستاگرام", "اینستا", "instagram", "insta", "ig"],
-  linkedin: ["لینکدین", "linkedin"],
-  x: ["توییتر", "twitter", "ایکس"],
-};
-
 const MAX_CANDIDATES = 6;
 const MAX_CHATS = 12;
 const ALIAS_TTL_MS = 10 * 60_000;
-
-function typeLabel(type: string): string {
-  const t = String(type ?? "").toLowerCase();
-  if (t === "group" || t === "chat") return "گروه";
-  if (t === "channel") return "کانال";
-  if (["private", "user", "dm", "direct"].includes(t)) return "خصوصی";
-  return "چت";
-}
-
-function timeValue(value?: string): number {
-  const parsed = Date.parse(String(value ?? ""));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function faNum(value: number): string {
-  return String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
-}
-
-function clip(value: unknown, max = 90): string {
-  return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
-}
 
 /** تاریخ‌ها ممکن است ISO، ثانیه، میلی‌ثانیه یا میکروثانیه باشند. */
 function isoDate(value: unknown): string {
@@ -151,14 +120,14 @@ function isoDate(value: unknown): string {
   return Number.isFinite(parsed) ? new Date(parsed).toISOString() : new Date().toISOString();
 }
 
-export class McpAgent {
+export class DibaAgent {
   private aliasCache = new Map<string, { at: number; values: string[] }>();
 
   constructor(private readonly engine: DibaMcpEngine) {}
 
   // ---------------- زیرساخت ----------------
   private providerName(id: string): string {
-    return this.engine.provider(id)?.nameFa ?? providerLabel(id);
+    return providerName(this.engine, id);
   }
 
   /** نام نمایشی؛ اگر عنوان فقط شناسه بود، نام کاربری یا نام واقعی جای آن می‌آید. */
@@ -166,39 +135,12 @@ export class McpAgent {
     return publicTitle(candidate.title, candidate.type, candidate.username);
   }
 
-  private providerWords(): ProviderWord[] {
-    return this.engine.describeProviders().map((provider) => ({
-      id: provider.id,
-      words: [
-        provider.nameFa,
-        provider.name,
-        provider.id,
-        provider.id.replace(/_client$/, ""),
-        ...(EXTRA_WORDS[provider.id] ?? []),
-      ].filter(Boolean),
-    }));
-  }
-
   private normalizeProviderId(value?: string): string | undefined {
-    const raw = cleanText(value ?? "").toLowerCase();
-    if (!raw) return undefined;
-    for (const provider of this.engine.describeProviders()) {
-      const words = [provider.id, provider.nameFa, provider.name, ...(EXTRA_WORDS[provider.id] ?? [])];
-      for (const word of words) {
-        const w = cleanText(word).toLowerCase();
-        if (!w) continue;
-        if (raw === w || raw === w.replace(/_client$/, "")) return provider.id;
-      }
-    }
-    for (const provider of this.engine.describeProviders()) {
-      const words = [provider.id, provider.nameFa, provider.name, ...(EXTRA_WORDS[provider.id] ?? [])];
-      if (words.some((word) => word && raw.includes(cleanText(word).toLowerCase()))) return provider.id;
-    }
-    return undefined;
+    return normalizeProviderId(this.engine, value);
   }
 
   private canSend(providerId: string): boolean {
-    return Boolean(SEND_TOOLS[providerId]);
+    return canSendWith(providerId);
   }
 
   private selectionToken(candidate: { provider: string; chatId: string }): string {
@@ -222,7 +164,7 @@ export class McpAgent {
       .slice(0, 32);
   }
 
-  private publicCandidate(candidate: ResolvedCandidate, index: number): McpAgentCandidate {
+  private publicCandidate(candidate: ResolvedCandidate, index: number): AgentCandidate {
     return {
       index: index + 1,
       name: this.showName(candidate),
@@ -235,7 +177,7 @@ export class McpAgent {
     };
   }
 
-  private publicRecipient(candidate: ResolvedCandidate): McpAgentRecipient {
+  private publicRecipient(candidate: ResolvedCandidate): AgentRecipient {
     return {
       name: this.showName(candidate),
       provider_id: candidate.provider,
@@ -245,20 +187,20 @@ export class McpAgent {
     };
   }
 
-  private done(action: McpAgentAction, message: string, conversationId: string, extra: Partial<McpAgentResult> = {}): McpAgentResult {
+  private done(action: AgentAction, message: string, conversationId: string, extra: Partial<AgentResult> = {}): AgentResult {
     return { status: "done", action, message, conversation_id: conversationId, ...extra };
   }
 
-  private error(action: McpAgentAction, message: string, conversationId = "mcp"): McpAgentResult {
+  private error(action: AgentAction, message: string, conversationId = "mcp"): AgentResult {
     return { status: "error", action, message, conversation_id: conversationId };
   }
 
   private candidatesResult(
-    action: McpAgentAction,
+    action: AgentAction,
     lead: string,
     resolution: Resolution,
     conversationId: string,
-  ): McpAgentResult {
+  ): AgentResult {
     // گزینه‌های ضعیف حذف می‌شوند تا فهرست کوتاه و قابل‌اعتماد بماند
     const ranked = resolution.candidates
       .filter((candidate, index) => index < 3 || candidate.score >= 85)
@@ -279,9 +221,9 @@ export class McpAgent {
   }
 
   // ---------------- وضعیت و توانایی‌ها ----------------
-  private status(conversationId: string): McpAgentResult {
+  private status(conversationId: string): AgentResult {
     const summary = this.engine.servicesSummary();
-    const providers: McpAgentProvider[] = summary.map((provider) => ({
+    const providers: AgentProvider[] = summary.map((provider) => ({
       id: provider.id,
       name: provider.nameFa,
       ready: provider.ready,
@@ -303,7 +245,7 @@ export class McpAgent {
     return this.done("status", message || "هیچ سرویسی آماده نیست؛ اول یکی را در داشبورد وصل کن.", conversationId, { providers });
   }
 
-  private capabilities(conversationId: string): McpAgentResult {
+  private capabilities(conversationId: string): AgentResult {
     const capabilities = this.engine
       .describeProviders()
       .filter((provider) => provider.ready)
@@ -328,7 +270,7 @@ export class McpAgent {
   }
 
   // ---------------- چت‌ها و پیام‌ها ----------------
-  private async listChats(parsed: ParsedRequest, input: McpAgentInput, conversationId: string): Promise<McpAgentResult> {
+  private async listChats(parsed: ParsedRequest, input: AgentInput, conversationId: string): Promise<AgentResult> {
     const explicit = this.normalizeProviderId(input.provider) ?? parsed.providerHints[0];
     const ready = this.engine.describeProviders().filter((provider) => provider.ready);
     const targets = explicit ? ready.filter((provider) => provider.id === explicit) : ready;
@@ -371,7 +313,7 @@ export class McpAgent {
     return this.done("list_chats", `چت‌های اخیر:\n${lines.join("\n")}`, conversationId, { chats });
   }
 
-  private async readMessages(parsed: ParsedRequest, input: McpAgentInput, conversationId: string): Promise<McpAgentResult> {
+  private async readMessages(parsed: ParsedRequest, input: AgentInput, conversationId: string): Promise<AgentResult> {
     const providerId = this.normalizeProviderId(input.provider) ?? parsed.providerHints[0];
     const person = cleanText(input.recipient ?? parsed.person ?? "");
     const sessionRecipient = this.engine.memory.sessionRecipient(conversationId);
@@ -394,7 +336,7 @@ export class McpAgent {
     return this.readFromCandidate(resolved.resolution.best, conversationId);
   }
 
-  private async readFromCandidate(candidate: ResolvedCandidate, conversationId: string): Promise<McpAgentResult> {
+  private async readFromCandidate(candidate: ResolvedCandidate, conversationId: string): Promise<AgentResult> {
     const raw = await this.history(candidate);
     const messages = raw.slice(0, 10).map((message) => ({
       from: message.out ? "من" : this.showName(candidate),
@@ -454,7 +396,7 @@ export class McpAgent {
   }
 
   // ---------------- اجرای مستقیم ابزار (دسترسی به همه‌ی امکانات) ----------------
-  private async runTool(input: McpAgentInput, conversationId: string): Promise<McpAgentResult> {
+  private async runTool(input: AgentInput, conversationId: string): Promise<AgentResult> {
     const name = String(input.tool ?? "").trim();
     if (!name) return this.error("run", "نام ابزار خالی است.", conversationId);
     const entry = this.engine.providers
@@ -479,7 +421,8 @@ export class McpAgent {
           confirmation_token: token,
         };
       }
-      if (input.confirmation_token && input.confirmation_token !== token) {
+      // confirm=true به‌تنهایی کافی نیست: توکن ثابت می‌کند همین ابزار و همین آرگومان‌ها دیده و تأیید شده‌اند
+      if (input.confirmation_token !== token) {
         return this.error("run", "توکن تأیید این اجرا معتبر نیست؛ دوباره درخواست بده.", conversationId);
       }
     }
@@ -492,10 +435,30 @@ export class McpAgent {
   }
 
   // ---------------- مخاطب ----------------
-  private lastPerson(conversationId: string, request: string): string | undefined {
-    if (!/(?:بهش|براش|به‌ش|همون|همان|اون|او)\b/u.test(request)) return undefined;
+  /** آخرین مخاطب همین گفتگو به شکل یک نتیجه‌ی قطعی (برای «بهش بگو …») */
+  private lastRecipientResolution(conversationId: string): Resolution | undefined {
     const last = this.engine.memory.sessionRecipient(conversationId);
-    return last ? last.title : undefined;
+    if (!last) return undefined;
+    const candidate: ResolvedCandidate = {
+      provider: last.provider,
+      chatId: last.chatId,
+      title: last.title,
+      type: last.type,
+      source: "memory",
+      score: 100,
+      reason: "session",
+    };
+    return {
+      query: last.title,
+      candidates: [candidate],
+      best: candidate,
+      confidence: 100,
+      confident: true,
+      exact: true,
+      ambiguous: false,
+      fallback: false,
+      sources: ["memory"],
+    };
   }
 
   /** دریافت نسخه‌های املایی/ترنسلیت نام از مدل (فقط وقتی تطبیق قطعی نبود). */
@@ -612,7 +575,7 @@ export class McpAgent {
     allowGroup: boolean,
     conversationId: string,
     autoSent: boolean,
-  ): Promise<McpAgentResult> {
+  ): Promise<AgentResult> {
     if (!this.canSend(candidate.provider)) {
       return this.error(
         "send",
@@ -633,6 +596,8 @@ export class McpAgent {
     if (!result.ok) {
       return this.error("send", `ارسال به «${this.showName(candidate)}» انجام نشد: ${result.error}`, conversationId);
     }
+    // ارسال انجام شد؛ فهرست/پیش‌نویس قبلی این گفتگو دیگر معتبر نیست
+    this.engine.memory.clearPending(conversationId);
     this.engine.memory.setSessionRecipient(conversationId, {
       provider: candidate.provider,
       chatId: candidate.chatId,
@@ -664,7 +629,7 @@ export class McpAgent {
     conversationId: string,
     instruction: string,
     allowGroup: boolean,
-  ): McpAgentResult {
+  ): AgentResult {
     this.engine.memory.setPending({
       conversationId,
       query: candidate.title,
@@ -708,14 +673,14 @@ export class McpAgent {
   }
 
   // ---------------- جریان اصلی ----------------
-  async handle(input: McpAgentInput): Promise<McpAgentResult> {
+  async handle(input: AgentInput): Promise<AgentResult> {
     const conversationId = String(input.conversation_id ?? "").trim() || "mcp";
     const request = String(input.request ?? "").trim();
     if (input.tool) return this.runTool(input, conversationId);
     if (!request) return this.error("find", "درخواست خالی است.", conversationId);
 
     this.engine.memory.rememberTurn(conversationId, "user", request);
-    const parsed = parseRequest(request, this.providerWords());
+    const parsed = parseRequest(request, providerWords(this.engine));
 
     if (parsed.action === "cancel") {
       const cleared = this.engine.memory.clearPending(conversationId);
@@ -747,7 +712,16 @@ export class McpAgent {
     }
 
     const providerId = this.normalizeProviderId(input.provider) ?? parsed.providerHints[0];
-    const person = cleanText(input.recipient ?? parsed.person ?? "") || this.lastPerson(conversationId, request);
+    const allowGroup = input.allow_group === true || parsed.allowGroup;
+    const person = cleanText(input.recipient ?? parsed.person ?? "");
+    if (!person && parsed.refersToLast) {
+      const last = this.lastRecipientResolution(conversationId);
+      if (last?.best) {
+        // همان چتی که کاربر لحظه‌ای پیش به آن پیام داده؛ اگر گروه بوده، اجازه‌اش همان‌جا گرفته شده است
+        const groupOk = allowGroup || isGroupLike(last.best.type);
+        return this.decide(parsed, input, last.best.title, last.best.provider, groupOk, { resolution: last, viaAlias: false }, conversationId);
+      }
+    }
     if (!person) {
       return {
         status: "need_info",
@@ -758,20 +732,19 @@ export class McpAgent {
       };
     }
 
-    const allowGroup = input.allow_group === true || parsed.allowGroup;
     const resolved = await this.resolveQuery(person, providerId, allowGroup);
     return this.decide(parsed, input, person, providerId, allowGroup, resolved, conversationId);
   }
 
   private async decide(
     parsed: ParsedRequest,
-    input: McpAgentInput,
+    input: AgentInput,
     person: string,
     providerId: string | undefined,
     allowGroup: boolean,
     resolved: { resolution: Resolution; viaAlias: boolean },
     conversationId: string,
-  ): Promise<McpAgentResult> {
+  ): Promise<AgentResult> {
     const { resolution, viaAlias } = resolved;
     const wantsSend = parsed.action === "send";
 
@@ -804,7 +777,8 @@ export class McpAgent {
       );
     }
 
-    const explicit = cleanText(input.text ?? parsed.message ?? "");
+    // متن پیام دست‌نخورده می‌ماند (نیم‌فاصله و اعداد فارسی حفظ می‌شوند)
+    const explicit = String(input.text ?? parsed.message ?? "").trim();
     if (!this.canSend(best.provider)) {
       return this.error(
         "send",
@@ -844,12 +818,12 @@ export class McpAgent {
 
   // ---------------- ادامه‌ی گفتگو (انتخاب/تأیید/متن جدید) ----------------
   private async continuePending(
-    pending: import("./memory.js").PendingSend,
-    input: McpAgentInput,
+    pending: PendingSend,
+    input: AgentInput,
     parsed: ParsedRequest,
     request: string,
     conversationId: string,
-  ): Promise<McpAgentResult | undefined> {
+  ): Promise<AgentResult | undefined> {
     const candidates = pending.candidates as ResolvedCandidate[];
     const allowGroup = pending.allowGroup === true;
 
@@ -872,7 +846,8 @@ export class McpAgent {
     }
 
     if (pending.stage === "choose") {
-      if (parsed.action === "confirm" || parsed.action === "cancel") return undefined;
+      // خواندن پیام‌ها ربطی به فهرست انتخاب ندارد و نباید پشت آن گیر کند
+      if (parsed.action === "confirm" || parsed.action === "cancel" || parsed.action === "read") return undefined;
       // هر درخواست کامل و تازه («به مریم در تلگرام پیام بده که ...») فهرست قبلی را باطل می‌کند
       if (parsed.action === "send") {
         this.engine.memory.clearPending(conversationId);
@@ -935,7 +910,7 @@ export class McpAgent {
       !isSmallTalk(request) &&
       !["list_chats", "status", "read", "capabilities"].includes(parsed.action);
     if (replaceable) {
-      const text = cleanText(request).replace(/^(?:متن|پیام)\s*[:：]\s*/u, "").trim();
+      const text = request.replace(/^(?:متن|پیام)\s*[:：]\s*/u, "").trim();
       if (text) {
         const updated = this.engine.memory.updatePending(conversationId, { text, stage: "confirm" });
         if (updated) return this.needConfirmation(selectedCandidate, text, conversationId, pending.instruction, allowGroup);
@@ -945,16 +920,16 @@ export class McpAgent {
   }
 
   private async afterSelection(
-    pending: import("./memory.js").PendingSend,
+    pending: PendingSend,
     selected: ResolvedCandidate,
-    input: McpAgentInput,
+    input: AgentInput,
     parsed: ParsedRequest,
     request: string,
     conversationId: string,
     allowGroup: boolean,
-  ): Promise<McpAgentResult> {
+  ): Promise<AgentResult> {
     // متنِ همین درخواست بر متنِ ذخیره‌شده‌ی قدیمی اولویت دارد
-    const instruction = cleanText(input.text ?? parsed.message ?? pending.instruction ?? "");
+    const instruction = String(input.text ?? parsed.message ?? pending.instruction ?? "").trim();
     if (!this.canSend(selected.provider)) {
       return this.error("send", `سرویس ${this.providerName(selected.provider)} ارسال پیام ندارد.`, conversationId);
     }

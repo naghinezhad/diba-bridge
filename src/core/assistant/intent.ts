@@ -8,6 +8,7 @@
  * این ماژول به موتور وابسته نیست؛ فهرست واژه‌های هر سرویس از بیرون داده می‌شود.
  */
 import { cleanText, foldName } from "./name-match.js";
+import { isCancelText, isConfirmText, selectionIndex } from "./text.js";
 
 export type AssistantAction =
   | "status"
@@ -36,21 +37,11 @@ export interface ParsedRequest {
   message?: string;
   media?: "photo" | "file" | "video" | "location";
   allowGroup: boolean;
+  /** مخاطب با ضمیر آمده («بهش بگو …»، «tell him …») و باید آخرین مخاطب همین گفتگو باشد */
+  refersToLast?: boolean;
   /** شماره‌ی گزینه در پاسخ به فهرست قبلی */
   selection?: number;
-  /** نام گزینه‌ای که کاربر با اسم انتخاب کرده */
-  selectionName?: string;
 }
-
-const FA = /[\u0600-\u06FF]/;
-const ORDINALS: Array<[RegExp, number]> = [
-  [/^(?:اول|اولی|یک|یکم|first)$/i, 0],
-  [/^(?:دوم|دومی|دو|دومین|second)$/i, 1],
-  [/^(?:سوم|سومی|سه|سومین|third)$/i, 2],
-  [/^(?:چهارم|چهارمی|چهار|fourth)$/i, 3],
-  [/^(?:پنجم|پنجمی|پنج|fifth)$/i, 4],
-  [/^(?:ششم|ششمی|شش|sixth)$/i, 5],
-];
 
 const FILLERS = [
   "لطفا",
@@ -83,7 +74,7 @@ function escapeRegExp(value: string): string {
 }
 
 /** عبارت‌های سرویس را از متن حذف می‌کند («داخل تلگرام»، «on WhatsApp»، …) */
-export function stripProviderWords(text: string, providers: ProviderWord[]): string {
+export function stripProviderWords(text: string, providers: ProviderWord[], bare = true): string {
   let out = cleanText(text);
   const words = providers
     .flatMap((p) => p.words.map((word) => ({ word: cleanText(word), id: p.id })))
@@ -95,51 +86,41 @@ export function stripProviderWords(text: string, providers: ProviderWord[]): str
       "giu",
     );
     out = out.replace(pattern, " ");
+    if (!bare) continue;
     // «چت‌های تلگرام»، «پیام‌های تلگرام»
-    const bare = new RegExp(`(?:^|\\s)${escapeRegExp(word)}(?=[\\s،,.!?؛:»"']|$)`, "giu");
-    out = out.replace(bare, " ");
+    const bareWord = new RegExp(`(?:^|\\s)${escapeRegExp(word)}(?=[\\s،,.!?؛:»"']|$)`, "giu");
+    out = out.replace(bareWord, " ");
   }
   return out.replace(/\s+/g, " ").trim();
 }
 
 export function detectProviderHints(text: string, providers: ProviderWord[]): string[] {
   const folded = ` ${foldName(text)} `;
+  const tokens = folded.trim().split(" ");
   const hits = new Set<string>();
   for (const p of providers) {
     for (const word of p.words) {
       const w = foldName(word);
       if (w.length < 2) continue;
-      if (folded.includes(` ${w} `) || folded.includes(` ${w}`)) hits.add(p.id);
+      // کلمه‌ی کامل؛ پسوند کوتاه («تلگرامم»، «واتساپش») فقط برای واژه‌های بلند پذیرفته می‌شود
+      // تا «wa» با «wait» یا «ig» با «ignore» اشتباه گرفته نشود
+      const whole = folded.includes(` ${w} `);
+      const suffixed = w.length >= 4 && tokens.some((token) => token.startsWith(w) && token.length - w.length <= 2);
+      if (whole || suffixed) hits.add(p.id);
     }
   }
   return [...hits];
 }
 
-function isCancelText(text: string): boolean {
-  const t = cleanText(text).replace(/[،,.!?؛:]/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
-  return t.length <= 24 && /^(?:نه|خیر|لغو|انصراف|بیخیال|بی خیال|کنسل|cancel|no|stop|never mind)$/.test(t);
-}
-
-function isConfirmText(text: string): boolean {
-  const t = cleanText(text).replace(/[،,.!?؛:]/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
-  return (
-    t.length <= 40 &&
-    /^(?:بله|آره|اره|تایید|تأیید|تایید می.?کنم|تأیید می.?کنم|بفرست|ارسال کن|بفرستش|همینه|همین|اوکی|باشه|ok|okay|yes|yep|send|send it|confirm|confirmed|do it|go ahead)(?:\s+(?:بفرست|ارسال کن|باشه|کن|it))?$/.test(
-      t,
-    )
-  );
-}
-
-function selectionOf(text: string): { index?: number } {
-  const t = cleanText(text).replace(/[،,.!?؛:]/g, " ").replace(/\s+/g, " ").trim();
-  const cleaned = t
-    .replace(/^(?:همون|همان|گزینه|مورد|شماره|option|number)\s*/i, "")
-    .replace(/\s*(?:رو|را|هم|رو بفرست)$/i, "")
-    .trim();
-  const numeric = cleaned.match(/^([1-9])$/);
-  if (numeric) return { index: Number(numeric[1]) - 1 };
-  for (const [re, index] of ORDINALS) if (re.test(cleaned)) return { index };
-  return {};
+/**
+ * «علی در تلگرام» → { name: "علی", provider: "telegram_client" }.
+ * اگر کل متن خودش نام یک سرویس باشد («سروش»)، آن را نام شخص حساب می‌کنیم.
+ */
+export function splitProviderHint(text: string, providers: ProviderWord[]): { name: string; provider?: string } {
+  const stripped = stripProviderWords(text, providers);
+  if (!stripped) return { name: cleanText(text) };
+  const hints = detectProviderHints(text, providers);
+  return { name: stripped, provider: hints.length === 1 ? hints[0] : undefined };
 }
 
 /** حذف کلمات پرکننده از ابتدا/انتها */
@@ -209,6 +190,25 @@ function detectMedia(text: string): ParsedRequest["media"] {
 }
 
 /**
+ * متن پیام را با املای اصلی کاربر برمی‌گرداند.
+ * تشخیص نیت روی متن یکسان‌شده انجام می‌شود (بدون نیم‌فاصله، با اعداد لاتین)، اما پیامی که
+ * برای مخاطب می‌رود باید همان چیزی باشد که کاربر نوشته: «می‌بینمت»، نه «میبینمت».
+ */
+function originalSpelling(raw: string, message: string | undefined): string | undefined {
+  if (!message) return message;
+  const source = String(raw ?? "").replace(/\s*\n\s*/g, " ").trim();
+  const trailing = /[\s.!؟?،,؛:»"'“”]+$/u;
+  const target = message.replace(trailing, "");
+  // پیام معمولاً انتهای جمله است؛ از هر مرز کلمه امتحان می‌کنیم کدام دنباله همان پیام است
+  for (let i = 0; i < source.length; i++) {
+    if (i > 0 && !/\s/.test(source[i - 1])) continue;
+    const candidate = source.slice(i).replace(/^[\s:،,«"'“”]+/u, "");
+    if (cleanText(candidate).replace(trailing, "") === target) return candidate.replace(trailing, "").slice(0, 1500);
+  }
+  return message;
+}
+
+/**
  * ورودی خام + فهرست سرویس‌ها → نیت.
  * خروجی محافظه‌کارانه است: اگر مطمئن نبود، action=unknown تا دستیار سؤال کند.
  */
@@ -224,12 +224,12 @@ export function parseRequest(raw: string, providers: ProviderWord[] = []): Parse
 
   const withoutProviders = stripProviderWords(text, providers);
   const providerHints = detectProviderHints(text, providers);
-  const selection = selectionOf(withoutProviders || text);
+  const selection = selectionIndex(withoutProviders || text);
 
   if (isCancelText(text)) return { ...base, action: "cancel" };
   if (isConfirmText(text)) return { ...base, action: "confirm" };
-  if (selection.index !== undefined) {
-    return { ...base, action: "find", providerHints, selection: selection.index };
+  if (selection !== undefined) {
+    return { ...base, action: "find", providerHints, selection };
   }
 
   if (CAPABILITY_PATTERN.test(text) && !SEND_PATTERN.test(text) && !READ_PATTERN.test(text)) {
@@ -261,29 +261,64 @@ export function parseRequest(raw: string, providers: ProviderWord[] = []): Parse
     return { ...base, action: "unknown", providerHints };
   }
 
-  const { head, tail } = extractMessageTail(withoutProviders);
-  let person = "";
-  let message = tail;
-
-  // «به X بگو …» — متن بعد از فعل می‌آید
-  const tellMatch = head.match(/^(?:به|برای|to|for)\s+(.+?)\s+(?:بگو|بگویید|بگید|say|tell)\s*(.*)$/iu);
-  if (tellMatch) {
-    person = tellMatch[1];
-    const after = tellMatch[2]?.trim();
-    if (after) message = after;
-  } else {
-    person = tidyName(cleanPersonPart(head));
+  // «بهش بگو فردا میام»، «براش بنویس که …»، «tell him that …» → مخاطب همان نفر قبلی است
+  const pronoun =
+    withoutProviders.match(/^(?:بهش|براش|واسش|به‌ش|(?:به|برای|واسه)\s+(?:او|اون|ایشون|ایشان|همون|همان))(?:\s+(.*))?$/u) ??
+    withoutProviders.match(/^(?:please\s+)?(?:tell|message|text|dm|ping|send)\s+(?:him|her|them)(?:\s+(.*))?$/iu);
+  if (pronoun) {
+    const rest = cleanText(pronoun[1] ?? "")
+      .replace(/^(?:(?:یه|یک)\s+)?(?:(?:پیام|پیامک|مسیج|متن)\s*)?(?:بده|بفرست|بفرستید|بنویس|بگو|بگویید|بگید|خبر\s*بده|اطلاع\s*بده)(?=\s|$)/u, "")
+      .replace(/^(?:a\s+)?(?:message|text)(?=\s|$)/iu, "")
+      .trim()
+      .replace(/^(?:که|that|saying)(?=\s|$)/iu, "")
+      .replace(/^[\s:،,]+/u, "")
+      .trim();
+    return {
+      ...base,
+      action: "send",
+      providerHints,
+      refersToLast: true,
+      message: originalSpelling(raw, rest ? rest.slice(0, 1500) : undefined),
+      media: detectMedia(text),
+    };
   }
 
-  person = tidyName(person);
-  if (isPlaceholder(person)) person = "";
-  message = message ? message.slice(0, 1500) : undefined;
+  const split = (source: string): { person: string; message?: string } => {
+    const { head, tail } = extractMessageTail(source);
+    let who = "";
+    let what = tail;
+    // «به X بگو …» — متن بعد از فعل می‌آید
+    const tellMatch = head.match(/^(?:به|برای|to|for)\s+(.+?)\s+(?:بگو|بگویید|بگید|say|tell)\s*(.*)$/iu);
+    if (tellMatch) {
+      who = tellMatch[1];
+      const after = tellMatch[2]?.trim();
+      if (after) what = after;
+    } else {
+      who = tidyName(cleanPersonPart(head));
+    }
+    who = tidyName(who);
+    return { person: isPlaceholder(who) ? "" : who, message: what };
+  };
+
+  let { person, message } = split(withoutProviders);
+  let hints = providerHints;
+  if (!person && providerHints.length) {
+    // نام شخص با نام یک سرویس یکی است («به سروش پیام بده»): فقط «در/توی + سرویس» را سرویس حساب کن
+    const retry = split(stripProviderWords(text, providers, false));
+    if (retry.person) {
+      person = retry.person;
+      message = retry.message;
+      const asName = foldName(person);
+      hints = providerHints.filter((id) => !providers.find((p) => p.id === id)?.words.some((word) => foldName(word) === asName));
+    }
+  }
+  message = originalSpelling(raw, message ? message.slice(0, 1500) : undefined);
 
   const media = detectMedia(text);
   return {
     ...base,
     action: "send",
-    providerHints,
+    providerHints: hints,
     person: person || undefined,
     message,
     media,
@@ -296,12 +331,3 @@ function isPlaceholder(value: string): boolean {
   return /^(?:من|خودم|ما|شما|او|ایشون|همه|یکی|یک\s*نفر|someone|somebody|me|myself|him|her|them)$/u.test(v);
 }
 
-/** آیا متن فقط سلام/تشکر است؟ */
-export function isSmallTalk(text: string): boolean {
-  const t = cleanText(text).replace(/[!؟.،\s]/g, "");
-  return /^(?:سلام|درود|سلامعلیکم|وقتبخیر|صبحبخیر|شببخیر|ممنون|مرسی|تشکر|hi|hello|hey|thanks|thankyou|sup)$/iu.test(t);
-}
-
-export function hasPersian(text: string): boolean {
-  return FA.test(text);
-}
