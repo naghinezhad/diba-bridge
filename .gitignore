@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# کتابخانه‌ی vendor شده به شکل ساخته‌شده نگهداری می‌شود و باید در مخزن باشد
+!vendor/balejs/dist/
 data/
 .env
 *.log

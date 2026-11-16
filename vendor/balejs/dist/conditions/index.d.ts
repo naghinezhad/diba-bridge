@@ -1,0 +1,11 @@
+import { type Message } from "../objects";
+import { Condition, all, any, create, not } from "./condition";
+export { Condition, all, any, create, not };
+export declare const text: Condition<Message>;
+export declare const content: Condition<Message>;
+export declare const gift: Condition<Message>;
+export declare const private_: Condition<Message>;
+export declare const group: Condition<Message>;
+export declare const channel: Condition<Message>;
+export declare function command(name: string, prefix?: string, minArguments?: number, maxArguments?: number): Condition<Message>;
+export { private_ as private };
