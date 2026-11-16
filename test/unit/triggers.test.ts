@@ -32,7 +32,8 @@ describe("TriggerEngine", () => {
       assert.ok(CATEGORIES.has(p.category), `دسته‌ی نامعتبر: ${p.id}`);
       assert.ok(EVENTS.has(p.event), `رویداد نامعتبر: ${p.id}`);
       assert.ok(ACTIONS.has(p.action.type), `اقدام نامعتبر: ${p.id}`);
-      assert.equal(p.enabled, false, `نمونه‌ها نباید خودکار روشن باشند: ${p.id}`);
+      // تنها استثنا «دستیار هوشمند پیش‌فرض» است که فقط وقتی هیچ تریگر دیگری جواب نداده اجرا می‌شود
+      assert.equal(p.enabled, p.id === "ai-assistant-default", `فقط دستیار پیش‌فرض خودکار روشن است: ${p.id}`);
       assert.ok(p.name.trim() && p.description.trim(), `نام/توضیح خالی: ${p.id}`);
       if (p.action.type === "reply_template") assert.ok(p.action.template?.trim(), `قالب خالی: ${p.id}`);
       if (p.action.type === "ai_reply") assert.ok(p.action.systemPrompt?.trim(), `پرامپت خالی: ${p.id}`);
