@@ -20,7 +20,8 @@
 
 <p align="center">
   <a href="#-فارسی">فارسی (پیش‌فرض)</a> •
-  <a href="#-english">English</a>
+  <a href="#-english">English</a> •
+  <a href="https://dibachain-company.github.io/diba-mcp/">Landing page</a>
 </p>
 
 <p align="center">

@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>دیبا پل | پل پیام‌رسان‌ها به هوش مصنوعی</title>
+  <meta name="description" content="دیبا پل یک سرور MCP و داشبورد محلی است که واتس‌اپ، تلگرام، بله، روبیکا، سروش‌پلاس و ایتا را به کلاینت‌های هوش مصنوعی وصل می‌کند.">
+  <meta name="theme-color" content="#f6f8fc">
+  <meta property="og:title" content="دیبا پل | پل پیام‌رسان‌ها به هوش مصنوعی">
+  <meta property="og:description" content="شش پیام‌رسان، یک پل به هوش مصنوعی. صندوق ورودی یکپارچه، تریگرهای خودکار و ابزارهای MCP روی سرور خودت.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="./assets/logo-sm.png">
+  <link rel="icon" href="./assets/logo-sm.png" type="image/png">
+  <link rel="stylesheet" href="./styles.css">
+  <script>document.documentElement.classList.add('js');</script>
+</head>
+<body>
+  <a class="skip-link" href="#main">رفتن به محتوای اصلی</a>
+
+  <svg class="icon-sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-bridge" viewBox="0 0 24 24"><path d="M3 18v-5a9 9 0 0 1 18 0v5M3 14h18M6 18v-4m12 4v-4M3 8V5m18 3V5"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 14h4l2 3h4l2-3h4"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 9-12h-7z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m5 7 5 5-5 5m7 0h7"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-memory" viewBox="0 0 24 24"><path d="M9 4a3 3 0 0 1 6 0v1h1a2 2 0 0 1 2 2v1h1a3 3 0 0 1 0 6h-1v1a2 2 0 0 1-2 2h-1v1a3 3 0 0 1-6 0v-1H8a2 2 0 0 1-2-2v-1H5a3 3 0 0 1 0-6h1V7a2 2 0 0 1 2-2h1z"/><path d="M9 9h6v6H9z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M19 12H5m6-6-6 6 6 6"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.69c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.6 9.6 0 0 1 12 7.3a9.6 9.6 0 0 1 2.5.34c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.75c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/></symbol>
+  </svg>
+
+  <header class="site-header" data-header>
+    <div class="shell header-inner">
+      <a class="brand" href="./" aria-label="دیبا پل، صفحه اصلی">
+        <img src="./assets/logo-sm.png" alt="" width="34" height="33">
+        <span class="brand-text">دیبا پل</span>
+        <span class="brand-tag">MCP</span>
+      </a>
+
+      <nav class="primary-nav" id="primary-nav" aria-label="ناوبری اصلی">
+        <a href="#why">چرا دیبا پل</a>
+        <a href="#features">قابلیت‌ها</a>
+        <a href="#integrations">اتصال‌ها</a>
+        <a href="#start">شروع سریع</a>
+        <a href="#docs">مستندات</a>
+      </nav>
+
+      <div class="header-actions">
+        <a class="github-link" href="https://github.com/Dibachain-Company/diba-mcp" target="_blank" rel="noopener">
+          <svg class="icon" aria-hidden="true"><use href="#i-github"/></svg>
+          <span>GitHub</span>
+        </a>
+        <a class="button button-small button-primary" href="#start">شروع کن</a>
+        <button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="باز کردن منو" data-menu-button>
+          <svg class="icon menu-open" aria-hidden="true"><use href="#i-menu"/></svg>
+          <svg class="icon menu-close" aria-hidden="true"><use href="#i-close"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-grid" aria-hidden="true"></div>
+      <div class="shell hero-inner">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="eyebrow-dot"></span> زیرساخت ارتباط پیام‌رسان‌ها با هوش مصنوعی</p>
+          <h1 id="hero-title">همه‌ی پیام‌رسان‌ها،<br><span>یک پل تا<br class="mobile-break"> هوش مصنوعی.</span></h1>
+          <p class="hero-lead">
+            دیبا پل یک سرور <strong>MCP</strong> و داشبورد محلی است که واتس‌اپ، تلگرام، بله، روبیکا، سروش‌پلاس و ایتا را به Claude، Cursor و هر کلاینت هوش مصنوعی وصل می‌کند.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#start">
+              شروع سریع
+              <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg>
+            </a>
+            <a class="button button-secondary" href="https://github.com/Dibachain-Company/diba-mcp" target="_blank" rel="noopener">
+              <svg class="icon" aria-hidden="true"><use href="#i-github"/></svg>
+              مشاهده در GitHub
+            </a>
+          </div>
+          <dl class="hero-facts">
+            <div><dt>پیام‌رسان</dt><dd>۶</dd></div>
+            <div><dt>پروتکل</dt><dd>MCP 1.32+</dd></div>
+            <div><dt>اجرا</dt><dd>محلی</dd></div>
+            <div><dt>لایسنس</dt><dd>MIT</dd></div>
+          </dl>
+        </div>
+
+        <div class="hero-visual">
+          <div class="relay" role="img" aria-label="نمای نمونه از داشبورد دیبا پل: شش پیام‌رسان از سمت راست به هسته‌ی MCP و ابزارهای هوش مصنوعی در سمت چپ وصل شده‌اند.">
+            <div class="relay-head">
+              <div class="relay-brand">
+                <img src="./assets/logo-sm.png" alt="" width="24" height="23">
+                <span>diba bridge</span>
+              </div>
+              <span class="live"><span class="live-dot"></span> محلی و متصل</span>
+            </div>
+
+            <div class="relay-body">
+              <div class="relay-column relay-providers">
+                <span class="rail-label">پیام‌رسان‌ها</span>
+                <div class="provider-row"><img src="./assets/providers/whatsapp.svg" alt="" width="20" height="20"><span>واتس‌اپ</span><i class="status-dot"></i></div>
+                <div class="provider-row"><img src="./assets/providers/telegram.svg" alt="" width="20" height="20"><span>تلگرام</span><i class="status-dot"></i></div>
+                <div class="provider-row"><img src="./assets/providers/bale.png" alt="" width="20" height="20"><span>بله</span><i class="status-dot"></i></div>
+                <div class="provider-row"><img src="./assets/providers/rubika.png" alt="" width="20" height="20"><span>روبیکا</span><i class="status-dot"></i></div>
+                <div class="provider-row"><img src="./assets/providers/soroush.png" alt="" width="20" height="20"><span>سروش‌پلاس</span><i class="status-dot"></i></div>
+                <div class="provider-row"><img src="./assets/providers/eitaa.png" alt="" width="20" height="20"><span>ایتا</span><i class="status-dot"></i></div>
+              </div>
+
+              <div class="relay-core" aria-hidden="true">
+                <span class="core-line"></span>
+                <div class="core-mark">
+                  <img src="./assets/logo-sm.png" alt="" width="30" height="29">
+                  <span>MCP</span>
+                </div>
+                <span class="core-line"></span>
+              </div>
+
+              <div class="relay-column relay-tools">
+                <span class="rail-label">ابزارها</span>
+                <div class="tool-row"><span class="tool-prompt">›</span><code>get_chats</code><span class="tool-ok">آماده</span></div>
+                <div class="tool-row"><span class="tool-prompt">›</span><code>send_message</code><span class="tool-ok">آماده</span></div>
+                <div class="tool-row"><span class="tool-prompt">›</span><code>ai_reply</code><span class="tool-ok">آماده</span></div>
+                <div class="relay-message">
+                  <span class="msg-from">پیام تازه · نگار</span>
+                  <p>سلام، سفارش من کی می‌رسه؟</p>
+                  <span class="msg-reply">پاسخ پیشنهادی دیبا آماده است</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="relay-foot">
+              <span><i class="foot-dot"></i> ۱۲۴ پیام امروز</span>
+              <span>نمای نمونه</span>
+            </div>
+          </div>
+          <p class="visual-note">یک endpoint، شش اتصال؛ همان چیزی که مدل می‌بیند.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-why" id="why" aria-labelledby="why-title">
+      <div class="shell">
+        <div class="section-intro">
+          <p class="section-kicker">چرا دیبا پل</p>
+          <h2 id="why-title">یک پل، به‌جای شش اتصال جدا.</h2>
+          <p class="section-lead">هر پیام‌رسان زبان، نشست و محدودیت خودش را دارد. دیبا پل این تفاوت‌ها را پشت یک قرارداد MCP جمع می‌کند تا مدل فقط روی کار تمرکز کند.</p>
+        </div>
+
+        <div class="principles">
+          <article class="principle">
+            <span class="principle-number">۰۱</span>
+            <div>
+              <h3>یک قرارداد برای همه</h3>
+              <p>مدل به‌جای یادگیری شش API، یک مجموعه ابزار استاندارد می‌بیند: فهرست چت‌ها، خواندن پیام و ارسال پاسخ.</p>
+            </div>
+          </article>
+          <article class="principle">
+            <span class="principle-number">۰۲</span>
+            <div>
+              <h3>اتوماسیون بدون چسب اضافه</h3>
+              <p>تریگرها روی پیام ورودی، فراخوانی ابزار یا خطا واکنش می‌دهند و پاسخ هوشمند، فوروارد یا Webhook را اجرا می‌کنند.</p>
+            </div>
+          </article>
+          <article class="principle">
+            <span class="principle-number">۰۳</span>
+            <div>
+              <h3>داده روی سرور خودت</h3>
+              <p>نشست‌ها و حافظه در پوشه‌ی داده‌ی خودت می‌مانند. برای شروع نه حساب ابری لازم است، نه کلید واسطه.</p>
+            </div>
+          </article>
+        </div>
+
+        <div class="contract-strip">
+          <span class="contract-label">مسیر یک پیام</span>
+          <div class="contract-path">
+            <span class="path-node">پیام‌رسان</span>
+            <span class="path-line" aria-hidden="true"></span>
+            <span class="path-node path-node-core"><img src="./assets/logo-sm.png" alt="" width="18" height="17"> دیبا پل</span>
+            <span class="path-line" aria-hidden="true"></span>
+            <span class="path-node">ابزار MCP</span>
+            <span class="path-line" aria-hidden="true"></span>
+            <span class="path-node">پاسخ / اقدام</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-features" id="features" aria-labelledby="features-title">
+      <div class="shell">
+        <div class="section-intro section-intro-wide">
+          <div>
+            <p class="section-kicker">قابلیت‌ها</p>
+            <h2 id="features-title">بیشتر از یک صندوق ورودی.</h2>
+          </div>
+          <p class="section-lead">لایه‌ی ارتباط، لایه‌ی تصمیم و لایه‌ی حافظه کنار هم کار می‌کنند؛ نه به‌صورت شش ابزار پراکنده.</p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="feature-card feature-inbox">
+            <div class="feature-content">
+              <span class="feature-icon"><svg class="icon" aria-hidden="true"><use href="#i-inbox"/></svg></span>
+              <h3>صندوق ورودی یکپارچه</h3>
+              <p>پیام‌های خصوصی، گروه‌ها و کانال‌ها را از همه‌ی اتصال‌ها در یک نمای زنده ببین و مستقیم پاسخ بده.</p>
+            </div>
+            <div class="inbox-demo" aria-hidden="true">
+              <div class="inbox-row"><span class="avatar avatar-a">ن</span><div><strong>نگار</strong><span>سلام، سفارش من کی می‌رسه؟</span></div><time>۱۰:۴۲</time></div>
+              <div class="inbox-row"><span class="avatar avatar-b">آ</span><div><strong>آرش</strong><span>فاکتور را فرستادم، ممنون.</span></div><time>۱۰:۳۹</time></div>
+              <div class="inbox-row"><span class="avatar avatar-c">س</span><div><strong>سارا</strong><span>ثبت‌نام دوره هنوز بازه؟</span></div><time>۱۰:۳۶</time></div>
+            </div>
+          </article>
+
+          <article class="feature-card feature-triggers">
+            <div class="feature-content">
+              <span class="feature-icon"><svg class="icon" aria-hidden="true"><use href="#i-bolt"/></svg></span>
+              <h3>تریگرهای خودکار</h3>
+              <p>برای هر رویداد یک قانون بنویس: پیام ورودی، فراخوانی ابزار، خطا یا اجرای دستی.</p>
+            </div>
+            <div class="rule-stack" aria-hidden="true">
+              <div class="rule"><span>پیام خصوصی</span><i></i><span class="rule-action">پاسخ دیبا</span></div>
+              <div class="rule"><span>خطای ابزار</span><i></i><span class="rule-action">Webhook</span></div>
+              <div class="rule"><span>پیام گروهی</span><i></i><span class="rule-action">فوروارد</span></div>
+              <div class="rule"><span>فراخوانی ابزار</span><i></i><span class="rule-action">اجرای ابزار</span></div>
+            </div>
+            <p class="rule-note">هر قانون را می‌توانی جداگانه فعال یا خاموش کنی.</p>
+          </article>
+
+          <article class="feature-card feature-memory">
+            <div class="feature-content">
+              <span class="feature-icon"><svg class="icon" aria-hidden="true"><use href="#i-memory"/></svg></span>
+              <h3>دستیار با حافظه</h3>
+              <p>گفتگو، اطلاعات پایدار و مخاطبان شناخته‌شده ذخیره می‌شوند تا پاسخ‌ها به کسب‌وکار تو نزدیک‌تر باشند.</p>
+            </div>
+            <div class="memory-demo" aria-hidden="true">
+              <span class="memory-label">حافظه‌ی دستیار</span>
+              <p>«سفارش‌ها با پست پیشتاز ارسال می‌شوند.»</p>
+              <span class="memory-meta">ثبت‌شده در حافظه · قابل ویرایش</span>
+            </div>
+          </article>
+
+          <article class="feature-card feature-tools">
+            <div class="feature-content">
+              <span class="feature-icon"><svg class="icon" aria-hidden="true"><use href="#i-terminal"/></svg></span>
+              <h3>ابزارهای MCP</h3>
+              <p>کلاینت هوش مصنوعی ابزارها را مستقیم صدا می‌زند؛ با همان توکن و همان endpoint.</p>
+            </div>
+            <pre class="tool-code" aria-label="نمونه‌ی کد ابزار MCP"><span class="code-muted"># ابزار در دسترس مدل</span>
+<span class="code-key">send_message</span> <span class="code-args">{ chat, text }</span>
+<span class="code-key">get_updates</span>  <span class="code-args">{ provider }</span>
+<span class="code-key">memory_search</span> <span class="code-args">{ query }</span></pre>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-integrations" id="integrations" aria-labelledby="integrations-title">
+      <div class="shell integrations-layout">
+        <div class="section-intro">
+          <p class="section-kicker">اتصال‌ها</p>
+          <h2 id="integrations-title">با حساب کاربری خودت وصل شو.</h2>
+          <p class="section-lead">بدون ربات رسمی و بدون توکن واسطه؛ هر پیام‌رسان با نشست حساب کاربری خودت کار می‌کند.</p>
+          <a class="text-link" href="https://github.com/Dibachain-Company/diba-mcp/blob/main/README.md" target="_blank" rel="noopener">راهنمای اتصال هر سرویس <svg class="icon" aria-hidden="true"><use href="#i-external"/></svg></a>
+        </div>
+
+        <div class="integration-panel">
+          <ul class="integration-list">
+            <li><img src="./assets/providers/whatsapp.svg" alt="" width="24" height="24"><span>واتس‌اپ</span><span class="integration-meta">پیام خصوصی، گروه و کانال</span><span class="integration-state"><i></i>آماده</span></li>
+            <li><img src="./assets/providers/telegram.svg" alt="" width="24" height="24"><span>تلگرام</span><span class="integration-meta">گروه، کانال و گفتگو</span><span class="integration-state"><i></i>آماده</span></li>
+            <li><img src="./assets/providers/bale.png" alt="" width="24" height="24"><span>بله</span><span class="integration-meta">گفتگوی خصوصی</span><span class="integration-state"><i></i>آماده</span></li>
+            <li><img src="./assets/providers/rubika.png" alt="" width="24" height="24"><span>روبیکا</span><span class="integration-meta">گفتگو و گروه</span><span class="integration-state"><i></i>آماده</span></li>
+            <li><img src="./assets/providers/soroush.png" alt="" width="24" height="24"><span>سروش‌پلاس</span><span class="integration-meta">پیام خصوصی</span><span class="integration-state"><i></i>آماده</span></li>
+            <li><img src="./assets/providers/eitaa.png" alt="" width="24" height="24"><span>ایتا</span><span class="integration-meta">کانال و گروه</span><span class="integration-state"><i></i>آماده</span></li>
+          </ul>
+          <p class="integration-note">شبکه‌های اجتماعی و پیام‌رسان‌های بیشتر در نقشه‌ی راه هستند؛ <a href="#roadmap">وضعیت را ببین</a>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-start" id="start" aria-labelledby="start-title">
+      <div class="shell start-layout">
+        <div class="start-copy">
+          <p class="section-kicker">شروع سریع</p>
+          <h2 id="start-title">در چند دقیقه، پل را بالا بیاور.</h2>
+          <p class="section-lead">با Node.js 22.19+ یا Docker اجرا کن. تنظیمات، نشست‌ها و حافظه در پوشه‌ی <code>data</code> می‌مانند.</p>
+
+          <ol class="start-steps">
+            <li><span>۱</span><div><strong>اجرا</strong><p>پروژه را با <code>npx</code> یا Compose بالا بیاور.</p></div></li>
+            <li><span>۲</span><div><strong>اتصال</strong><p>در داشبورد، پیام‌رسان‌ها را با حساب کاربری خودت وصل کن.</p></div></li>
+            <li><span>۳</span><div><strong>اتصال مدل</strong><p>دستور MCP را از داشبورد کپی کن و در Claude یا Cursor بگذار.</p></div></li>
+          </ol>
+        </div>
+
+        <div class="terminal-card">
+          <div class="terminal-head">
+            <div class="terminal-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+            <span>quick start</span>
+            <button class="copy-button" type="button" data-copy-target="command-npx" aria-label="کپی دستور اجرا">
+              <svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>
+              <span>کپی</span>
+            </button>
+          </div>
+          <div class="terminal-tabs" role="tablist" aria-label="روش اجرا">
+            <button type="button" role="tab" id="tab-npx" aria-selected="true" aria-controls="panel-npx" tabindex="0" data-tab="npx">npx</button>
+            <button type="button" role="tab" id="tab-docker" aria-selected="false" aria-controls="panel-docker" tabindex="-1" data-tab="docker">Docker</button>
+          </div>
+          <div class="terminal-panel" id="panel-npx" role="tabpanel" aria-labelledby="tab-npx">
+            <pre><span class="code-muted"># بدون نصب دائمی</span>
+<span class="code-command" id="command-npx">npx diba-mcp</span></pre>
+            <p class="terminal-hint">سپس <span class="ltr">http://127.0.0.1:3790</span> را باز کن.</p>
+          </div>
+          <div class="terminal-panel" id="panel-docker" role="tabpanel" aria-labelledby="tab-docker" hidden>
+            <pre><span class="code-muted"># از ریشه‌ی پروژه</span>
+<span class="code-command" id="command-docker">docker compose up -d --build</span></pre>
+            <p class="terminal-hint">داده‌ها در volume پروژه باقی می‌مانند.</p>
+          </div>
+          <div class="terminal-foot">
+            <span>Node 22.19+</span><span>·</span><span>MCP 1.32+</span><span>·</span><span>MIT</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-roadmap" id="roadmap" aria-labelledby="roadmap-title">
+      <div class="shell roadmap-layout">
+        <div class="section-intro">
+          <p class="section-kicker">نقشه‌ی راه</p>
+          <h2 id="roadmap-title">الآن کجاییم، بعد کجا؟</h2>
+          <p class="section-lead">مسیر محصول روی سه لایه‌ی ارتباط، داده‌ی مالی و تعامل هوشمند با مشتری جلو می‌رود.</p>
+          <a class="text-link" href="https://github.com/Dibachain-Company/diba-mcp/blob/main/README.md#%D9%86%D9%82%D8%B4%D9%87%D8%B1%D8%A7%D9%87-%D9%85%D8%AD%D8%B5%D9%88%D9%84" target="_blank" rel="noopener">نقشه‌ی راه کامل <svg class="icon" aria-hidden="true"><use href="#i-external"/></svg></a>
+        </div>
+
+        <ol class="roadmap-list">
+          <li class="roadmap-item is-done">
+            <span class="roadmap-status"><i></i> انجام شده</span>
+            <div><h3>اتصال به پیام‌رسان‌ها</h3><p>شش سرویس، صندوق ورودی یکپارچه، تریگرها و ابزارهای MCP.</p></div>
+          </li>
+          <li class="roadmap-item">
+            <span class="roadmap-status"><i></i> بعدی</span>
+            <div><h3>پلتفرم‌های بانکی و مدیریت موجودی</h3><p>نمای یکپارچه‌ی حساب‌ها، تراکنش‌ها و هشدارها؛ با شروع فقط‌خواندنی.</p></div>
+          </li>
+          <li class="roadmap-item is-progress">
+            <span class="roadmap-status"><i></i> در حال انجام</span>
+            <div><h3>پیج اینستاگرام و دایرکت هوشمند</h3><p>اتصال پیج، دریافت دایرکت و پاسخ هوشمند با تأیید انسان.</p></div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section section-security" aria-labelledby="security-title">
+      <div class="shell security-layout">
+        <div class="security-copy">
+          <p class="section-kicker">امنیت و کنترل</p>
+          <h2 id="security-title">پل، روی زیرساخت خودت.</h2>
+          <p class="section-lead">دیبا پل یک ابزار محلی است؛ داده‌ی مشتری را جای دیگری نمی‌فرستد و تصمیم‌های حساس را به تأیید انسان می‌سپارد.</p>
+        </div>
+        <ul class="security-list">
+          <li><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg><div><strong>نشست‌های محلی</strong><span>نشست‌ها و تنظیمات در پوشه‌ی <code>data</code> خودت ذخیره می‌شوند.</span></div></li>
+          <li><svg class="icon" aria-hidden="true"><use href="#i-terminal"/></svg><div><strong>توکن MCP</strong><span>دسترسی کلاینت‌ها با توکن Bearer محدود می‌شود.</span></div></li>
+          <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><div><strong>تأیید انسان</strong><span>ارسال حساس بدون تأیید صریح انجام نمی‌شود.</span></div></li>
+          <li><svg class="icon" aria-hidden="true"><use href="#i-bridge"/></svg><div><strong>متن‌باز</strong><span>کد پروژه با لایسنس MIT قابل بررسی است.</span></div></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section section-docs" id="docs" aria-labelledby="docs-title">
+      <div class="shell">
+        <div class="section-intro section-intro-wide">
+          <div>
+            <p class="section-kicker">مستندات</p>
+            <h2 id="docs-title">برای ساختن، به جزئیات نیاز داری.</h2>
+          </div>
+          <p class="section-lead">از نصب و اتصال تا تریگرها و ابزارهای MCP؛ همه‌چیز در مخزن پروژه است.</p>
+        </div>
+        <div class="docs-grid">
+          <a class="doc-card" href="https://github.com/Dibachain-Company/diba-mcp/blob/main/README.md" target="_blank" rel="noopener">
+            <span class="doc-type">شروع</span>
+            <h3>README</h3>
+            <p>نصب، اتصال به کلاینت‌ها و مرور کامل قابلیت‌ها.</p>
+            <span class="doc-arrow"><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+          </a>
+          <a class="doc-card" href="https://github.com/Dibachain-Company/diba-mcp/blob/main/DEPLOY.md" target="_blank" rel="noopener">
+            <span class="doc-type">استقرار</span>
+            <h3>DEPLOY</h3>
+            <p>اجرای Docker، دامنه، HTTPS و پروکسی.</p>
+            <span class="doc-arrow"><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+          </a>
+          <a class="doc-card" href="https://github.com/Dibachain-Company/diba-mcp/blob/main/docs/TRIGGERS.md" target="_blank" rel="noopener">
+            <span class="doc-type">اتوماسیون</span>
+            <h3>تریگرها</h3>
+            <p>رویدادها، شرط‌ها و اقدام‌های خودکار.</p>
+            <span class="doc-arrow"><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+          </a>
+          <a class="doc-card" href="https://github.com/Dibachain-Company/diba-mcp/blob/main/docs/DIBAROUTER.md" target="_blank" rel="noopener">
+            <span class="doc-type">هوش مصنوعی</span>
+            <h3>DibaRouter</h3>
+            <p>اتصال به مدل و ساخت پاسخ هوشمند.</p>
+            <span class="doc-arrow"><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-faq" aria-labelledby="faq-title">
+      <div class="shell faq-layout">
+        <div class="section-intro">
+          <p class="section-kicker">پرسش‌های کوتاه</p>
+          <h2 id="faq-title">قبل از شروع بدان.</h2>
+        </div>
+        <div class="faq-list">
+          <details>
+            <summary>آیا داده‌ها به سرور دیبا می‌رود؟</summary>
+            <p>نه. دیبا پل روی ماشین خودت اجرا می‌شود و نشست‌ها، حافظه و تنظیمات را در پوشه‌ی <code>data</code> نگه می‌دارد. دسترسی کلاینت‌ها با توکن خودت کنترل می‌شود.</p>
+          </details>
+          <details>
+            <summary>چه پیام‌رسان‌هایی پشتیبانی می‌شوند؟</summary>
+            <p>واتس‌اپ، تلگرام، بله، روبیکا، سروش‌پلاس و ایتا. هر اتصال با حساب کاربری خودت انجام می‌شود.</p>
+          </details>
+          <details>
+            <summary>با کدام کلاینت‌های هوش مصنوعی کار می‌کند؟</summary>
+            <p>هر کلاینتی که MCP را پشتیبانی کند؛ از جمله Claude Code، Claude Desktop، Cursor و کلاینت‌های JSON سازگار.</p>
+          </details>
+          <details>
+            <summary>برای اجرا به چه چیزی نیاز دارم؟</summary>
+            <p>Node.js 22.19 یا بالاتر، یا Docker. برای اتصال، حساب کاربری همان پیام‌رسان و دسترسی به شبکه.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="section cta-section" aria-labelledby="cta-title">
+      <div class="shell cta-panel">
+        <div class="cta-mark" aria-hidden="true"><img src="./assets/logo-sm.png" alt="" width="46" height="45"></div>
+        <div class="cta-copy">
+          <p class="section-kicker">آماده‌ای؟</p>
+          <h2 id="cta-title">پل را بساز؛ بقیه‌اش با دیبا.</h2>
+          <p>همین حالا پروژه را اجرا کن و اولین پیام را از داشبورد بفرست.</p>
+        </div>
+        <div class="cta-actions">
+          <a class="button button-light" href="#start">شروع سریع</a>
+          <a class="button button-outline-light" href="https://github.com/Dibachain-Company/diba-mcp" target="_blank" rel="noopener">مشاهده در GitHub</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell footer-main">
+      <div class="footer-brand">
+        <a class="brand" href="./" aria-label="دیبا پل">
+          <img src="./assets/logo-sm.png" alt="" width="30" height="29">
+          <span class="brand-text">دیبا پل</span>
+        </a>
+        <p>پل ارتباطی پیام‌رسان‌ها به هوش مصنوعی.<br>ساخته‌شده توسط <a href="https://dibachain.ir" target="_blank" rel="noopener">دیباچین</a>.</p>
+      </div>
+      <div class="footer-links">
+        <div><span>محصول</span><a href="#features">قابلیت‌ها</a><a href="#integrations">اتصال‌ها</a><a href="#roadmap">نقشه‌ی راه</a></div>
+        <div><span>منابع</span><a href="#docs">مستندات</a><a href="https://github.com/Dibachain-Company/diba-mcp" target="_blank" rel="noopener">GitHub</a><a href="https://github.com/Dibachain-Company/diba-mcp/blob/main/LICENSE" target="_blank" rel="noopener">لایسنس MIT</a></div>
+        <div><span>شروع</span><a href="#start">نصب</a><a href="http://127.0.0.1:3790" target="_blank" rel="noopener">داشبورد محلی</a><a href="https://github.com/Dibachain-Company/diba-mcp/issues" target="_blank" rel="noopener">گزارش مسئله</a></div>
+      </div>
+    </div>
+    <div class="shell footer-bottom">
+      <span>© <span data-year>2026</span> دیباچین · دیبا پل</span>
+      <span class="footer-status"><i></i> متن‌باز و محلی</span>
+    </div>
+  </footer>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>
