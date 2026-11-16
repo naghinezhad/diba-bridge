@@ -366,10 +366,12 @@ const icons = {
 icons.triggers = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
 icons.settings = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.17.37.38.7.6 1 .3.3.7.4 1.1.4H21v4h-.09a1.7 1.7 0 0 0-1.51.6z"/></svg>';
 icons.dibarouter = icons.router;
+icons.banking = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9.5L12 4l9 5.5M4.5 9.5h15M6 10v7M10 10v7M14 10v7M18 10v7M3.5 20h17M5 17h14"/></svg>';
 
 const pages = [
   { id: "overview", title: "نمای کلی" },
   { id: "providers", title: "پیام‌رسان‌ها", submenu: true },
+  { id: "banking", title: "سرویس‌های بانکی", submenu: true },
   { id: "triggers", title: "تریگرها و اتوماسیون" },
   { id: "playground", title: "آزمایش ابزارها" },
   { id: "logs", title: "گزارش فراخوانی‌ها" },
@@ -378,8 +380,16 @@ const pages = [
   { id: "settings", title: "تنظیمات" },
 ];
 
-// Provider groups for the submenu — Iranian vs Other
-const iranianProviders = ["bale", "eitaa", "rubika", "soroush"];
+// دسته و منطقه‌ی هر سرویس از سرور می‌آید (category و region در تعریف provider)
+// اگر سرور هنوز نسخه‌ی قدیمی باشد و region را نفرستد، همین فهرست‌ها ملاک است تا دسته‌بندی به‌هم نریزد
+const legacyIranianPlatforms = new Set(["bale", "eitaa", "rubika", "soroush", "blubank"]);
+const legacyBankingProviders = new Set(["blubank"]);
+const isBankingProvider = (p) => p?.category === "banking" || (!p?.region && legacyBankingProviders.has(p?.id));
+const isIranianProvider = (p) =>
+  p?.region ? p.region === "iran" : legacyIranianPlatforms.has(String(p?.id ?? "").replace(/_client$/, ""));
+/** صفحه‌ای که هر سرویس در آن مدیریت می‌شود: پیام‌رسان‌ها یا سرویس‌های بانکی */
+const providerSection = (p) => (isBankingProvider(p) ? "banking" : "providers");
+const providerHref = (p) => `#/${providerSection(p)}?open=${encodeURIComponent(p.id)}`;
 
 /**
  * راهنمای اتصال هر سرویس با حساب کاربری.
@@ -459,6 +469,16 @@ const providerTutorials = {
       "Author URN اختیاری است؛ اگر خالی بماند از پروفایل همان توکن خوانده می‌شود (urn:li:person:...).",
       "نسخه API را مطابق اپ خود تنظیم کنید (پیش‌فرض 202506) و «تست اتصال» را بزنید.",
       "برای انتشار پست، اپ باید تأییدیهی دسترسی w_member_social را داشته باشد؛ در غیر این صورت LinkedIn خطای دسترسی برمی‌گرداند.",
+    ],
+  },
+  blubank: {
+    client: [
+      "در اپلیکیشن بلوبانک وارد حساب خود شوید؛ ورود با شماره و کد پیامک از داخل دیباپل انجام نمی‌شود، چون اپلیکیشن بدنه‌ی درخواست ورود را رمزنگاری می‌کند.",
+      "توکن نشست (مقدار هدر Authorization) را از همان نشست واردشده‌ی اپلیکیشن بردارید.",
+      "توکن را در فیلد «Access Token» وارد و ذخیره کنید؛ فیلد «Cookie نشست» فقط وقتی لازم است که نشست شما با کوکی کار کند.",
+      "«تست اتصال» را بزنید؛ در صورت معتبر بودن توکن، فهرست سپرده‌ها خوانده می‌شود.",
+      "پاسخ‌های بلوبانک بدون اسکیمای منتشرشده‌اند؛ مبلغ‌ها، شماره شباها و کارت‌ها از متن پاسخ استخراج می‌شوند، پس پیش از تصمیم مالی عددها را با اپلیکیشن تطبیق دهید.",
+      "توکن نشست دسترسی کامل به حساب بانکی می‌دهد؛ آن را فقط روی سرور خودتان نگه دارید و با منقضی شدن نشست، توکن تازه ثبت کنید.",
     ],
   },
   wordpress: {
@@ -1165,12 +1185,12 @@ function renderShell() {
           if (!p.submenu) {
             return `<a href="#/${p.id}" data-page="${p.id}">${icons[p.id]}<span>${p.title}</span></a>`;
           }
-          // فقط دو دسته: ایرانی و خارجی
-          return `<div class="nav-group">
-            <a href="#/providers" data-page="providers" class="nav-parent">${icons.providers}<span>${p.title}</span>${icons.chevron}</a>
+          // هر گروه فقط دو دسته دارد: ایرانی و خارجی
+          return `<div class="nav-group" data-group="${p.id}">
+            <a href="#/${p.id}" data-page="${p.id}" class="nav-parent" title="${p.title}">${icons[p.id]}<span>${p.title}</span>${icons.chevron}</a>
             <div class="nav-sub">
-              <a href="#/providers?region=iran" data-page="providers" data-region="iran">${icons.providers}<span>ایرانی</span></a>
-              <a href="#/providers?region=other" data-page="providers" data-region="other">${icons.providers}<span>خارجی</span></a>
+              <a href="#/${p.id}?region=iran" data-page="${p.id}" data-region="iran">${icons[p.id]}<span>ایرانی</span></a>
+              <a href="#/${p.id}?region=other" data-page="${p.id}" data-region="other">${icons[p.id]}<span>خارجی</span></a>
             </div>
           </div>`;
         }).join("")}
@@ -1184,17 +1204,14 @@ function renderShell() {
     ${agentDockHtml()}
   </div>`;
   document.getElementById("logout").onclick = async () => { await api("auth/logout", { body: {} }); boot(); };
-  // Toggle provider submenu
-  const navParent = document.querySelector(".nav-parent");
-  if (navParent) {
+  // باز و بسته کردن زیرمنوها؛ در نمای موبایل زیرمنو پنهان است و لینک مستقیم به صفحه می‌رود
+  document.querySelectorAll(".nav-parent").forEach((navParent) => {
     navParent.addEventListener("click", (e) => {
+      if (window.matchMedia("(max-width: 768px)").matches) return;
       e.preventDefault();
-      const group = navParent.closest(".nav-group");
-      if (group) {
-        group.classList.toggle("open");
-      }
+      navParent.closest(".nav-group")?.classList.toggle("open");
     });
-  }
+  });
   initAgent();
 }
 
@@ -1215,21 +1232,18 @@ async function render() {
   document.querySelectorAll(".nav a").forEach((a) => {
     let active = a.dataset.page === page;
     if (active && a.dataset.region) active = q.get("region") === a.dataset.region;
-    if (active && a.classList.contains("nav-parent")) active = page === "providers" && !q.get("region");
+    if (active && a.classList.contains("nav-parent")) active = !q.get("region");
     if (active) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   });
-  // Open the provider submenu if on providers page
-  const navGroup = document.querySelector(".nav-group");
-  if (navGroup && page === "providers") {
-    navGroup.classList.add("open");
-  } else if (navGroup) {
-    navGroup.classList.remove("open");
-  }
+  // زیرمنوی همان گروهی باز می‌ماند که صفحه‌اش باز است
+  document.querySelectorAll(".nav-group").forEach((group) => {
+    group.classList.toggle("open", group.dataset.group === page);
+  });
   document.title = `${pages.find((p) => p.id === page).title} — Diba Bridge (دیبا پل) | دیباچین`;
   const main = document.getElementById("main");
   try {
-    await ({ overview: pageOverview, providers: pageProviders, playground: pagePlayground, triggers: pageTriggers, logs: pageLogs, dibarouter: pageDibaRouter, connect: pageConnect, settings: pageSettings })[page](main, q);
+    await ({ overview: pageOverview, providers: pageProviders, banking: (m, query) => pageProviders(m, query, "banking"), playground: pagePlayground, triggers: pageTriggers, logs: pageLogs, dibarouter: pageDibaRouter, connect: pageConnect, settings: pageSettings })[page](main, q);
   } catch (e) {
     if (!(e instanceof AuthError)) main.innerHTML = `<div class="err-box">${esc(e.message)}</div>`;
   }
@@ -1269,7 +1283,7 @@ async function pageOverview(main) {
         </div>
         <div class="ov-provider-list">
           ${o.providers.map((p) => `
-            <a class="ov-prov ${p.ready ? "is-ready" : p.enabled ? "is-warn" : "is-off"}" href="#/providers?open=${p.id}">
+            <a class="ov-prov ${p.ready ? "is-ready" : p.enabled ? "is-warn" : "is-off"}" href="${providerHref(p)}">
               <span class="ov-prov-glyph" style="background:${p.color}">${providerLogo(p)}</span>
               <span class="ov-prov-text">
                 <b>${esc(p.nameFa)}</b>
@@ -1462,7 +1476,7 @@ function selfTestHtml(r) {
 
 function renderProviderMode(p, _plat) {
   if (!p) {
-    return `<div class="empty"><b>این پیام‌رسان هنوز اتصالی ندارد.</b></div>`;
+    return `<div class="empty"><b>این سرویس هنوز اتصالی ندارد.</b></div>`;
   }
   const fields = p.auth ? p.fields.filter((f) => f.key !== p.auth.sessionField) : p.fields;
   const isAccount = Boolean(p.auth);
@@ -1472,7 +1486,7 @@ function renderProviderMode(p, _plat) {
         <div class="prov-mode-meta">
           <span class="mode-tag ${isAccount ? "mode-tag-client" : "mode-tag-bot"}">
             ${isAccount ? icons.user : icons.shield}
-            ${isAccount ? "حساب کاربری (کلاینت)" : "API رسمی"}
+            ${isAccount ? "حساب کاربری (کلاینت)" : p.unofficial ? "API غیررسمی اپلیکیشن" : "API رسمی"}
           </span>
           <p class="prov-mode-desc">
             ${isAccount
@@ -1574,6 +1588,7 @@ function platformAccordionHtml(plat) {
         <div class="prov-info-top">
           <b class="prov-name">${esc(plat.nameFa)}</b>
           <span class="en-tag">${esc(plat.nameEn)}</span>
+          ${p ? `<span class="region-tag">${isIranianProvider(p) ? "ایرانی" : "خارجی"}</span>` : ""}
         </div>
         <p class="prov-desc">${esc(plat.description)}</p>
       </div>
@@ -1606,32 +1621,62 @@ function platformAccordionHtml(plat) {
   </article>`;
 }
 
-async function pageProviders(main, q) {
+async function pageProviders(main, q, section = "providers") {
   state.providers = await api("providers");
+  const banking = section === "banking";
   const region = q.get("region") === "iran" ? "iran" : q.get("region") === "other" ? "other" : "";
-  const iranian = new Set(iranianProviders);
-  const platforms = groupProviders(state.providers).filter((p) =>
-    region === "iran" ? iranian.has(p.key) : region === "other" ? !iranian.has(p.key) : true,
-  );
-
   const focus = q.get("focus");
   const open = q.get("open");
+
+  // لینک قدیمی یا دستی به سرویسی که در بخش دیگر است → همان سرویس در بخش درست باز می‌شود
+  const target = open ? state.providers.find((p) => p.id === open) : null;
+  if (target && providerSection(target) !== section) {
+    location.replace(providerHref(target));
+    return;
+  }
+
+  const platforms = groupProviders(state.providers).filter(({ provider: p }) =>
+    p && providerSection(p) === section &&
+    (region === "iran" ? isIranianProvider(p) : region === "other" ? !isIranianProvider(p) : true),
+  );
+
   if (focus) {
     state.openPlatform = focus;
   } else if (open) {
     state.openPlatform = parseProvider({ id: open }).platformKey;
   }
 
-  const title = region === "iran" ? "پیام‌رسان‌های ایرانی" : region === "other" ? "پیام‌رسان‌های خارجی" : "پیام‌رسان‌ها";
-  const desc = region === "iran"
-    ? "سرویس‌های ایرانی متصل به این سرور با حساب کاربری."
-    : region === "other"
-      ? "سرویس‌های غیرایرانی متصل به این سرور با حساب کاربری."
-      : "مدیریت حساب‌های کاربری پیام‌رسان‌ها در یک آکاردئون یکپارچه. هر حساب با یک کلید روشن یا خاموش می‌شود.";
+  const copy = banking
+    ? {
+      title: { iran: "سرویس‌های بانکی ایرانی", other: "سرویس‌های بانکی خارجی", "": "سرویس‌های بانکی" },
+      desc: {
+        iran: "بانک‌ها و سرویس‌های مالی ایرانی متصل به این سرور.",
+        other: "بانک‌ها و سرویس‌های مالی خارجی متصل به این سرور.",
+        "": "مدیریت اتصال بانک‌ها و سرویس‌های مالی؛ موجودی، کارت‌ها و تراکنش‌ها در اختیار مدل قرار می‌گیرد. هر سرویس با یک کلید روشن یا خاموش می‌شود.",
+      },
+      empty: {
+        iran: "هنوز سرویس بانکی ایرانی به دیباپل اضافه نشده است.",
+        other: "هنوز سرویس بانکی خارجی به دیباپل اضافه نشده است؛ پس از افزوده شدن، اینجا نمایش داده می‌شود.",
+        "": "هنوز سرویس بانکی به دیباپل اضافه نشده است.",
+      },
+    }
+    : {
+      title: { iran: "پیام‌رسان‌های ایرانی", other: "پیام‌رسان‌های خارجی", "": "پیام‌رسان‌ها" },
+      desc: {
+        iran: "سرویس‌های ایرانی متصل به این سرور با حساب کاربری.",
+        other: "سرویس‌های غیرایرانی متصل به این سرور با حساب کاربری.",
+        "": "مدیریت حساب‌های کاربری پیام‌رسان‌ها در یک آکاردئون یکپارچه. هر حساب با یک کلید روشن یا خاموش می‌شود.",
+      },
+      empty: {
+        iran: "هنوز سرویس ایرانی در این دسته ثبت نشده است.",
+        other: "سرویس‌های خارجی پس از افزودن، اینجا نمایش داده می‌شوند.",
+        "": "هنوز سرویسی در این دسته ثبت نشده است.",
+      },
+    };
   main.innerHTML = `
-    ${head(title, desc, "مدیریت سرویس‌ها")}
+    ${head(copy.title[region], copy.desc[region], "مدیریت سرویس‌ها")}
     <div class="providers-accordion-list" id="provs">
-      ${platforms.length ? platforms.map(platformAccordionHtml).join("") : `<div class="empty"><b>هنوز سرویسی در این دسته ثبت نشده</b>${region === "other" ? "سرویس‌های خارجی پس از افزودن، اینجا نمایش داده می‌شوند." : "از صفحه‌ی پیام‌رسان‌ها سرویس اضافه کنید."}</div>`}
+      ${platforms.length ? platforms.map(platformAccordionHtml).join("") : `<div class="empty"><b>هنوز سرویسی در این دسته ثبت نشده</b>${copy.empty[region]}</div>`}
     </div>`;
 
   const list = document.getElementById("provs");
@@ -2329,7 +2374,7 @@ async function pagePlayground(main, q) {
     <section class="panel">
       <div class="result-head"><h2>${esc(t.title)}</h2>${t.annotations.readOnlyHint ? '<span class="pill pill-off">فقط خواندنی</span>' : '<span class="pill pill-warn">ارسال واقعی</span>'}</div>
       <p class="desc">${esc(t.description)}</p>
-      ${p.ready ? "" : `<div class="err-box" style="margin-bottom:18px">${esc(p.nameFa)} هنوز آماده نیست. <a href="#/providers?open=${p.id}">توکن را ثبت و روشنش کنید</a>.</div>`}
+      ${p.ready ? "" : `<div class="err-box" style="margin-bottom:18px">${esc(p.nameFa)} هنوز آماده نیست. <a href="${providerHref(p)}">توکن را ثبت و روشنش کنید</a>.</div>`}
       <form id="tool-form">
         <div class="tool-form">${Object.keys(props).length ? Object.entries(props).map(([k, v]) => inputFor(k, v, req.includes(k), p)).join("") : '<p class="hint wide">این ابزار پارامتر ورودی ندارد.</p>'}</div>
         <div class="prov-actions" style="margin-top:20px">
@@ -2395,7 +2440,7 @@ function receiverHtml(p, st) {
     return `<div class="rcv off"><div class="disc sm" style="background:${p.color}">${providerLogo(p)}</div><div class="rcv-body"><b>${esc(p.nameFa)}</b><span class="hint">این سرویس فقط ارسال پیام دارد؛ دریافت در نسخه کلاینت پشتیبانی می‌شود.</span></div></div>`;
   const ready = p.ready;
   let pill, info = "";
-  if (!ready) { pill = `<span class="pill pill-off">${p.auth ? "وارد نشده" : "توکن ثبت نشده"}</span>`; info = `<a href="#/providers?open=${p.id}">${p.auth ? "ورود به حساب" : "ثبت توکن"}</a>`; }
+  if (!ready) { pill = `<span class="pill pill-off">${p.auth ? "وارد نشده" : "توکن ثبت نشده"}</span>`; info = `<a href="${providerHref(p)}">${p.auth ? "ورود به حساب" : "ثبت توکن"}</a>`; }
   else if (st.lastError) { pill = '<span class="pill pill-err">خطا در دریافت</span>'; info = `<span class="err" title="${esc(st.lastError)}">${esc(st.lastError)}</span>`; }
   else if (st.running) { pill = '<span class="pill pill-ok">در حال دریافت</span>'; info = st.lastPollAt ? `آخرین بررسی ${ago(st.lastPollAt)}` : "در حال اتصال به سرور…"; }
   else pill = '<span class="pill pill-off">خاموش</span>';
@@ -2669,7 +2714,7 @@ async function pageInbox(main, q) {
       </form>` : `
       <div class="composer-notice">
         <span>${!p?.ready ? `برای ارسال پاسخ، ابتدا ${esc(p?.nameFa || "سرویس")} را متصل کنید.` : `ارسال پیام متنی مستقیم برای ${esc(p?.nameFa || "این سرویس")} پشتیبانی نمی‌شود.`}</span>
-        ${!p?.ready && p ? `<a class="btn btn-ghost btn-sm" href="#/providers?open=${encodeURIComponent(p.id)}">تنظیم سرویس</a>` : ""}
+        ${!p?.ready && p ? `<a class="btn btn-ghost btn-sm" href="${providerHref(p)}">تنظیم سرویس</a>` : ""}
       </div>`}`;
 
     const draftEl = el.querySelector("[data-draft]");
