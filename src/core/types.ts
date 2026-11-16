@@ -4,7 +4,8 @@ import type { z } from "zod";
 export interface ProviderField {
   key: string;
   label: string;
-  type: "text" | "secret" | "url";
+  /** boolean به شکل کلید روشن/خاموش نمایش داده و با مقدار "true"/"false" ذخیره می‌شود */
+  type: "text" | "secret" | "url" | "boolean";
   required?: boolean;
   placeholder?: string;
   help?: string;
