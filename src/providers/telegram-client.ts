@@ -497,6 +497,7 @@ export const telegramClient: ProviderDef = {
   name: "Telegram Client",
   nameFa: "تلگرام (حساب کاربری)",
   category: "messenger",
+  region: "international",
   color: "#229ED9",
   glyph: "ت",
   description: "ورود با شماره تلگرام و مدیریت حساب، گروه‌ها و کانال‌ها از طریق MTProto",

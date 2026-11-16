@@ -705,6 +705,7 @@ export const wordpress: ProviderDef = {
   name: "WordPress",
   nameFa: "وردپرس",
   category: "utility",
+  region: "international",
   color: "#21759b",
   glyph: "W",
   description: "مدیریت کامل سایت وردپرس — نوشته‌ها، رسانه، دیدگاه‌ها، کاربران، افزونه‌ها، سئو و ووکامرس",

@@ -637,6 +637,7 @@ export const soroushClient: ProviderDef = {
   name: "Soroush Client",
   nameFa: "سروش‌پلاس (حساب کاربری)",
   category: "messenger",
+  region: "iran",
   color: "#2563eb",
   glyph: "ش",
   description: "اتصال به حساب شخصی سروش‌پلاس با شماره تلفن — ارسال و دریافت پیام مثل خود کاربر (MTProto خصوصی)",

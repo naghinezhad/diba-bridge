@@ -630,6 +630,7 @@ export const instagram: ProviderDef = {
   name: "Instagram",
   nameFa: "اینستاگرام",
   category: "messenger",
+  region: "international",
   color: "#d62976",
   glyph: "I",
   description: "ورود با نام کاربری و رمز اینستاگرام — پروفایل، مدیا، کامنت و انتشار عکس بدون API Key",

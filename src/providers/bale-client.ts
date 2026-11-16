@@ -573,6 +573,7 @@ export const baleClient: ProviderDef = {
   name: "Bale Client",
   nameFa: "بله (حساب کاربری)",
   category: "messenger",
+  region: "iran",
   color: "#0f9d8a",
   glyph: "ح",
   description: "اتصال به حساب شخصی بله با شماره تلفن — ارسال و دریافت پیام مثل خود کاربر (API خصوصی)",

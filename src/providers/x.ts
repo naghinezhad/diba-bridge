@@ -125,6 +125,7 @@ export const x: ProviderDef = {
   name: "X (Twitter)",
   nameFa: "ایکس (حساب کاربری)",
   category: "messenger",
+  region: "international",
   color: "#0f1419",
   glyph: "X",
   description: "ورود با نام کاربری و رمز X — پروفایل، جستجو، تایم‌لاین و انتشار توییت بدون API Key",

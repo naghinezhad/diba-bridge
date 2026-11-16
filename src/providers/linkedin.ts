@@ -63,6 +63,7 @@ export const linkedinProvider: ProviderDef = {
   name: "LinkedIn",
   nameFa: "لینکدین",
   category: "messenger",
+  region: "international",
   color: "#0a66c2",
   glyph: "in",
   description: "اتصال رسمی LinkedIn API — پروفایل، انتشار پست و فهرست پست‌ها",

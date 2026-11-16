@@ -511,6 +511,7 @@ export const eitaaClient: ProviderDef = {
   name: "Eitaa Client",
   nameFa: "ایتا (حساب کاربری)",
   category: "messenger",
+  region: "iran",
   color: "#f59e0b",
   glyph: "ا",
   description:

@@ -727,6 +727,7 @@ export const rubikaClient: ProviderDef = {
   name: "Rubika Client",
   nameFa: "روبیکا (حساب کاربری)",
   category: "messenger",
+  region: "iran",
   color: "#7c3aed",
   glyph: "ک",
   description: "اتصال به حساب شخصی روبیکا با شماره تلفن — ارسال و دریافت پیام مثل خود کاربر (API خصوصی)",

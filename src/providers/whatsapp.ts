@@ -625,6 +625,7 @@ export const whatsapp: ProviderDef = {
   name: "WhatsApp",
   nameFa: "واتس‌اپ",
   category: "messenger",
+  region: "international",
   color: "#25D366",
   glyph: "و",
   description: "ورود با QR واتس‌اپ — ارسال پیام، عکس و فایل بدون API Token",
