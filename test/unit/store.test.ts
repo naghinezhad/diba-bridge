@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFile
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, test } from "node:test";
-import { ConfigStore, envKey } from "../../src/core/store.ts";
+import { ConfigStore, dockerizeLocalProxy, envKey } from "../../src/core/store.ts";
 import { baleClient, rubikaClient } from "../../src/providers/index.ts";
 
 const dir = () => mkdtempSync(join(tmpdir(), "diba-store-"));
@@ -91,5 +91,25 @@ describe("ConfigStore", () => {
     assert.equal(s.mcpToken, "env-token");
     assert.equal(s.mcpTokenFromEnv, true);
     assert.equal(existsSync(s["file" as never]), true);
+  });
+});
+
+describe("dockerizeLocalProxy", () => {
+  test("داخل کانتینر، نشانی محلی پراکسی (حتی با نام کاربری/رمز) به میزبان اشاره می‌کند", () => {
+    const before = process.env.DOCKER_CONTAINER;
+    try {
+      delete process.env.DOCKER_CONTAINER;
+      assert.equal(dockerizeLocalProxy("socks5://127.0.0.1:1080"), "socks5://127.0.0.1:1080");
+      process.env.DOCKER_CONTAINER = "1";
+      assert.equal(dockerizeLocalProxy("socks5://127.0.0.1:1080"), "socks5://host.docker.internal:1080");
+      assert.equal(dockerizeLocalProxy("http://localhost:3128/"), "http://host.docker.internal:3128/");
+      assert.equal(dockerizeLocalProxy("socks5://user:pass@127.0.0.1:1080"), "socks5://user:pass@host.docker.internal:1080");
+      assert.equal(dockerizeLocalProxy("http://[::1]:3128"), "http://host.docker.internal:3128");
+      assert.equal(dockerizeLocalProxy("socks5://10.0.0.5:1080"), "socks5://10.0.0.5:1080");
+      assert.equal(dockerizeLocalProxy("http://user@proxy.example.com:8080"), "http://user@proxy.example.com:8080");
+    } finally {
+      if (before === undefined) delete process.env.DOCKER_CONTAINER;
+      else process.env.DOCKER_CONTAINER = before;
+    }
   });
 });

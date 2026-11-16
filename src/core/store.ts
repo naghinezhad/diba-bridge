@@ -46,7 +46,11 @@ export function readStoredSettings(dataDir: string): AppSettingsStored {
 
 export function dockerizeLocalProxy(value: string): string {
   if (process.env.DOCKER_CONTAINER !== "1" || !value) return value;
-  return value.replace(/\/\/(127\.0\.0\.1|localhost|0\.0\.0\.0)(?=[:/]|$)/i, "//host.docker.internal");
+  // «socks5://user:pass@127.0.0.1:1080» هم باید بازنویسی شود، نه فقط نشانی بدون احراز هویت
+  return value.replace(
+    /(\/\/(?:[^@/\s]*@)?)(?:127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\])(?=[:/]|$)/i,
+    (_match, prefix: string) => `${prefix}host.docker.internal`,
+  );
 }
 
 export function proxyEnvOf(settings: AppSettingsStored): Record<string, string> {
