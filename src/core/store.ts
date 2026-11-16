@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { ProxyEntry } from "./proxy-pool.js";
 import type { ProviderDef } from "./types.js";
 
 export interface ProviderState {
@@ -25,6 +26,16 @@ export interface StoredConfig {
   settings?: AppSettingsStored;
   /** مشخصات سازمان/پروژه و وضعیت نصب اولیه */
   profile?: ProfileStored;
+  /** فهرست پروکسی‌ها و انتخاب خودکار سریع‌ترین */
+  proxyPool?: ProxyPoolStored;
+}
+
+export interface ProxyPoolStored {
+  /** با روشن بودن، پس از هر سنجش سریع‌ترین پروکسی سالم فعال می‌شود */
+  auto: boolean;
+  /** پروکسی‌ای که از این فهرست فعال شده است */
+  activeId?: string;
+  entries: ProxyEntry[];
 }
 
 /** مشخصاتی که در نصب اولیه گرفته می‌شود */
@@ -265,6 +276,20 @@ export class ConfigStore {
     this.data.settings = next;
     this.persist();
     return this.settings();
+  }
+
+  // ---------- فهرست پروکسی ----------
+  proxyPool(): ProxyPoolStored {
+    const pool = this.data.proxyPool;
+    return { auto: Boolean(pool?.auto), activeId: pool?.activeId, entries: Array.isArray(pool?.entries) ? pool.entries : [] };
+  }
+
+  /** نشانی‌ها ممکن است رمز داشته باشند؛ مثل بقیه‌ی config.json فقط با دسترسی 600 ذخیره می‌شوند */
+  saveProxyPool(pool: ProxyPoolStored) {
+    this.data.proxyPool = { auto: pool.auto, activeId: pool.activeId, entries: pool.entries };
+    if (!pool.activeId) delete this.data.proxyPool.activeId;
+    this.persist();
+    return this.proxyPool();
   }
 
   // ---------- مشخصات و نصب اولیه ----------
