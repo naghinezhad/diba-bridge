@@ -4,6 +4,7 @@
 const $app = document.getElementById("app");
 const state = {
   providers: [],
+  profile: null,
   overview: null,
   logs: [],
   logFilter: { ok: "all", provider: "" },
@@ -45,6 +46,11 @@ try {
   if (typeof prefs.full === "boolean") state.agent.full = prefs.full;
   state.agent.messages = loadAgentHistory();
 } catch { /* ignore */ }
+// در صفحه‌ی باریک پنل دستیار شناور است و روی محتوا می‌افتد؛ آنجا بسته شروع می‌شود و با دکمه‌اش باز می‌شود
+if (window.matchMedia("(max-width: 1200px)").matches) {
+  state.agent.open = false;
+  state.agent.full = false;
+}
 let authQrTimer = null;
 function stopAuthQrPolling() {
   if (authQrTimer) clearInterval(authQrTimer);
@@ -366,6 +372,7 @@ const icons = {
 icons.triggers = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
 icons.settings = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.17.37.38.7.6 1 .3.3.7.4 1.1.4H21v4h-.09a1.7 1.7 0 0 0-1.51.6z"/></svg>';
 icons.dibarouter = icons.router;
+icons.install = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v11M7.5 10l4.5 4.5 4.5-4.5M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/></svg>';
 icons.banking = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9.5L12 4l9 5.5M4.5 9.5h15M6 10v7M10 10v7M14 10v7M18 10v7M3.5 20h17M5 17h14"/></svg>';
 
 const pages = [
@@ -377,6 +384,7 @@ const pages = [
   { id: "logs", title: "گزارش فراخوانی‌ها" },
   { id: "dibarouter", title: "دیبا روتر" },
   { id: "connect", title: "اتصال به هوش مصنوعی" },
+  { id: "install", title: "نصب و مشخصات" },
   { id: "settings", title: "تنظیمات" },
 ];
 
@@ -473,12 +481,13 @@ const providerTutorials = {
   },
   blubank: {
     client: [
-      "در اپلیکیشن بلوبانک وارد حساب خود شوید؛ ورود با شماره و کد پیامک از داخل دیباپل انجام نمی‌شود، چون اپلیکیشن بدنه‌ی درخواست ورود را رمزنگاری می‌کند.",
-      "توکن نشست (مقدار هدر Authorization) را از همان نشست واردشده‌ی اپلیکیشن بردارید.",
-      "توکن را در فیلد «Access Token» وارد و ذخیره کنید؛ فیلد «Cookie نشست» فقط وقتی لازم است که نشست شما با کوکی کار کند.",
-      "«تست اتصال» را بزنید؛ در صورت معتبر بودن توکن، فهرست سپرده‌ها خوانده می‌شود.",
+      "شماره موبایل حساب بلوبانک را در فیلد «شماره موبایل» وارد کنید و «شروع ورود» را بزنید.",
+      "رمز عبور حساب بلوبانک را در قدم بعدی وارد کنید؛ سپس کدی که پیامک می‌شود را بزنید.",
+      "پس از تأیید کد، نشست به‌صورت خودکار ذخیره می‌شود و تا زمانی که معتبر باشد نیازی به ورود دوباره نیست.",
+      "اگر نشست منقضی شد، ابزارها خطای احراز هویت می‌دهند؛ کافی است دوباره «شروع ورود» را بزنید.",
+      "«تست اتصال» را بزنید؛ در صورت معتبر بودن نشست، فهرست سپرده‌ها خوانده می‌شود.",
       "پاسخ‌های بلوبانک بدون اسکیمای منتشرشده‌اند؛ مبلغ‌ها، شماره شباها و کارت‌ها از متن پاسخ استخراج می‌شوند، پس پیش از تصمیم مالی عددها را با اپلیکیشن تطبیق دهید.",
-      "توکن نشست دسترسی کامل به حساب بانکی می‌دهد؛ آن را فقط روی سرور خودتان نگه دارید و با منقضی شدن نشست، توکن تازه ثبت کنید.",
+      "نشست دسترسی کامل به حساب بانکی می‌دهد؛ آن را فقط روی سرور خودتان نگه دارید.",
     ],
   },
   wordpress: {
@@ -665,7 +674,7 @@ function switchboardArt() {
   </svg>`;
 }
 
-function renderAuth(needsSetup) {
+function renderAuth() {
   $app.innerHTML = `
   <div class="auth-page">
     <main class="auth-shell">
@@ -691,129 +700,21 @@ function renderAuth(needsSetup) {
       </section>
       <section class="auth-card">
         <div class="auth-card-head">
-          <span class="auth-kicker">${needsSetup ? "شروع به کار" : "ورود امن"}</span>
-          <h2>${needsSetup ? "راه‌اندازی اولیه" : "ورود به داشبورد"}</h2>
-          <p>${needsSetup ? "کد شش‌حرفی چاپ‌شده در کنسول سرور را وارد کرده و یک رمز عبور امن بسازید." : "برای مدیریت سرویس‌ها، بررسی پیام‌ها و کلیدهای ارتباطی وارد شوید."}</p>
+          <span class="auth-kicker">ورود امن</span>
+          <h2>ورود به داشبورد</h2>
+          <p>برای مدیریت سرویس‌ها، بررسی پیام‌ها و کلیدهای ارتباطی وارد شوید.</p>
         </div>
-        ${needsSetup ? `
-        <form id="f" data-setup-wizard>
-          <div data-setup-step="1">
-            <div class="field"><label for="code">کد راه‌اندازی سرور</label><input id="code" class="input ltr-input" autocomplete="off" required maxlength="6" placeholder="A1B2C3"></div>
-            <div class="field"><label for="pw">رمز عبور داشبورد</label><input id="pw" type="password" class="input" autocomplete="new-password" minlength="8" required><span class="hint">حداقل ۸ کاراکتر</span></div>
-            <div class="field"><label for="pw2">تکرار رمز عبور</label><input id="pw2" type="password" class="input" autocomplete="new-password" required></div>
-          </div>
-          <div data-setup-step="2" hidden>
-            <div class="field">
-              <span class="field-label">محیط شبکه / پروکسی</span>
-              <div class="seg" data-wizard-proxy>
-                <button type="button" data-proxy-type="none" aria-pressed="true">بدون پروکسی</button>
-                <button type="button" data-proxy-type="http" aria-pressed="false">HTTP</button>
-                <button type="button" data-proxy-type="socks5" aria-pressed="false">SOCKS5</button>
-              </div>
-            </div>
-            <div class="field"><label for="wizardProxy">آدرس پروکسی</label><input id="wizardProxy" class="input ltr-input" placeholder="http://127.0.0.1:8080 یا socks5://127.0.0.1:1080" disabled></div>
-            <div class="auth-two-col">
-              <div class="field"><label for="wizardRetention">نگهداری لاگ (روز)</label><input id="wizardRetention" class="input ltr-input" type="number" min="1" max="365" value="14"></div>
-              <div class="field"><label for="wizardWrite">سقف نوشتن MCP در دقیقه</label><input id="wizardWrite" class="input ltr-input" type="number" min="1" max="1000" value="30"></div>
-            </div>
-          </div>
-          <div data-setup-step="3" hidden>
-            <div class="setup-summary" data-setup-summary></div>
-            <p class="hint">پس از تکمیل، می‌توانید همه‌ی این مقادیر را از صفحه‌ی «تنظیمات» تغییر دهید.</p>
-          </div>
-          <div class="form-err" id="err"></div>
-          <div class="auth-wizard-actions">
-            <button class="btn btn-ghost" type="button" data-setup-back hidden>بازگشت</button>
-            <button class="btn btn-primary" type="button" data-setup-next>ادامه</button>
-            <button class="btn btn-primary" type="submit" data-setup-finish hidden>تکمیل نصب</button>
-          </div>
-        </form>` : `
         <form id="f">
           <div class="field"><label for="pw">رمز عبور داشبورد</label><input id="pw" type="password" class="input" autocomplete="current-password" required autofocus></div>
           <div class="form-err" id="err"></div>
           <button class="btn btn-primary" type="submit">ورود به سیستم</button>
-        </form>`}
-        <div class="auth-note">${icons.shield}<span>${needsSetup ? "کد راه‌اندازی فقط یک‌بار قابل استفاده است." : "نشست شما به‌صورت امن در سرور نگهداری می‌شود."}</span></div>
+        </form>
+        <div class="auth-note">${icons.shield}<span>نشست شما به‌صورت امن در سرور نگهداری می‌شود.</span></div>
         <div class="auth-card-foot">DibaBridge · MCP <span>0.4.1</span></div>
       </section>
     </main>
   </div>`;
   const f = document.getElementById("f");
-  if (needsSetup) {
-    let step = 1;
-    let proxyType = "none";
-    const err = document.getElementById("err");
-    const stepEls = [...f.querySelectorAll("[data-setup-step]")];
-    const nextBtn = f.querySelector("[data-setup-next]");
-    const finishBtn = f.querySelector("[data-setup-finish]");
-    const backBtn = f.querySelector("[data-setup-back]");
-    const showStep = (n) => {
-      step = n;
-      stepEls.forEach((el) => (el.hidden = Number(el.dataset.setupStep) !== n));
-      backBtn.hidden = n === 1;
-      nextBtn.hidden = n === 3;
-      finishBtn.hidden = n !== 3;
-      err.textContent = "";
-    };
-    const proxyInput = document.getElementById("wizardProxy");
-    f.querySelectorAll("[data-proxy-type]").forEach((b) => {
-      b.addEventListener("click", () => {
-        proxyType = b.dataset.proxyType;
-        f.querySelectorAll("[data-proxy-type]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-        proxyInput.disabled = proxyType === "none";
-        if (proxyType === "none") proxyInput.value = "";
-      });
-    });
-    const summary = () => {
-      const p = proxyType === "none" ? "بدون پروکسی" : `${proxyType.toUpperCase()} — ${proxyInput.value.trim()}`;
-      f.querySelector("[data-setup-summary]").innerHTML = `
-        <div><span>رمز عبور</span><b>تنظیم می‌شود</b></div>
-        <div><span>پروکسی</span><b>${esc(p)}</b></div>
-        <div><span>نگهداری لاگ</span><b>${fa(Number(document.getElementById("wizardRetention").value) || 14)} روز</b></div>
-        <div><span>سقف نوشتن MCP</span><b>${fa(Number(document.getElementById("wizardWrite").value) || 30)} در دقیقه</b></div>`;
-    };
-    nextBtn.addEventListener("click", () => {
-      if (step === 1) {
-        const pw = f.querySelector("#pw").value;
-        if (!f.querySelector("#code").value.trim()) { err.textContent = "کد راه‌اندازی را وارد کنید"; return; }
-        if (pw.length < 8) { err.textContent = "رمز باید حداقل ۸ کاراکتر باشد"; return; }
-        if (pw !== f.querySelector("#pw2").value) { err.textContent = "رمز و تکرارش یکی نیستند"; return; }
-        showStep(2);
-        return;
-      }
-      if (step === 2) {
-        if (proxyType !== "none" && !proxyInput.value.trim()) { err.textContent = "آدرس پروکسی را وارد کنید"; return; }
-        summary();
-        showStep(3);
-      }
-    });
-    backBtn.addEventListener("click", () => showStep(Math.max(1, step - 1)));
-    f.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      if (step !== 3) { nextBtn.click(); return; }
-      err.textContent = "";
-      const pw = f.querySelector("#pw").value;
-      try {
-        await busy(finishBtn, () => api("auth/setup", {
-          body: {
-            code: f.querySelector("#code").value,
-            password: pw,
-            settings: {
-              proxyType,
-              proxyUrl: proxyInput.value.trim(),
-              logRetentionDays: Number(document.getElementById("wizardRetention").value) || 14,
-              mcpWriteLimit: Number(document.getElementById("wizardWrite").value) || 30,
-            },
-          },
-        }));
-        boot();
-      } catch (ex) {
-        err.textContent = ex.message;
-      }
-    });
-    showStep(1);
-    return;
-  }
   f.addEventListener("submit", async (e) => {
     e.preventDefault();
     const err = document.getElementById("err");
@@ -824,6 +725,435 @@ function renderAuth(needsSetup) {
       boot();
     } catch (ex) { err.textContent = ex.message; }
   });
+}
+
+// ---------------------------------------------------------------- installer (نصب اولیه و مشخصات)
+const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+const LOGO_MAX_BYTES = 300 * 1024;
+const LOGO_MAX_SIDE = 512;
+const logoPlaceholder = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-4 3.5 2.5L16 12l4 4"/></svg>';
+const dataUrlBytes = (url) => Math.floor(((url.split(",")[1] || "").replace(/=+$/, "").length * 3) / 4);
+
+/** فایل لوگو را می‌خواند و اگر بزرگ باشد در مرورگر کوچک می‌کند؛ سرور دوباره همه‌چیز را بررسی می‌کند */
+async function readLogoFile(file) {
+  if (!LOGO_TYPES.includes(file.type)) throw new Error("قالب لوگو باید PNG، JPG، WebP یا GIF باشد");
+  if (file.size > 8 * 1024 * 1024) throw new Error("فایل لوگو خیلی بزرگ است (حداکثر ۸ مگابایت)");
+  const original = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error("فایل لوگو خوانده نشد"));
+    r.readAsDataURL(file);
+  });
+  const img = await new Promise((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = () => reject(new Error("این فایل یک تصویر معتبر نیست"));
+    i.src = original;
+  });
+  const side = Math.max(img.naturalWidth, img.naturalHeight);
+  if (file.size <= LOGO_MAX_BYTES && side <= LOGO_MAX_SIDE) return original;
+  const scale = Math.min(1, LOGO_MAX_SIDE / side);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+  canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+  for (const [type, quality] of [["image/png"], ["image/webp", 0.9], ["image/jpeg", 0.85]]) {
+    const out = canvas.toDataURL(type, quality);
+    if (out.startsWith(`data:${type}`) && dataUrlBytes(out) <= LOGO_MAX_BYTES) return out;
+  }
+  throw new Error("لوگو پس از کوچک‌سازی هم بزرگ است؛ تصویر ساده‌تری انتخاب کنید");
+}
+
+function profileFieldsHtml(p, idp = "pf") {
+  return `
+    <div class="pf-logo">
+      <div class="pf-logo-preview" data-logo-preview>${p.logo ? `<img src="${esc(p.logo)}" alt="لوگوی فعلی">` : logoPlaceholder}</div>
+      <div class="pf-logo-body">
+        <span class="field-label">لوگو <small>(اختیاری)</small></span>
+        <div class="pf-logo-actions">
+          <label class="btn btn-ghost btn-sm pf-logo-pick">انتخاب تصویر<input type="file" accept="${LOGO_TYPES.join(",")}" data-logo-input hidden></label>
+          <button class="btn btn-quiet btn-sm btn-danger" type="button" data-logo-remove ${p.logo ? "" : "hidden"}>حذف لوگو</button>
+        </div>
+        <span class="hint">PNG، JPG، WebP یا GIF؛ تصویر بزرگ خودکار کوچک می‌شود.</span>
+      </div>
+    </div>
+    <div class="pf-grid">
+      <div class="field"><label for="${idp}-org">نام شرکت یا پروژه<span class="req" aria-label="الزامی">*</span></label><input id="${idp}-org" name="orgName" class="input" maxlength="80" required autocomplete="organization" value="${esc(p.orgName)}" placeholder="مثلاً فروشگاه آسمان"></div>
+      <div class="field"><label for="${idp}-owner">نام و نام خانوادگی شما</label><input id="${idp}-owner" name="ownerName" class="input" maxlength="80" autocomplete="name" value="${esc(p.ownerName)}" placeholder="مسئول این داشبورد"></div>
+      <div class="field pf-wide"><label for="${idp}-site">آدرس سایت <small>(در صورت نیاز)</small></label><input id="${idp}-site" name="website" class="input ltr-input" maxlength="200" inputmode="url" autocomplete="url" value="${esc(p.website)}" placeholder="https://example.com"></div>
+      <div class="field pf-wide"><label for="${idp}-desc">توضیح کوتاه <small>(اختیاری)</small></label><textarea id="${idp}-desc" name="description" class="textarea" rows="2" maxlength="300" placeholder="این داشبورد برای چه کاری استفاده می‌شود؟">${esc(p.description)}</textarea></div>
+    </div>`;
+}
+
+/** model.logo همیشه لوگوی فعلی فرم است (رشته‌ی خالی = بدون لوگو) */
+function bindProfileFields(root, model, onError) {
+  const preview = root.querySelector("[data-logo-preview]");
+  const removeBtn = root.querySelector("[data-logo-remove]");
+  const input = root.querySelector("[data-logo-input]");
+  const draw = () => {
+    preview.innerHTML = model.logo ? `<img src="${esc(model.logo)}" alt="پیش‌نمایش لوگو">` : logoPlaceholder;
+    removeBtn.hidden = !model.logo;
+  };
+  input.addEventListener("change", async () => {
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    try {
+      model.logo = await readLogoFile(file);
+      onError("");
+      draw();
+    } catch (ex) {
+      onError(ex.message);
+    }
+  });
+  removeBtn.addEventListener("click", () => { model.logo = ""; draw(); });
+}
+
+function collectProfile(root, model) {
+  const val = (name) => String(root.querySelector(`[name="${name}"]`)?.value ?? "").trim();
+  return { orgName: val("orgName"), ownerName: val("ownerName"), website: val("website"), description: val("description"), logo: model.logo || "" };
+}
+
+const serviceLabel = (s) => platformMeta[parseProvider(s).platformKey]?.nameFa || s.nameFa.replace(/\s*\(حساب کاربری\)/g, "");
+
+function serviceGroups(services) {
+  const groups = [
+    { key: "msg-ir", title: "پیام‌رسان‌های ایرانی", items: [] },
+    { key: "msg-intl", title: "پیام‌رسان‌ها و شبکه‌های خارجی", items: [] },
+    { key: "banking", title: "سرویس‌های بانکی", items: [] },
+    { key: "other", title: "سایت و ابزارهای دیگر", items: [] },
+  ];
+  for (const s of services) {
+    const key = isBankingProvider(s) ? "banking" : s.category !== "messenger" ? "other" : isIranianProvider(s) ? "msg-ir" : "msg-intl";
+    groups.find((g) => g.key === key).items.push(s);
+  }
+  return groups.filter((g) => g.items.length);
+}
+
+function servicePickerHtml(services, selected) {
+  return `
+    <div class="svc-toolbar">
+      <span class="svc-count" data-svc-count></span>
+      <div class="svc-toolbar-actions">
+        <button class="btn btn-ghost btn-sm" type="button" data-svc-all>انتخاب همه</button>
+        <button class="btn btn-quiet btn-sm" type="button" data-svc-none>هیچ‌کدام</button>
+      </div>
+    </div>
+    ${serviceGroups(services).map((g) => `
+      <fieldset class="svc-group" data-svc-group="${g.key}">
+        <legend>
+          <span>${g.title}</span>
+          <button class="svc-group-all" type="button" data-svc-group-all="${g.key}">انتخاب همه‌ی این گروه</button>
+        </legend>
+        <div class="svc-list">
+          ${g.items.map((s) => `
+            <label class="svc-item${s.enabledFromEnv ? " is-locked" : ""}">
+              <input type="checkbox" data-svc="${esc(s.id)}" ${selected.has(s.id) ? "checked" : ""} ${s.enabledFromEnv ? "disabled" : ""}>
+              <span class="svc-logo" style="background:${esc(s.color)}">${providerLogo(s)}</span>
+              <span class="svc-text">
+                <b>${esc(serviceLabel(s))}</b>
+                <small>${s.enabledFromEnv ? "از فایل env کنترل می‌شود" : `${fa(s.toolCount)} ابزار${s.ready ? " · متصل" : ""}`}</small>
+              </span>
+              <span class="svc-tick" aria-hidden="true">${icons.check}</span>
+            </label>`).join("")}
+        </div>
+      </fieldset>`).join("")}`;
+}
+
+/** selected یک Set است که با تغییر تیک‌ها به‌روز می‌شود */
+function bindServicePicker(root, services, selected, onChange = () => {}) {
+  const boxes = () => [...root.querySelectorAll("[data-svc]")];
+  const sync = () => {
+    for (const b of boxes()) {
+      if (b.disabled) continue;
+      if (b.checked) selected.add(b.dataset.svc);
+      else selected.delete(b.dataset.svc);
+    }
+    const count = root.querySelector("[data-svc-count]");
+    if (count) count.textContent = `${fa(selected.size)} از ${fa(services.length)} سرویس انتخاب شده`;
+    root.querySelectorAll("[data-svc-group]").forEach((g) => {
+      const free = [...g.querySelectorAll("[data-svc]:not(:disabled)")];
+      const btn = g.querySelector("[data-svc-group-all]");
+      const all = free.length > 0 && free.every((b) => b.checked);
+      btn.textContent = all ? "برداشتن انتخاب این گروه" : "انتخاب همه‌ی این گروه";
+      btn.hidden = !free.length;
+    });
+    onChange();
+  };
+  const setAll = (list, on) => { for (const b of list) if (!b.disabled) b.checked = on; sync(); };
+  root.addEventListener("change", (e) => { if (e.target.matches("[data-svc]")) sync(); });
+  root.addEventListener("click", (e) => {
+    if (e.target.closest("[data-svc-all]")) return setAll(boxes(), true);
+    if (e.target.closest("[data-svc-none]")) return setAll(boxes(), false);
+    const groupBtn = e.target.closest("[data-svc-group-all]");
+    if (groupBtn) {
+      const list = [...groupBtn.closest("[data-svc-group]").querySelectorAll("[data-svc]")];
+      setAll(list, !list.filter((b) => !b.disabled).every((b) => b.checked));
+    }
+  });
+  sync();
+}
+
+/**
+ * نصب‌کننده‌ی تمام‌صفحه: خوش‌آمد ← مشخصات ← سرویس‌ها ← (رمز عبور) ← مرور و پایان.
+ *   setup=true    اولین اجرا؛ هنوز رمز ادمین ساخته نشده و رمز در همین نصب انتخاب می‌شود.
+ *   firstRun=true رمز از قبل هست (مثلاً از ADMIN_PASSWORD) ولی نصب اولیه کامل نشده است.
+ *   هر دو false   از داخل داشبورد دوباره باز شده و می‌شود آن را بست.
+ */
+async function renderInstaller({ firstRun = true, setup = false } = {}) {
+  clearInterval(state.timer);
+  let data;
+  try { data = await api(setup ? "auth/setup-info" : "install"); }
+  catch (e) {
+    if (e instanceof AuthError) return;
+    // راه‌اندازی در همین فاصله در جای دیگری انجام شده است
+    if (setup) return renderAuth();
+    $app.innerHTML = `<div class="boot"><div class="err-box">${esc(e.message || "بارگذاری نصب‌کننده ناموفق بود")}</div></div>`;
+    return;
+  }
+  const mandatory = setup || firstRun;
+  const steps = [
+    { key: "welcome", title: "خوش‌آمد" },
+    { key: "profile", title: "مشخصات" },
+    { key: "services", title: "سرویس‌ها" },
+    ...(setup ? [{ key: "password", title: "رمز عبور" }] : []),
+    { key: "review", title: "پایان" },
+  ];
+  const model = {
+    step: 0,
+    profile: { ...data.profile },
+    logo: data.profile.logo || "",
+    selected: new Set(data.services.filter((s) => s.enabled).map((s) => s.id)),
+    // فقط در حافظه‌ی همین صفحه می‌ماند و جایی ذخیره نمی‌شود
+    password: "",
+    password2: "",
+  };
+  const stepIndex = (key) => steps.findIndex((s) => s.key === key);
+
+  const planItems = [
+    ["مشخصات شما", "نام شرکت یا پروژه، آدرس سایت و لوگو"],
+    ["انتخاب سرویس‌ها", "پیام‌رسان‌ها، سرویس‌های بانکی و ابزارهایی که لازم دارید"],
+    ...(setup ? [["رمز عبور داشبورد", "رمز ورود خود به داشبورد را انتخاب می‌کنید"]] : []),
+    ["ورود به داشبورد", "اتصال حساب هر سرویس از صفحه‌ی خودش انجام می‌شود"],
+  ];
+
+  const bodyHtml = (key) => {
+    if (key === "welcome") return `
+      <div class="inst-welcome">
+        <img src="assets/logo-sm.png" alt="" class="inst-welcome-logo">
+        <h1>${mandatory ? "به دیباپل خوش آمدید" : "راهنمای نصب دیباپل"}</h1>
+        <p>${mandatory ? "قبل از ورود به داشبورد، چند مشخصه‌ی کوتاه را تنظیم می‌کنیم. این کار حدود یک دقیقه طول می‌کشد." : "مشخصات و سرویس‌های فعال را دوباره مرور کنید. تا پیش از تأیید نهایی هیچ چیزی تغییر نمی‌کند."}</p>
+        <ol class="inst-plan">
+          ${planItems.map(([title, sub], i) => `<li><i aria-hidden="true">${fa(i + 1)}</i><div><b>${title}</b><span>${sub}</span></div></li>`).join("")}
+        </ol>
+      </div>`;
+    if (key === "profile") return `
+      <div class="inst-section-head"><h2>مشخصات شرکت یا پروژه</h2><p>این مشخصات در بالای داشبورد نمایش داده می‌شود و هر زمان قابل تغییر است.</p></div>
+      <div data-profile-form>${profileFieldsHtml({ ...model.profile, logo: model.logo }, "inst")}</div>`;
+    if (key === "services") return `
+      <div class="inst-section-head"><h2>کدام سرویس‌ها فعال شوند؟</h2><p>فعال کردن یعنی سرویس در داشبورد آماده‌ی اتصال می‌شود؛ ورود به حساب هر سرویس را بعداً انجام می‌دهید.</p></div>
+      <div data-service-picker>${servicePickerHtml(data.services, model.selected)}</div>`;
+    if (key === "password") return `
+      <div class="inst-section-head"><h2>رمز عبور داشبورد</h2><p>یک رمز عبور برای ورود به داشبورد انتخاب کنید. از این پس با همین رمز وارد می‌شوید.</p></div>
+      <div class="pf-grid">
+        <div class="field"><label for="inst-pw">رمز عبور<span class="req" aria-label="الزامی">*</span></label><input id="inst-pw" name="password" type="password" class="input ltr-input" autocomplete="new-password" minlength="8" value="${esc(model.password)}"><span class="hint">حداقل ۸ کاراکتر</span></div>
+        <div class="field"><label for="inst-pw2">تکرار رمز عبور<span class="req" aria-label="الزامی">*</span></label><input id="inst-pw2" name="password2" type="password" class="input ltr-input" autocomplete="new-password" value="${esc(model.password2)}"></div>
+      </div>
+      <div class="inst-safe">${icons.shield}<span>رمز عبور به‌صورت هش‌شده روی همین سرور نگه‌داری می‌شود و متن آن هیچ‌جا ذخیره نمی‌شود.</span></div>`;
+    const chosen = data.services.filter((s) => model.selected.has(s.id));
+    return `
+      <div class="inst-section-head"><h2>مرور و تأیید</h2><p>اگر همه‌چیز درست است نصب را کامل کنید.</p></div>
+      <div class="inst-review">
+        <div class="inst-review-id">
+          <div class="pf-logo-preview">${model.logo ? `<img src="${esc(model.logo)}" alt="">` : logoPlaceholder}</div>
+          <div>
+            <b>${esc(model.profile.orgName)}</b>
+            ${model.profile.ownerName ? `<span>${esc(model.profile.ownerName)}</span>` : ""}
+            ${model.profile.website ? `<span class="ltr">${esc(model.profile.website)}</span>` : ""}
+          </div>
+        </div>
+        ${model.profile.description ? `<p class="inst-review-desc">${esc(model.profile.description)}</p>` : ""}
+        <div class="inst-review-svc">
+          <span class="field-label">${fa(chosen.length)} سرویس فعال می‌شود</span>
+          ${chosen.length
+            ? `<div class="inst-chips">${chosen.map((s) => `<span class="inst-chip"><i style="background:${esc(s.color)}"></i>${esc(serviceLabel(s))}</span>`).join("")}</div>`
+            : `<p class="hint">سرویسی انتخاب نشده است. بعداً می‌توانید از بخش «نصب و مشخصات» سرویس اضافه کنید.</p>`}
+        </div>
+        ${setup ? `<div class="inst-review-row"><span>رمز عبور داشبورد</span><b>تنظیم می‌شود</b></div>` : ""}
+        <div class="inst-safe">${icons.shield}<span>مشخصات و لوگو فقط روی همین سرور و در فایل تنظیمات با دسترسی محدود ذخیره می‌شوند.</span></div>
+      </div>`;
+  };
+
+  const draw = (message = "") => {
+    const key = steps[model.step].key;
+    const last = model.step === steps.length - 1;
+    $app.innerHTML = `
+    <div class="inst-page">
+      <main class="inst-card">
+        <header class="inst-head">
+          <div class="inst-brand"><img src="assets/logo-sm.png" alt="" class="brand-logo"><div><b>دیباپل</b><span>نصب و راه‌اندازی</span></div></div>
+          ${mandatory ? "" : `<button class="btn btn-quiet btn-sm" type="button" data-inst-close>بستن</button>`}
+        </header>
+        <ol class="inst-steps" aria-label="مراحل نصب">
+          ${steps.map((s, i) => `<li class="${i < model.step ? "is-done" : i === model.step ? "is-current" : ""}" ${i === model.step ? 'aria-current="step"' : ""}><i>${i < model.step ? icons.check : fa(i + 1)}</i><span>${s.title}</span></li>`).join("")}
+        </ol>
+        <form class="inst-body" data-inst-form novalidate>${bodyHtml(key)}</form>
+        <footer class="inst-foot">
+          <div class="form-err" data-inst-err role="alert">${esc(message)}</div>
+          <div class="inst-foot-actions">
+            <button class="btn btn-ghost" type="button" data-inst-back ${model.step === 0 ? "hidden" : ""}>مرحله‌ی قبل</button>
+            <button class="btn btn-primary" type="button" data-inst-next>${model.step === 0 ? "شروع" : last ? (mandatory ? "تکمیل نصب و ورود به داشبورد" : "ذخیره و بازگشت به داشبورد") : "مرحله‌ی بعد"}</button>
+          </div>
+        </footer>
+      </main>
+    </div>`;
+    const err = $app.querySelector("[data-inst-err]");
+    const setErr = (m) => { err.textContent = m || ""; };
+    const field = (name) => $app.querySelector(`[name="${name}"]`);
+    if (key === "profile") bindProfileFields($app.querySelector("[data-profile-form]"), model, setErr);
+    if (key === "services") bindServicePicker($app.querySelector("[data-service-picker]"), data.services, model.selected);
+
+    /** مقادیر مرحله‌ی فعلی را در model نگه می‌دارد تا با رفت‌وبرگشت بین مراحل از دست نروند */
+    const capture = () => {
+      if (key === "profile") model.profile = { ...model.profile, ...collectProfile($app.querySelector("[data-profile-form]"), model) };
+      if (key === "password") {
+        model.password = field("password").value;
+        model.password2 = field("password2").value;
+      }
+    };
+    /** پیام خطای مرحله‌ی فعلی، یا رشته‌ی خالی اگر همه‌چیز درست است */
+    const problem = () => {
+      if (key === "profile" && model.profile.orgName.length < 2) { field("orgName").focus(); return "نام شرکت یا پروژه را وارد کنید"; }
+      if (key === "password") {
+        if (model.password.length < 8) { field("password").focus(); return "رمز عبور باید حداقل ۸ کاراکتر باشد"; }
+        if (model.password !== model.password2) { field("password2").focus(); return "رمز عبور و تکرارش یکی نیستند"; }
+      }
+      return "";
+    };
+    const go = (index, msg = "") => { model.step = index; draw(msg); $app.querySelector(".inst-card").scrollIntoView({ block: "start" }); };
+
+    $app.querySelector("[data-inst-close]")?.addEventListener("click", () => boot());
+    $app.querySelector("[data-inst-back]").addEventListener("click", () => { capture(); go(model.step - 1); });
+    $app.querySelector("[data-inst-form]").addEventListener("submit", (e) => { e.preventDefault(); $app.querySelector("[data-inst-next]").click(); });
+    $app.querySelector("[data-inst-next]").addEventListener("click", async (e) => {
+      setErr("");
+      capture();
+      const msg = problem();
+      if (msg) return setErr(msg);
+      if (!last) return go(model.step + 1);
+      const install = { profile: { ...model.profile, logo: model.logo }, services: [...model.selected] };
+      try {
+        const r = await busy(e.currentTarget, () => (setup
+          ? api("auth/setup", { body: { password: model.password, install } })
+          : api("install", { body: install })));
+        model.password = model.password2 = "";
+        state.profile = r.profile;
+        state.providers = [];
+        if (r.failed?.length) toast(`نصب کامل شد، ولی این سرویس‌ها روشن نشدند: ${r.failed.join("، ")}`, true);
+        else toast(mandatory ? "نصب کامل شد" : "تغییرات ذخیره شد");
+        boot();
+      } catch (ex) {
+        if (ex instanceof AuthError) return;
+        // خطای کد یا رمز به مرحله‌ی رمز عبور برمی‌گردد، خطای مشخصات به مرحله‌ی مشخصات
+        const target = /رمز/.test(ex.message) && setup ? "password" : /سایت|لوگو|نام|توضیح/.test(ex.message) ? "profile" : "";
+        if (target) go(stepIndex(target), ex.message);
+        else setErr(ex.message);
+      }
+    });
+  };
+  draw();
+}
+
+/** صفحه‌ی «نصب و مشخصات» داخل داشبورد: ویرایش مشخصات و افزودن/حذف سرویس‌ها پس از نصب */
+async function pageInstall(main) {
+  const data = await api("install");
+  const model = { logo: data.profile.logo || "" };
+  const selected = new Set(data.services.filter((s) => s.enabled).map((s) => s.id));
+  const installed = data.profile.installedAt ? new Date(data.profile.installedAt).toLocaleDateString("fa-IR", { year: "numeric", month: "long", day: "numeric" }) : "";
+  main.innerHTML = `${head("نصب و مشخصات", "مشخصات شرکت یا پروژه را ویرایش کنید و هر زمان سرویس تازه‌ای لازم شد همین‌جا فعالش کنید.", "حالت نصب",
+    `<button class="btn btn-ghost btn-sm" type="button" id="rerun-installer">اجرای دوباره‌ی راهنمای نصب</button>`)}
+    <div class="install-grid">
+      <section class="panel">
+        <h2>مشخصات شرکت یا پروژه</h2>
+        <p class="desc">${installed ? `نصب اولیه در ${installed} کامل شده است.` : "نصب اولیه هنوز کامل نشده است."}</p>
+        <form id="profile-form" novalidate>
+          ${profileFieldsHtml(data.profile, "pg")}
+          <div class="form-err" id="profile-err" role="alert"></div>
+          <div class="settings-actions"><button class="btn btn-primary" type="submit">ذخیره مشخصات</button></div>
+        </form>
+      </section>
+      <section class="panel">
+        <h2>سرویس‌های فعال</h2>
+        <p class="desc">سرویس تیک‌خورده در داشبورد و برای مدل در دسترس است. با برداشتن تیک، سرویس خاموش می‌شود ولی نشست ذخیره‌شده‌اش می‌ماند.</p>
+        <div id="svc-picker">${servicePickerHtml(data.services, selected)}</div>
+        <div class="form-err" id="svc-err" role="alert"></div>
+        <div class="settings-actions"><button class="btn btn-primary" type="button" id="save-services" disabled>اعمال انتخاب‌ها</button><span class="hint" id="svc-status"></span></div>
+      </section>
+    </div>`;
+
+  document.getElementById("rerun-installer").addEventListener("click", () => renderInstaller({ firstRun: false, setup: false }));
+
+  const profileForm = document.getElementById("profile-form");
+  const profileErr = document.getElementById("profile-err");
+  bindProfileFields(profileForm, model, (m) => { profileErr.textContent = m; });
+  profileForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    profileErr.textContent = "";
+    const body = collectProfile(profileForm, model);
+    if (body.orgName.length < 2) { profileErr.textContent = "نام شرکت یا پروژه را وارد کنید"; return; }
+    try {
+      const r = await busy(profileForm.querySelector("[type=submit]"), () => api("profile", { method: "PUT", body }));
+      state.profile = r.profile;
+      applyBrand();
+      toast("مشخصات ذخیره شد");
+    } catch (ex) {
+      if (!(ex instanceof AuthError)) profileErr.textContent = ex.message;
+    }
+  });
+
+  let current = data.services;
+  const saveBtn = document.getElementById("save-services");
+  const svcStatus = document.getElementById("svc-status");
+  const changes = () => {
+    const on = current.filter((s) => !s.enabledFromEnv && !s.enabled && selected.has(s.id));
+    const off = current.filter((s) => !s.enabledFromEnv && s.enabled && !selected.has(s.id));
+    return { on, off };
+  };
+  bindServicePicker(document.getElementById("svc-picker"), data.services, selected, () => {
+    const { on, off } = changes();
+    saveBtn.disabled = !on.length && !off.length;
+    svcStatus.textContent = on.length || off.length ? `${fa(on.length)} سرویس روشن و ${fa(off.length)} سرویس خاموش می‌شود.` : "";
+  });
+  saveBtn.addEventListener("click", async () => {
+    const svcErr = document.getElementById("svc-err");
+    svcErr.textContent = "";
+    const { off } = changes();
+    if (off.length && !(await openModal({
+      title: "خاموش کردن سرویس",
+      message: `${off.map(serviceLabel).join("، ")} خاموش می‌شود و ابزارهایش از دسترس مدل خارج می‌شود. نشست ذخیره‌شده باقی می‌ماند.`,
+      confirmText: "خاموش کن",
+      tone: "danger",
+    }))) return;
+    try {
+      const r = await busy(saveBtn, () => api("install/services", { method: "PUT", body: { services: [...selected] } }));
+      current = r.services;
+      state.providers = [];
+      saveBtn.disabled = true;
+      svcStatus.textContent = "ذخیره شد.";
+      toast("سرویس‌های فعال به‌روز شد");
+    } catch (ex) {
+      if (!(ex instanceof AuthError)) svcErr.textContent = ex.message;
+    }
+  });
+}
+
+/** نام و لوگوی سازمان را در سربرگ کناری می‌نشاند؛ بدون مشخصات، برند دیباپل می‌ماند */
+function applyBrand() {
+  const p = state.profile || {};
+  const logo = document.querySelector(".side .brand-logo");
+  const title = document.querySelector(".side .brand-title");
+  if (logo) logo.src = p.logo || "assets/logo-sm.png";
+  if (title) { title.textContent = p.orgName || "دیباپل"; title.title = p.orgName || ""; }
 }
 
 // ---------------------------------------------------------------- agent dock
@@ -1203,6 +1533,7 @@ function renderShell() {
     <main class="main" id="main"></main>
     ${agentDockHtml()}
   </div>`;
+  applyBrand();
   document.getElementById("logout").onclick = async () => { await api("auth/logout", { body: {} }); boot(); };
   // باز و بسته کردن زیرمنوها؛ در نمای موبایل زیرمنو پنهان است و لینک مستقیم به صفحه می‌رود
   document.querySelectorAll(".nav-parent").forEach((navParent) => {
@@ -1243,7 +1574,7 @@ async function render() {
   document.title = `${pages.find((p) => p.id === page).title} — Diba Bridge (دیبا پل) | دیباچین`;
   const main = document.getElementById("main");
   try {
-    await ({ overview: pageOverview, providers: pageProviders, banking: (m, query) => pageProviders(m, query, "banking"), playground: pagePlayground, triggers: pageTriggers, logs: pageLogs, dibarouter: pageDibaRouter, connect: pageConnect, settings: pageSettings })[page](main, q);
+    await ({ overview: pageOverview, providers: pageProviders, banking: (m, query) => pageProviders(m, query, "banking"), playground: pagePlayground, triggers: pageTriggers, logs: pageLogs, dibarouter: pageDibaRouter, connect: pageConnect, install: pageInstall, settings: pageSettings })[page](main, q);
   } catch (e) {
     if (!(e instanceof AuthError)) main.innerHTML = `<div class="err-box">${esc(e.message)}</div>`;
   }
@@ -1287,7 +1618,7 @@ async function pageOverview(main) {
               <span class="ov-prov-glyph" style="background:${p.color}">${providerLogo(p)}</span>
               <span class="ov-prov-text">
                 <b>${esc(p.nameFa)}</b>
-                <small>${p.ready ? `${fa(p.toolCount)} ابزار` : p.enabled ? "نیاز به تنظیم" : 'خاموش · <span class="dev-inline">در حال توسعه</span>'}</small>
+                <small>${p.ready ? `${fa(p.toolCount)} ابزار` : p.enabled ? "نیاز به تنظیم" : "خاموش"}</small>
               </span>
               <span class="ov-dot" aria-hidden="true"></span>
             </a>`).join("")}
@@ -1496,7 +1827,6 @@ function renderProviderMode(p, _plat) {
         </div>
         <div class="prov-mode-controls">
           ${status(p)}
-          ${!p.enabled ? `<span class="dev-badge">در حال توسعه</span>` : ""}
           <label class="switch" title="${p.enabledFromEnv ? "از env کنترل می‌شود" : "روشن/خاموش کردن این بخش"}">
             <input type="checkbox" data-toggle data-id="${p.id}" ${p.enabled ? "checked" : ""} ${p.enabledFromEnv ? "disabled" : ""} aria-label="روشن کردن ${esc(p.nameFa)}">
             <span></span>
@@ -1595,7 +1925,6 @@ function platformAccordionHtml(plat) {
 
       <div class="prov-summary-badges">
         <span class="mode-badge ${p?.ready ? "ready" : ""}">${isAccount ? "حساب کاربری" : "API"}: ${status(p)}</span>
-        ${p && !p.enabled ? `<span class="dev-badge">در حال توسعه</span>` : ""}
       </div>
 
       ${p ? `<label class="switch prov-quick-toggle" title="${p.enabledFromEnv ? "از env کنترل می‌شود" : p.enabled ? "خاموش کردن این حساب" : "روشن کردن این حساب"}">
@@ -4688,7 +5017,11 @@ async function boot() {
   let s;
   try { s = await api("auth/status"); }
   catch { $app.innerHTML = `<div class="boot"><div class="err-box">امکان اتصال به سرور diba-mcp وجود ندارد. از روشن بودن سرور اطمینان حاصل کرده و صفحه را تازه کنید.</div></div>`; return; }
-  if (!s.authenticated) return renderAuth(s.needsSetup);
+  // اولین اجرا: رمز عبور هم داخل همان نصب‌کننده انتخاب می‌شود
+  if (!s.authenticated) return s.needsSetup ? renderInstaller({ setup: true }) : renderAuth();
+  state.profile = s.profile || null;
+  // تا نصب اولیه کامل نشود داشبورد باز نمی‌شود
+  if (s.needsInstall) return renderInstaller({ firstRun: true });
   renderShell();
   const verEl = document.getElementById("ver");
   if (verEl) verEl.textContent = `نسخه ${s.version}`;
