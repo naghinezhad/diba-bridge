@@ -7,6 +7,7 @@ import { rubikaClient } from "./rubika-client.js";
 import { soroushClient } from "./soroush-client.js";
 import { telegramClient } from "./telegram-client.js";
 import { whatsapp } from "./whatsapp.js";
+import { wordpress } from "./wordpress.js";
 import { x } from "./x.js";
 
 /**
@@ -26,6 +27,7 @@ export const builtinProviders: ProviderDef[] = [
   linkedinProvider,
   whatsapp,
   x,
+  wordpress,
 ];
 
-export { baleClient, eitaaClient, instagram, linkedinProvider, rubikaClient, soroushClient, telegramClient, whatsapp, x };
+export { baleClient, eitaaClient, instagram, linkedinProvider, rubikaClient, soroushClient, telegramClient, whatsapp, wordpress, x };
