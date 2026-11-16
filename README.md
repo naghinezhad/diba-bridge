@@ -52,6 +52,7 @@
   - **روبیکا (Rubika):** حساب کاربری (پروتکل کلاینت وب با تبادل کلید RSA/AES)
   - **سروش‌پلاس (Soroush+):** حساب کاربری (پروتکل تلگرامی MTProto)
   - **تلگرام:** حساب کاربری (MTProto)
+- 🌐 **اتصال به وردپرس:** مدیریت کامل سایت وردپرسی از طریق MCP — نوشته‌ها و برگه‌ها، رسانه، دیدگاه‌ها، کاربران، افزونه‌ها و ووکامرس — با رمز برنامه (Application Password) یا افزونه‌ی همراه `wordpress-plugin/diba-bridge-connector`. راهنما: [docs/WORDPRESS.md](docs/WORDPRESS.md)
 - 📬 **صندوق پیام‌های دریافتی یکپارچه (Shared Inbox):** مشاهده پیام‌های دریافتی، تفکیک پیام‌های ورودی و خروجی، امکان پاسخ‌گویی مستقیم و استفاده هوش مصنوعی از ابزار `get_updates`.
 - ⚡ **تریگرها و اتوماسیون (Automation Triggers):** صفحه‌ی `#/triggers` با ۳۸ قانون آماده‌ی ویرایش‌پذیر؛ پاسخ خودکار، پاسخ هوشمند دیبا روتر، فوروارد بین پیام‌رسان‌ها، اجرای ابزار MCP و ارسال به Webhook (n8n / Make / CRM). هر تریگر شرط (پیام‌رسان، نوع چت، کلمه‌ی کلیدی، ابزار) و اقدام دارد و با یک کلیک روشن، تست یا خاموش می‌شود. تاریخچه‌ی اجرا در `data/triggers.json` ذخیره می‌شود.
 - 🎨 **داشبورد اختصاصی با زبان طراحی دیباچین:** رابط کاربری مدرن، یک اتصال «حساب کاربری» برای هر پیام‌رسان در آکاردئون اختصاصی، تم تاریک/روشن و واکنش‌گرایی کامل.
@@ -261,6 +262,46 @@ MCP_MODE=tools npx diba-mcp
 
 ---
 
+### اتصال به وردپرس
+
+دیباپل سایت وردپرسی شما را هم به دستیارهای هوش مصنوعی وصل می‌کند؛ با **۶۸ ابزار** برای مدیریت کامل سایت.
+
+| حوزه | کارهایی که می‌شود انجام داد |
+| :-- | :-- |
+| محتوا | فهرست، ساخت، ویرایش، زمان‌بندی و حذف نوشته، برگه و هر نوع محتوای سفارشی؛ بازبینی‌ها و جست‌وجو |
+| دسته‌بندی‌ها | مدیریت دسته، برچسب و هر طبقه‌بندی دیگر |
+| رسانه | بارگذاری از لینک یا Base64، ویرایش متن جایگزین و عنوان، حذف |
+| دیدگاه‌ها | فهرست، پاسخ، تأیید، انتظار، هرزنامه و حذف |
+| کاربران | فهرست، ساخت، ویرایش و حذف با انتقال محتوا |
+| افزونه‌ها و پوسته‌ها | نصب از مخزن وردپرس، فعال و غیرفعال‌سازی، حذف، تعویض پوسته |
+| فهرست‌ها و تنظیمات | آیتم‌های منو، تنظیمات سایت و گزینه‌های مجاز |
+| ووکامرس | محصولات، سفارش‌ها، مشتریان، کدهای تخفیف و گزارش فروش |
+| ابزارها | پاک‌سازی کش، جایگزینی متن (پیش‌فرض آزمایشی)، ویرایش گروهی، کرون، سئو (Yoast و Rank Math)، حالت تعمیر، آمار و گزارش فعالیت |
+
+**دو روش اتصال:**
+
+1. **رمز برنامه (Application Password):** بدون نصب چیزی روی سایت؛ برای ابزارهای REST هسته‌ی وردپرس کافی است.
+2. **افزونه‌ی همراه Diba Bridge Connector:** پوشه‌ی [`wordpress-plugin/diba-bridge-connector`](wordpress-plugin/diba-bridge-connector) را فشرده و در وردپرس نصب کنید، در تنظیمات افزونه یک کلید بسازید و آن را در داشبورد دیباپل وارد کنید. ابزارهای ووکامرس، سئو، کش و گزینه‌ها به این افزونه نیاز دارند.
+
+افزونه کلید را فقط به‌صورت هش نگه می‌دارد، هر درخواست را با دسترسی‌های یک کاربر وردپرس اجرا می‌کند و برای هر حوزه کلید روشن/خاموش جدا، حالت فقط‌خواندنی، فهرست IP مجاز، محدودیت نرخ و گزارش فعالیت دارد.
+
+```dotenv
+WORDPRESS_SITE_URL=https://example.com
+WORDPRESS_USERNAME=admin
+WORDPRESS_APP_PASSWORD=xxxx xxxx xxxx xxxx xxxx xxxx
+WORDPRESS_CONNECTOR_KEY=dbk_...
+```
+
+راهنمای کامل، فهرست همه‌ی ابزارها و نکات امنیتی: [docs/WORDPRESS.md](docs/WORDPRESS.md)
+
+---
+
+### مشارکت در پروژه
+
+دیباپل متن‌باز است و از مشارکت شما استقبال می‌کنیم. پیش از ارسال Pull Request، [راهنمای مشارکت](CONTRIBUTING.md) و [منشور رفتاری](CODE_OF_CONDUCT.md) را بخوانید. مشکلات امنیتی را طبق [SECURITY.md](SECURITY.md) گزارش دهید.
+
+---
+
 ### درباره دیباچین (Dibachain)
 
 <p align="center">
@@ -305,6 +346,7 @@ Developed by **[Dibachain](https://dibachain.ir)**, the dashboard and API strict
   - **Rubika:** Personal User Account (Web client protocol with RSA/AES key exchange).
   - **Soroush Plus:** Personal User Account (Telegram-compatible MTProto client protocol).
   - **Telegram:** Personal User Account (MTProto via GramJS).
+- 🌐 **WordPress integration:** Manage a WordPress site over MCP — posts and pages, media, comments, users, plugins and WooCommerce — using an Application Password or the companion plugin in `wordpress-plugin/diba-bridge-connector`. Guide: [docs/WORDPRESS.md](docs/WORDPRESS.md)
   - **WhatsApp:** Personal account via QR multi-device login (Baileys).
 - 💬 **Integrated Live Inbox:** Synchronize real-time conversations across personal accounts, allowing two-way responses from either the dashboard or the AI agent (`get_updates`).
 - ⚡ **Automation Triggers:** A dedicated `#/triggers` page ships with 38 editable presets — auto-replies, DibaRouter AI answers, cross-messenger forwarding, MCP tool calls and outbound webhooks (n8n / Make / CRM). Each rule has a condition (provider, chat type, keywords, tool) and an action, and can be toggled, tested or deleted in one click; run history lives in `data/triggers.json`.
@@ -364,14 +406,7 @@ diba-mcp
 ```
 
 #### 3. Run with Docker
-```bash
-docker run -d --name diba-bridge -p 127.0.0.1:3790:3790 \
-  -e ADMIN_PASSWORD=your-secure-password \
-  -v diba-bridge-data:/app/data \
-  ghcr.io/yunessfa/diba-mcp:latest
-```
-
-Or build and run from this repository:
+Build and run from this repository:
 
 ```bash
 docker compose up -d --build
@@ -477,8 +512,41 @@ Founded in 2015 in Mashhad, Iran, Dibachain has expanded its technical reach int
 
 ---
 
+### WordPress Integration
+
+Diba Bridge also connects your WordPress site to AI assistants, with **68 tools** covering the whole site.
+
+| Area | What you can do |
+| :-- | :-- |
+| Content | List, create, edit, schedule and delete posts, pages and any custom post type; revisions and search |
+| Taxonomies | Manage categories, tags and custom taxonomies |
+| Media | Upload from a URL or Base64, edit alt text and titles, delete |
+| Comments | List, reply, approve, hold, mark as spam and delete |
+| Users | List, create, update and delete with content reassignment |
+| Plugins & themes | Install from WordPress.org, activate, deactivate, delete, switch theme |
+| Menus & settings | Menu items, site settings and allow-listed options |
+| WooCommerce | Products, orders, customers, coupons and a sales report |
+| Tools | Cache flush, search and replace (dry-run by default), bulk edits, cron, SEO meta (Yoast and Rank Math), maintenance mode, statistics and activity log |
+
+**Two ways to connect:**
+
+1. **Application Password** — nothing to install on the site; enough for the WordPress core REST tools.
+2. **Diba Bridge Connector plugin** — zip [`wordpress-plugin/diba-bridge-connector`](wordpress-plugin/diba-bridge-connector), install it in WordPress, generate a key in its settings page and paste it into the Diba Bridge dashboard. WooCommerce, SEO, cache and option tools require it.
+
+The plugin stores only a hash of the key, runs every request with the capabilities of a WordPress user you choose, and offers per-area switches, a read-only mode, an IP allow-list, rate limiting and an audit log.
+
+Full guide, tool reference and security notes: [docs/WORDPRESS.md](docs/WORDPRESS.md)
+
+---
+
+### Contributing
+
+Diba Bridge is open source and contributions are welcome. Please read the [contributing guide](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md) before opening a pull request, and report security issues as described in [SECURITY.md](SECURITY.md).
+
+---
+
 ### License
 
-Distributed under the **MIT License**. Maintained and powered by the Dibachain engineering team.
+Distributed under the **MIT License**. The companion WordPress plugin in `wordpress-plugin/` is licensed under GPL-2.0-or-later, as WordPress requires. Maintained and powered by the Dibachain engineering team.
 
 </div>
