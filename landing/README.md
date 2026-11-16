@@ -37,6 +37,7 @@ All paths are relative, so the page also works under a project subpath.
 | `styles.css` | Design tokens, layout and responsive styles |
 | `app.js` | Mobile menu, tabs, copy button and footer year |
 | `assets/` | Logo, provider marks and self-hosted Vazirmatn fonts |
+| `assets/screens/` | Screenshots of the installer and the dashboard, taken from a local test instance with sample data |
 
 Fonts: [Vazirmatn](https://github.com/rastikerdar/vazirmatn) under the SIL Open Font License 1.1 (`assets/fonts/OFL.txt`).
 

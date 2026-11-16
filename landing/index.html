@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>دیبا پل | پل پیام‌رسان‌ها به هوش مصنوعی</title>
-  <meta name="description" content="دیبا پل یک سرور MCP و داشبورد محلی است که واتس‌اپ، تلگرام، بله، روبیکا، سروش‌پلاس و ایتا را به کلاینت‌های هوش مصنوعی وصل می‌کند.">
+  <title>دیبا پل | پل پیام‌رسان‌ها و سرویس‌های مالی به هوش مصنوعی</title>
+  <meta name="description" content="دیبا پل یک سرور MCP و داشبورد محلی است که پیام‌رسان‌ها، بلوبانک، صرافی‌های ارز دیجیتال و وردپرس را به کلاینت‌های هوش مصنوعی وصل می‌کند.">
   <meta name="theme-color" content="#f6f8fc">
-  <meta property="og:title" content="دیبا پل | پل پیام‌رسان‌ها به هوش مصنوعی">
-  <meta property="og:description" content="شش پیام‌رسان، یک پل به هوش مصنوعی. صندوق ورودی یکپارچه، تریگرهای خودکار و ابزارهای MCP روی سرور خودت.">
+  <meta property="og:title" content="دیبا پل | پل پیام‌رسان‌ها و سرویس‌های مالی به هوش مصنوعی">
+  <meta property="og:description" content="شانزده سرویس، یک پل به هوش مصنوعی: پیام‌رسان‌ها، بانک، صرافی‌ها و وردپرس با نصب مرحله‌به‌مرحله روی سرور خودت.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="./assets/logo-sm.png">
   <link rel="icon" href="./assets/logo-sm.png" type="image/png">
@@ -45,6 +45,7 @@
         <a href="#why">چرا دیبا پل</a>
         <a href="#features">قابلیت‌ها</a>
         <a href="#integrations">اتصال‌ها</a>
+        <a href="#setup">نصب</a>
         <a href="#start">شروع سریع</a>
         <a href="#docs">مستندات</a>
       </nav>
@@ -68,10 +69,10 @@
       <div class="hero-grid" aria-hidden="true"></div>
       <div class="shell hero-inner">
         <div class="hero-copy">
-          <p class="eyebrow"><span class="eyebrow-dot"></span> زیرساخت ارتباط پیام‌رسان‌ها با هوش مصنوعی</p>
+          <p class="eyebrow"><span class="eyebrow-dot"></span> پیام‌رسان‌ها، بانک و صرافی‌ها در یک قرارداد MCP</p>
           <h1 id="hero-title">همه‌ی پیام‌رسان‌ها،<br><span>یک پل تا<br class="mobile-break"> هوش مصنوعی.</span></h1>
           <p class="hero-lead">
-            دیبا پل یک سرور <strong>MCP</strong> و داشبورد محلی است که واتس‌اپ، تلگرام، بله، روبیکا، سروش‌پلاس و ایتا را به Claude، Cursor و هر کلاینت هوش مصنوعی وصل می‌کند.
+            دیبا پل یک سرور <strong>MCP</strong> و داشبورد محلی است که پیام‌رسان‌های ایرانی و خارجی، بلوبانک، صرافی‌های ارز دیجیتال و وردپرس را به Claude، Cursor و هر کلاینت هوش مصنوعی وصل می‌کند.
           </p>
           <div class="hero-actions">
             <a class="button button-primary" href="#start">
@@ -84,7 +85,7 @@
             </a>
           </div>
           <dl class="hero-facts">
-            <div><dt>پیام‌رسان</dt><dd>۶</dd></div>
+            <div><dt>سرویس</dt><dd>۱۶</dd></div>
             <div><dt>پروتکل</dt><dd>MCP 1.32+</dd></div>
             <div><dt>اجرا</dt><dd>محلی</dd></div>
             <div><dt>لایسنس</dt><dd>MIT</dd></div>
@@ -92,7 +93,7 @@
         </div>
 
         <div class="hero-visual">
-          <div class="relay" role="img" aria-label="نمای نمونه از داشبورد دیبا پل: شش پیام‌رسان از سمت راست به هسته‌ی MCP و ابزارهای هوش مصنوعی در سمت چپ وصل شده‌اند.">
+          <div class="relay" role="img" aria-label="نمای نمونه از داشبورد دیبا پل: سرویس‌ها از سمت راست به هسته‌ی MCP و ابزارهای هوش مصنوعی در سمت چپ وصل شده‌اند.">
             <div class="relay-head">
               <div class="relay-brand">
                 <img src="./assets/logo-sm.png" alt="" width="24" height="23">
@@ -139,7 +140,7 @@
               <span>نمای نمونه</span>
             </div>
           </div>
-          <p class="visual-note">یک endpoint، شش اتصال؛ همان چیزی که مدل می‌بیند.</p>
+          <p class="visual-note">یک endpoint، شانزده سرویس؛ همان چیزی که مدل می‌بیند.</p>
         </div>
       </div>
     </section>
@@ -148,8 +149,8 @@
       <div class="shell">
         <div class="section-intro">
           <p class="section-kicker">چرا دیبا پل</p>
-          <h2 id="why-title">یک پل، به‌جای شش اتصال جدا.</h2>
-          <p class="section-lead">هر پیام‌رسان زبان، نشست و محدودیت خودش را دارد. دیبا پل این تفاوت‌ها را پشت یک قرارداد MCP جمع می‌کند تا مدل فقط روی کار تمرکز کند.</p>
+          <h2 id="why-title">یک پل، به‌جای شانزده اتصال جدا.</h2>
+          <p class="section-lead">هر پیام‌رسان، بانک و صرافی زبان، نشست و محدودیت خودش را دارد. دیبا پل این تفاوت‌ها را پشت یک قرارداد MCP جمع می‌کند تا مدل فقط روی کار تمرکز کند.</p>
         </div>
 
         <div class="principles">
@@ -157,7 +158,7 @@
             <span class="principle-number">۰۱</span>
             <div>
               <h3>یک قرارداد برای همه</h3>
-              <p>مدل به‌جای یادگیری شش API، یک مجموعه ابزار استاندارد می‌بیند: فهرست چت‌ها، خواندن پیام و ارسال پاسخ.</p>
+              <p>مدل به‌جای یادگیری شانزده API، ابزارهای هم‌شکل می‌بیند: فهرست چت‌ها و ارسال پاسخ در پیام‌رسان‌ها، قیمت و موجودی در صرافی‌ها.</p>
             </div>
           </article>
           <article class="principle">
@@ -262,8 +263,8 @@
       <div class="shell integrations-layout">
         <div class="section-intro">
           <p class="section-kicker">اتصال‌ها</p>
-          <h2 id="integrations-title">با حساب کاربری خودت وصل شو.</h2>
-          <p class="section-lead">بدون ربات رسمی و بدون توکن واسطه؛ هر پیام‌رسان با نشست حساب کاربری خودت کار می‌کند.</p>
+          <h2 id="integrations-title">شانزده سرویس، با حساب خودت.</h2>
+          <p class="section-lead">پیام‌رسان‌ها با نشست حساب کاربری خودت کار می‌کنند و صرافی‌ها با کلید API رسمی‌ای که خودت می‌سازی؛ بدون ربات و بدون واسطه.</p>
           <a class="text-link" href="https://github.com/Dibachain-Company/diba-bridge/blob/main/README.md" target="_blank" rel="noopener">راهنمای اتصال هر سرویس <svg class="icon" aria-hidden="true"><use href="#i-external"/></svg></a>
         </div>
 
@@ -276,8 +277,106 @@
             <li><img src="./assets/providers/soroush.png" alt="" width="24" height="24"><span>سروش‌پلاس</span><span class="integration-meta">پیام خصوصی</span><span class="integration-state"><i></i>آماده</span></li>
             <li><img src="./assets/providers/eitaa.png" alt="" width="24" height="24"><span>ایتا</span><span class="integration-meta">کانال و گروه</span><span class="integration-state"><i></i>آماده</span></li>
           </ul>
-          <p class="integration-note">شبکه‌های اجتماعی و پیام‌رسان‌های بیشتر در نقشه‌ی راه هستند؛ <a href="#roadmap">وضعیت را ببین</a>.</p>
+          <p class="integration-note">اینستاگرام، ایکس و لینکدین هم در داشبورد هستند؛ <a href="#roadmap">وضعیت هر بخش را ببین</a>.</p>
         </div>
+
+        <div class="integration-extra">
+          <div class="integration-group">
+            <span class="integration-group-title">بانک و صرافی‌ها</span>
+            <ul class="chip-list">
+              <li><i style="background:#0a3d91">blu</i><span>بلوبانک</span><small>ایرانی</small></li>
+              <li><i style="background:#f0b90b">B</i><span>بایننس</span><small>خارجی</small></li>
+              <li><i style="background:#f7a600">By</i><span>بای‌بیت</span><small>خارجی</small></li>
+              <li><i style="background:#111111">OK</i><span>او‌کی‌ایکس</span><small>خارجی</small></li>
+              <li><i style="background:#24ae8f">K</i><span>کوکوین</span><small>خارجی</small></li>
+              <li><i style="background:#5841d8">Kr</i><span>کراکن</span><small>خارجی</small></li>
+            </ul>
+          </div>
+          <div class="integration-group">
+            <span class="integration-group-title">شبکه‌های اجتماعی و سایت</span>
+            <ul class="chip-list">
+              <li><img src="./assets/providers/instagram.svg" alt="" width="22" height="22"><span>اینستاگرام</span></li>
+              <li><i style="background:#0f1419">X</i><span>ایکس</span></li>
+              <li><i style="background:#0a66c2">in</i><span>لینکدین</span></li>
+              <li><i style="background:#21759b">W</i><span>وردپرس</span><small>۶۸ ابزار</small></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-setup" id="setup" aria-labelledby="setup-title">
+      <div class="shell">
+        <div class="section-intro section-intro-wide">
+          <div>
+            <p class="section-kicker">نصب مرحله‌به‌مرحله</p>
+            <h2 id="setup-title">اولین اجرا، یک نصب‌کننده‌ی کامل.</h2>
+          </div>
+          <p class="section-lead">بار اول که داشبورد را باز می‌کنی، نصب‌کننده قدم‌به‌قدم جلو می‌برد: مشخصات و لوگوی خودت، سرویس‌هایی که لازم داری و رمز عبور داشبورد.</p>
+        </div>
+
+        <ol class="setup-steps">
+          <li><span>۱</span><div><strong>خوش‌آمد</strong><p>می‌بینی چه چیزهایی قرار است تنظیم شود.</p></div></li>
+          <li><span>۲</span><div><strong>مشخصات</strong><p>نام شرکت یا پروژه، آدرس سایت و لوگو.</p></div></li>
+          <li><span>۳</span><div><strong>سرویس‌ها</strong><p>تیک بزن یا «انتخاب همه» را بزن.</p></div></li>
+          <li><span>۴</span><div><strong>رمز عبور</strong><p>رمز ورود داشبورد را خودت انتخاب می‌کنی.</p></div></li>
+        </ol>
+
+        <div class="shots">
+          <figure class="shot">
+            <div class="shot-frame"><img src="./assets/screens/installer-welcome.png" alt="صفحه‌ی خوش‌آمد نصب‌کننده‌ی دیبا پل با چهار قدم نصب" width="1280" height="820" loading="lazy"></div>
+            <figcaption><strong>خوش‌آمد</strong>نصب حدود یک دقیقه طول می‌کشد.</figcaption>
+          </figure>
+          <figure class="shot">
+            <div class="shot-frame"><img src="./assets/screens/installer-services.png" alt="مرحله‌ی انتخاب سرویس‌ها در نصب‌کننده با گروه‌های پیام‌رسان ایرانی، خارجی و بانک و صرافی" width="1280" height="1180" loading="lazy"></div>
+            <figcaption><strong>انتخاب سرویس‌ها</strong>گروه‌بندی ایرانی، خارجی، بانک و صرافی.</figcaption>
+          </figure>
+          <figure class="shot">
+            <div class="shot-frame"><img src="./assets/screens/installer-review.png" alt="مرحله‌ی مرور و تأیید نصب‌کننده با مشخصات و سرویس‌های انتخاب‌شده" width="1280" height="820" loading="lazy"></div>
+            <figcaption><strong>مرور و تأیید</strong>تا تأیید نهایی چیزی ذخیره نمی‌شود.</figcaption>
+          </figure>
+        </div>
+        <p class="shots-note">بعد از نصب، از بخش «نصب و مشخصات» داشبورد می‌توانی مشخصات را عوض کنی و هر زمان سرویس تازه‌ای فعال کنی.</p>
+      </div>
+    </section>
+
+    <section class="section section-finance" id="finance" aria-labelledby="finance-title">
+      <div class="shell split-layout">
+        <div class="section-intro">
+          <p class="section-kicker">بانک و صرافی‌ها</p>
+          <h2 id="finance-title">داده‌ی بازار و حساب، کنار پیام‌ها.</h2>
+          <p class="section-lead">بلوبانک و پنج صرافی خارجی با ابزارهای هم‌شکل: قیمت، دفتر سفارش، کندل، موجودی و سفارش‌های باز.</p>
+          <ul class="check-list">
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>داده‌ی بازار صرافی‌ها بدون کلید هم کار می‌کند.</span></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span><strong>معامله به‌طور پیش‌فرض خاموش است</strong>؛ فقط با روشن کردن «اجازه‌ی معامله» فعال می‌شود.</span></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>ثبت سفارش بدون تأیید صریح، فقط پیش‌نمایش برمی‌گرداند.</span></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>کلید API را بدون دسترسی برداشت بساز؛ روی سرور خودت می‌ماند.</span></li>
+          </ul>
+        </div>
+        <figure class="shot shot-wide">
+          <div class="shot-frame"><img src="./assets/screens/dashboard-exchanges.png" alt="صفحه‌ی صرافی‌ها در داشبورد دیبا پل با بایننس، بای‌بیت، او‌کی‌ایکس، کوکوین و کراکن" width="1280" height="820" loading="lazy"></div>
+          <figcaption><strong>صرافی‌ها در داشبورد</strong>هر سرویس با یک کلید روشن یا خاموش می‌شود.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section section-network" id="network" aria-labelledby="network-title">
+      <div class="shell split-layout split-reverse">
+        <div class="section-intro">
+          <p class="section-kicker">شبکه</p>
+          <h2 id="network-title">فهرست پروکسی، با انتخاب خودکار سریع‌ترین.</h2>
+          <p class="section-lead">چند پروکسی HTTP یا SOCKS5 ثبت کن. دیبا پل هر کدام را چند بار می‌سنجد و بر اساس سرعت، پایداری و سابقه رتبه می‌دهد.</p>
+          <ul class="check-list">
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>امتیاز از میانه‌ی تأخیر، نرخ خطا و نوسان ساخته می‌شود.</span></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>با از کار افتادن پروکسی فعال، بعدی جایگزین می‌شود.</span></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>جابه‌جایی فقط وقتی انجام می‌شود که گزینه‌ی تازه دست‌کم ۱۵٪ بهتر باشد.</span></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>رمز پروکسی‌ها هرگز به مرورگر برنمی‌گردد.</span></li>
+          </ul>
+        </div>
+        <figure class="shot shot-wide">
+          <div class="shot-frame"><img src="./assets/screens/dashboard-proxies.png" alt="پنل فهرست پروکسی در تنظیمات داشبورد با تأخیر، نوسان و درصد موفقیت هر پروکسی" width="941" height="760" loading="lazy"></div>
+          <figcaption><strong>فهرست پروکسی</strong>تأخیر، نوسان و درصد موفقیت هر پروکسی.</figcaption>
+        </figure>
       </div>
     </section>
 
@@ -290,7 +389,7 @@
 
           <ol class="start-steps">
             <li><span>۱</span><div><strong>اجرا</strong><p>پروژه را با <code>npx</code> یا Compose بالا بیاور.</p></div></li>
-            <li><span>۲</span><div><strong>اتصال</strong><p>در داشبورد، پیام‌رسان‌ها را با حساب کاربری خودت وصل کن.</p></div></li>
+            <li><span>۲</span><div><strong>نصب</strong><p>نصب‌کننده مشخصات، سرویس‌ها و رمز عبور را از تو می‌گیرد؛ بعد حساب هر سرویس را وصل کن.</p></div></li>
             <li><span>۳</span><div><strong>اتصال مدل</strong><p>دستور MCP را از داشبورد کپی کن و در Claude یا Cursor بگذار.</p></div></li>
           </ol>
         </div>
@@ -337,11 +436,11 @@
         <ol class="roadmap-list">
           <li class="roadmap-item is-done">
             <span class="roadmap-status"><i></i> انجام شده</span>
-            <div><h3>اتصال به پیام‌رسان‌ها</h3><p>شش سرویس، صندوق ورودی یکپارچه، تریگرها و ابزارهای MCP.</p></div>
+            <div><h3>اتصال به پیام‌رسان‌ها</h3><p>پیام‌رسان‌های ایرانی و خارجی، صندوق ورودی یکپارچه، تریگرها و ابزارهای MCP.</p></div>
           </li>
-          <li class="roadmap-item">
-            <span class="roadmap-status"><i></i> بعدی</span>
-            <div><h3>پلتفرم‌های بانکی و مدیریت موجودی</h3><p>نمای یکپارچه‌ی حساب‌ها، تراکنش‌ها و هشدارها؛ با شروع فقط‌خواندنی.</p></div>
+          <li class="roadmap-item is-progress">
+            <span class="roadmap-status"><i></i> در حال انجام</span>
+            <div><h3>پلتفرم‌های بانکی و صرافی‌ها</h3><p>بلوبانک (آزمایشی، با توکن نشست) و پنج صرافی با API رسمی اضافه شده‌اند؛ اتصال به APIهای رسمی بانکی هنوز انجام نشده است.</p></div>
           </li>
           <li class="roadmap-item is-progress">
             <span class="roadmap-status"><i></i> در حال انجام</span>
@@ -364,6 +463,15 @@
           <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><div><strong>تأیید انسان</strong><span>ارسال حساس بدون تأیید صریح انجام نمی‌شود.</span></div></li>
           <li><svg class="icon" aria-hidden="true"><use href="#i-bridge"/></svg><div><strong>متن‌باز</strong><span>کد پروژه با لایسنس MIT قابل بررسی است.</span></div></li>
         </ul>
+      </div>
+      <div class="shell">
+        <aside class="notice" aria-labelledby="notice-title">
+          <svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>
+          <div>
+            <strong id="notice-title">مسئولیت امنیتی و استفاده‌ی تجاری</strong>
+            <p>دیبا پل به حساب‌های پیام‌رسان و سرویس‌های مالی وصل می‌شود و «همان‌طور که هست» و بدون ضمانت منتشر شده است. پیش از بازبینی و تأمین امنیت، آن را به‌صورت تجاری یا عملیاتی عرضه نکن؛ اگر در کسب‌وکارت به کارش می‌گیری، مسئولیت امنیت، داده و پیامدهایش با خودت است. <a href="https://github.com/Dibachain-Company/diba-bridge#readme" target="_blank" rel="noopener">متن کامل در README</a></p>
+          </div>
+        </aside>
       </div>
     </section>
 
@@ -417,8 +525,12 @@
             <p>نه. دیبا پل روی ماشین خودت اجرا می‌شود و نشست‌ها، حافظه و تنظیمات را در پوشه‌ی <code>data</code> نگه می‌دارد. دسترسی کلاینت‌ها با توکن خودت کنترل می‌شود.</p>
           </details>
           <details>
-            <summary>چه پیام‌رسان‌هایی پشتیبانی می‌شوند؟</summary>
-            <p>واتس‌اپ، تلگرام، بله، روبیکا، سروش‌پلاس و ایتا. هر اتصال با حساب کاربری خودت انجام می‌شود.</p>
+            <summary>چه سرویس‌هایی پشتیبانی می‌شوند؟</summary>
+            <p>پیام‌رسان‌ها: واتس‌اپ، تلگرام، بله، روبیکا، سروش‌پلاس و ایتا. شبکه‌های اجتماعی: اینستاگرام، ایکس و لینکدین. مالی: بلوبانک، بایننس، بای‌بیت، او‌کی‌ایکس، کوکوین و کراکن. سایت: وردپرس.</p>
+          </details>
+          <details>
+            <summary>آیا مدل می‌تواند خودش معامله کند؟</summary>
+            <p>نه، مگر خودت بخواهی. معامله در هر صرافی به‌طور پیش‌فرض خاموش است. حتی با روشن بودن آن، ابزار ثبت سفارش بدون تأیید صریح فقط پیش‌نمایش برمی‌گرداند. کلید API را بدون دسترسی برداشت بساز.</p>
           </details>
           <details>
             <summary>با کدام کلاینت‌های هوش مصنوعی کار می‌کند؟</summary>
@@ -426,7 +538,7 @@
           </details>
           <details>
             <summary>برای اجرا به چه چیزی نیاز دارم؟</summary>
-            <p>Node.js 22.19 یا بالاتر، یا Docker. برای اتصال، حساب کاربری همان پیام‌رسان و دسترسی به شبکه.</p>
+            <p>Node.js 22.19 یا بالاتر، یا Docker. برای اتصال، حساب کاربری همان سرویس و دسترسی به شبکه؛ اگر لازم شد، از فهرست پروکسی استفاده کن.</p>
           </details>
         </div>
       </div>
@@ -455,10 +567,10 @@
           <img src="./assets/logo-sm.png" alt="" width="30" height="29">
           <span class="brand-text">دیبا پل</span>
         </a>
-        <p>پل ارتباطی پیام‌رسان‌ها به هوش مصنوعی.<br>ساخته‌شده توسط <a href="https://dibachain.ir" target="_blank" rel="noopener">دیباچین</a>.</p>
+        <p>پل ارتباطی پیام‌رسان‌ها و سرویس‌های مالی به هوش مصنوعی.<br>ساخته‌شده توسط <a href="https://dibachain.ir" target="_blank" rel="noopener">دیباچین</a>.</p>
       </div>
       <div class="footer-links">
-        <div><span>محصول</span><a href="#features">قابلیت‌ها</a><a href="#integrations">اتصال‌ها</a><a href="#roadmap">نقشه‌ی راه</a></div>
+        <div><span>محصول</span><a href="#features">قابلیت‌ها</a><a href="#integrations">اتصال‌ها</a><a href="#setup">نصب‌کننده</a><a href="#roadmap">نقشه‌ی راه</a></div>
         <div><span>منابع</span><a href="#docs">مستندات</a><a href="https://github.com/Dibachain-Company/diba-bridge" target="_blank" rel="noopener">GitHub</a><a href="https://github.com/Dibachain-Company/diba-bridge/blob/main/LICENSE" target="_blank" rel="noopener">لایسنس MIT</a></div>
         <div><span>شروع</span><a href="#start">نصب</a><a href="http://127.0.0.1:3790" target="_blank" rel="noopener">داشبورد محلی</a><a href="https://github.com/Dibachain-Company/diba-bridge/issues" target="_blank" rel="noopener">گزارش مسئله</a></div>
       </div>
