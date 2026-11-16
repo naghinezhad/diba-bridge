@@ -53,7 +53,7 @@ export { DibaMcpEngine, SERVER_VERSION } from "./core/engine.js";
 export { startHttp, startStdio, printNetcheck } from "./server.js";
 export { defineTool, ProviderError } from "./core/types.js";
 export type { ProviderDef, ToolDef, ProviderField, ProviderContext, ProviderAuthDef, AuthStep, AuthUser } from "./core/types.js";
-export { builtinProviders, baleClient, eitaaClient, instagram, linkedinProvider, rubikaClient, soroushClient, telegramClient, whatsapp, x } from "./providers/index.js";
+export { builtinProviders, baleClient, blubank, eitaaClient, instagram, linkedinProvider, rubikaClient, soroushClient, telegramClient, whatsapp, x } from "./providers/index.js";
 export { createDibaMcpRouter } from "./http/router.js";
 export { configureProxy, proxyMode } from "./core/net.js";
 export { runNetcheck } from "./core/netcheck.js";

@@ -1,5 +1,6 @@
 import type { ProviderDef } from "../core/types.js";
 import { baleClient } from "./bale-client.js";
+import { blubank } from "./blubank.js";
 import { eitaaClient } from "./eitaa-client.js";
 import { instagram } from "./instagram.js";
 import { linkedinProvider } from "./linkedin.js";
@@ -19,6 +20,7 @@ import { x } from "./x.js";
  */
 export const builtinProviders: ProviderDef[] = [
   baleClient,
+  blubank,
   eitaaClient,
   rubikaClient,
   soroushClient,
@@ -30,4 +32,4 @@ export const builtinProviders: ProviderDef[] = [
   wordpress,
 ];
 
-export { baleClient, eitaaClient, instagram, linkedinProvider, rubikaClient, soroushClient, telegramClient, whatsapp, wordpress, x };
+export { baleClient, blubank, eitaaClient, instagram, linkedinProvider, rubikaClient, soroushClient, telegramClient, whatsapp, wordpress, x };
