@@ -19,9 +19,11 @@ function protoFixture(): Buffer {
 describe("blubank provider", () => {
   before(() => configureProxy({} as NodeJS.ProcessEnv));
 
-  test("provider در فهرست با دسته‌ی payment و ابزارهای ورود/موجودی/کارت ثبت شده است", () => {
+  test("provider در فهرست با دسته‌ی banking و ابزارهای ورود/موجودی/کارت ثبت شده است", () => {
     assert.equal(blubank.id, "blubank");
-    assert.equal(blubank.category, "payment");
+    assert.equal(blubank.category, "banking");
+    assert.equal(blubank.region, "iran");
+    assert.equal(blubank.unofficial, true);
     const names = blubank.tools.map((t) => t.name);
     for (const expected of [
       "blubank_key_exchange",
