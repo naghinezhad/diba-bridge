@@ -30,3 +30,19 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+
+  # بررسی نحوی افزونه‌ی همراه وردپرس روی قدیمی‌ترین و جدیدترین PHP پشتیبانی‌شده
+  wordpress-plugin:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["7.4", "8.3"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint PHP files
+        run: find wordpress-plugin -name '*.php' -print0 | xargs -0 -n1 php -l
