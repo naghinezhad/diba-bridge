@@ -53,6 +53,7 @@
   - **سروش‌پلاس (Soroush+):** حساب کاربری (پروتکل تلگرامی MTProto)
   - **تلگرام:** حساب کاربری (MTProto)
 - 🌐 **اتصال به وردپرس:** مدیریت کامل سایت وردپرسی از طریق MCP — نوشته‌ها و برگه‌ها، رسانه، دیدگاه‌ها، کاربران، افزونه‌ها و ووکامرس — با رمز برنامه (Application Password) یا افزونه‌ی همراه `wordpress-plugin/diba-bridge-connector`. راهنما: [docs/WORDPRESS.md](docs/WORDPRESS.md)
+- 🏦 **سرویس‌های بانکی:** تب جدای «سرویس‌های بانکی» در داشبورد با زیرمنوی **ایرانی / خارجی**. فعلاً **بلوبانک** (ایرانی) با توکن نشست اپلیکیشن وصل می‌شود و موجودی، کارت‌ها و تراکنش‌ها را می‌خواند؛ هنوز سرویس بانکی خارجی اضافه نشده است. راهنما: [docs/blubank-testing.md](docs/blubank-testing.md)
 - 📬 **صندوق پیام‌های دریافتی یکپارچه (Shared Inbox):** مشاهده پیام‌های دریافتی، تفکیک پیام‌های ورودی و خروجی، امکان پاسخ‌گویی مستقیم و استفاده هوش مصنوعی از ابزار `get_updates`.
 - ⚡ **تریگرها و اتوماسیون (Automation Triggers):** صفحه‌ی `#/triggers` با ۳۸ قانون آماده‌ی ویرایش‌پذیر؛ پاسخ خودکار، پاسخ هوشمند دیبا روتر، فوروارد بین پیام‌رسان‌ها، اجرای ابزار MCP و ارسال به Webhook (n8n / Make / CRM). هر تریگر شرط (پیام‌رسان، نوع چت، کلمه‌ی کلیدی، ابزار) و اقدام دارد و با یک کلیک روشن، تست یا خاموش می‌شود. تاریخچه‌ی اجرا در `data/triggers.json` ذخیره می‌شود.
 - 🎨 **داشبورد اختصاصی با زبان طراحی دیباچین:** رابط کاربری مدرن، یک اتصال «حساب کاربری» برای هر پیام‌رسان در آکاردئون اختصاصی، تم تاریک/روشن و واکنش‌گرایی کامل.
@@ -74,14 +75,14 @@
 | # | مسیر | وضعیت | خروجی نهایی |
 |---|---|---|---|
 | ۱ | **اتصال به پیام‌رسان‌ها** | ✅ انجام شده | اتصال به واتس‌اپ، تلگرام، بله، روبیکا، سروش‌پلاس و ایتا؛ صندوق ورودی یکپارچه، ارسال/دریافت پیام، تریگرها و ابزارهای MCP |
-| ۲ | **اتصال به پلتفرم‌های بانکی و مدیریت موجودی حساب‌ها** | ⏳ مرحله‌ی بعدی | اتصال امن به حساب‌های بانکی/مالی، نمای یکپارچه‌ی موجودی و تراکنش‌ها، هشدار و مغایرت‌گیری |
+| ۲ | **اتصال به پلتفرم‌های بانکی و مدیریت موجودی حساب‌ها** | 🚧 در حال انجام | اتصال امن به حساب‌های بانکی/مالی، نمای یکپارچه‌ی موجودی و تراکنش‌ها، هشدار و مغایرت‌گیری |
 | ۳ | **اتصال پیج اینستاگرام و دایرکت هوشمند** | 🚧 در حال انجام | اتصال پیج حرفه‌ای، دریافت دایرکت و کامنت، پاسخ هوشمند با تأیید انسان و ارجاع به اپراتور |
 
 #### وضعیت فعلی
 
 - **پیام‌رسان‌ها:** بالغ و قابل استفاده؛ حساب‌های کاربری، دریافت زنده، ارسال، تریگر و ابزارهای MCP فعال‌اند.
 - **اینستاگرام:** ورود امن با پنجره‌ی مرورگر، عبور از کد واتساپ/۲FA و بازیابی نشست انجام شده است. پروفایل و مدیای حساب هم از طریق ابزارهای MCP خوانده می‌شود. **دایرکت هوشمند هنوز فعال نیست.**
-- **بانکداری:** هنوز پیاده‌سازی نشده؛ اولویت بعدی است و با دسترسی **فقط‌خواندنی** شروع می‌شود.
+- **بانکداری:** تب «سرویس‌های بانکی» اضافه شده و **بلوبانک** به‌صورت آزمایشی با توکن نشست اپلیکیشن وصل می‌شود (موجودی، کارت‌ها، تراکنش‌ها). این اتصال از API منتشرنشده‌ی اپلیکیشن است، ورود خودکار ندارد و پاسخ‌ها بدون اسکیمای رسمی خوانده می‌شوند. اتصال به APIهای رسمی بانکی و بانک‌های خارجی هنوز انجام نشده است.
 
 #### قدم‌های بعدی
 
@@ -348,6 +349,7 @@ Developed by **[Dibachain](https://dibachain.ir)**, the dashboard and API strict
   - **Telegram:** Personal User Account (MTProto via GramJS).
 - 🌐 **WordPress integration:** Manage a WordPress site over MCP — posts and pages, media, comments, users, plugins and WooCommerce — using an Application Password or the companion plugin in `wordpress-plugin/diba-bridge-connector`. Guide: [docs/WORDPRESS.md](docs/WORDPRESS.md)
   - **WhatsApp:** Personal account via QR multi-device login (Baileys).
+- 🏦 **Banking services:** a dedicated “Banking services” tab in the dashboard with an **Iranian / International** submenu. **BluBank** (Iranian) is the first provider: it connects with an app session token and reads balances, cards and transactions. No international banking provider has been added yet. Guide: [docs/blubank-testing.md](docs/blubank-testing.md)
 - 💬 **Integrated Live Inbox:** Synchronize real-time conversations across personal accounts, allowing two-way responses from either the dashboard or the AI agent (`get_updates`).
 - ⚡ **Automation Triggers:** A dedicated `#/triggers` page ships with 38 editable presets — auto-replies, DibaRouter AI answers, cross-messenger forwarding, MCP tool calls and outbound webhooks (n8n / Make / CRM). Each rule has a condition (provider, chat type, keywords, tool) and an action, and can be toggled, tested or deleted in one click; run history lives in `data/triggers.json`.
 - 🎨 **Dibachain Design System:** Production-grade UI with one account connection per messenger, Dark/Light modes, and accessible RTL typography.
@@ -369,14 +371,14 @@ This roadmap shows where the product stands today and where it is heading. The w
 | # | Track | Status | Outcome |
 |---|---|---|---|
 | 1 | **Messaging platform integrations** | ✅ Done | WhatsApp, Telegram, Bale, Rubika, Soroush+, and Eitaa connected; unified inbox, send/receive, triggers, and MCP tools |
-| 2 | **Banking platform integrations & account balance management** | ⏳ Next | Secure connections to banking/financial accounts, a unified balance and transaction view, alerts, and reconciliation |
+| 2 | **Banking platform integrations & account balance management** | 🚧 In progress | Secure connections to banking/financial accounts, a unified balance and transaction view, alerts, and reconciliation |
 | 3 | **Instagram page connection & smart Direct** | 🚧 In progress | Professional page connection, DM and comment ingestion, AI-assisted replies with human approval, and operator handoff |
 
 #### Where we are
 
 - **Messaging:** mature and usable. User-account connections, live ingestion, sending, triggers, and MCP tools are in place.
 - **Instagram:** secure sign-in through a real browser window, WhatsApp/2FA code handling, and session restoration are complete. Profile and media data are available through MCP tools. **Smart Direct is not live yet.**
-- **Banking:** not implemented yet. It is the next priority and will start in **read-only** mode.
+- **Banking:** the “Banking services” tab is in place and **BluBank** connects experimentally with an app session token (balances, cards, transactions). It uses the app's unpublished API, has no automated sign-in, and decodes responses without an official schema. Official banking APIs and international banks are not connected yet.
 
 #### What comes next
 
