@@ -77,3 +77,33 @@ DIBAROUTER_MODEL=dibachain/diba-router-free
 ```
 
 Environment variables take precedence over dashboard values.
+
+## Connectivity and proxies
+
+The proxy configured for the messengers (`SOCKS_PROXY` / `HTTPS_PROXY` or the dashboard network settings) is not
+always able to reach DibaRouter, and DibaRouter is usually reachable without it. When a proxy is active, every
+DibaRouter request is tried through the proxy and directly; the route that worked is remembered for five minutes.
+
+| `DIBAROUTER_ROUTE` | Behaviour |
+| :-- | :-- |
+| `auto` (default) | Proxy first, then direct (or the last route that worked) |
+| `direct` | Never use the proxy for DibaRouter |
+| `proxy` | Always use the proxy |
+
+The base URL is normalised, so `https://dibarouter.ir`, `https://dibarouter.ir/api` and a pasted
+`…/api/v1/chat/completions` all resolve to `https://dibarouter.ir/api/v1`.
+
+## Small-context models
+
+The assistant sizes every request from the selected model's context window (read from `/models`):
+
+| Context window | Input budget | Reply | Tools | Notes |
+| --: | --: | --: | --: | :-- |
+| 2,048 | ~1,350 | ~400 | none | Text answers only |
+| 4,096 | ~2,700 | ~800 | up to 8 | Compact system prompt |
+| 8,192 | ~6,000 | 1,000 | up to 19 | Compact system prompt |
+| 32,768+ | up to 24,000 | 1,000 | up to 28 | Full system prompt |
+
+If a model rejects a request with a "context size" error, the limit it reports is remembered for that model and the
+request is retried with a smaller plan, so a server that offers less than it advertises only fails once.
+
