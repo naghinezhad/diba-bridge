@@ -423,48 +423,101 @@ export function fitContextToBudget<M extends { role: string; content?: string; t
   let msgs = messages.map((m) => ({ ...m }));
   let activeTools = tools.slice();
   let trimmed = false;
+  const over = () => estimateRequestTokens(msgs, activeTools) > maxInputTokens;
+  const done = () => ({ messages: dropOrphanToolMessages(msgs), tools: activeTools, trimmed });
 
-  if (estimateRequestTokens(msgs, activeTools) <= maxInputTokens) {
-    return { messages: msgs, tools: activeTools, trimmed: false };
-  }
+  if (!over()) return { messages: msgs, tools: activeTools, trimmed: false };
 
-  // ۱. کوتاه کردن خروجی ابزارها (قدیمی‌ترها به ۳۰۰ کاراکتر، و در صورت نیاز آخرین خروجی ابزار به ۶۰۰ کاراکتر)
-  for (let i = 1; i < msgs.length - 1; i++) {
-    const limit = i < msgs.length - 2 ? 300 : 800;
-    if (msgs[i].role === "tool" && typeof msgs[i].content === "string" && msgs[i].content!.length > limit) {
-      msgs[i].content = truncateText(msgs[i].content!, limit);
+  // سقف کاراکتر متناسب با بودجه (فارسی ~۱.۴۵ کاراکتر بر توکن)
+  const budgetChars = Math.floor(maxInputTokens * 1.45);
+  const shorten = (index: number, limit: number) => {
+    const content = msgs[index]?.content;
+    if (typeof content === "string" && content.length > limit) {
+      msgs[index].content = truncateText(content, limit);
       trimmed = true;
     }
-    if (estimateRequestTokens(msgs, activeTools) <= maxInputTokens) {
-      return { messages: msgs, tools: activeTools, trimmed };
-    }
+  };
+
+  // ۱. خروجی ابزارها: قدیمی‌ترها خیلی کوتاه، تازه‌ترین‌ها (که مدل همین حالا لازمشان دارد) بلندتر
+  const lastUser = () => {
+    for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].role === "user") return i;
+    return -1;
+  };
+  const recentLimit = Math.max(300, Math.min(800, Math.floor(budgetChars * 0.12)));
+  for (let i = 1; i < msgs.length; i++) {
+    if (msgs[i].role !== "tool") continue;
+    shorten(i, i > lastUser() && i >= msgs.length - 2 ? recentLimit : 300);
+    if (!over()) return done();
   }
 
-  // ۲. کاهش تعداد ابزارها در صورت نیاز
-  while (activeTools.length > 6 && estimateRequestTokens(msgs, activeTools) > maxInputTokens) {
+  // ۲. کاهش تعداد ابزارها (حداقل ۶ ابزار می‌ماند)
+  while (activeTools.length > 6 && over()) {
     activeTools = activeTools.slice(0, Math.max(6, Math.floor(activeTools.length * 0.6)));
     trimmed = true;
   }
+  if (!over()) return done();
 
-  // ۳. حذف پیام‌های غیرسیستمی قدیمی (به جز آخرین پیام)
-  while (msgs.length > 2 && estimateRequestTokens(msgs, activeTools) > maxInputTokens) {
-    msgs.splice(1, 1);
+  // ۳. حذف نوبت‌های قدیمی. هر پیام assistant دارای tool_calls همراه با نتیجه‌ی ابزارهایش حذف می‌شود
+  //    تا پیام tool بدون والد نماند (مدل‌ها چنین دنباله‌ای را رد می‌کنند). آخرین پیام کاربر و هر چه بعد از آن است می‌ماند.
+  const first = msgs[0]?.role === "system" ? 1 : 0;
+  while (over()) {
+    const keepFrom = lastUser();
+    if (keepFrom <= first) break;
+    let end = first + 1;
+    if (msgs[first].role === "assistant" && msgs[first].tool_calls) {
+      while (end < keepFrom && msgs[end].role === "tool") end++;
+    }
+    msgs.splice(first, end - first);
     trimmed = true;
   }
+  msgs = dropOrphanToolMessages(msgs);
+  if (!over()) return done();
 
-  // ۴. اگر هنوز از سقف بالاتر است، ابزارها را خالی کن تا مدل حداقل پاسخ متنی بدهد
-  if (activeTools.length && estimateRequestTokens(msgs, activeTools) > maxInputTokens) {
+  // ۴. کوتاه کردن پیام‌های بلند باقی‌مانده (به‌جز سیستم‌پرامپت)، از بلندترین
+  for (const limit of [Math.floor(budgetChars * 0.3), Math.floor(budgetChars * 0.18), 400]) {
+    const order = msgs
+      .map((m, index) => ({ index, size: typeof m.content === "string" ? m.content.length : 0 }))
+      .filter((item) => item.index >= first)
+      .sort((a, b) => b.size - a.size);
+    for (const item of order) {
+      shorten(item.index, Math.max(200, limit));
+      if (!over()) return done();
+    }
+  }
+
+  // ۵. سیستم‌پرامپت متناسب با بودجه کوتاه می‌شود (قواعد اصلی در ابتدای آن است و می‌ماند)
+  if (first === 1) {
+    for (const share of [0.45, 0.3, 0.2]) {
+      shorten(0, Math.max(500, Math.floor(budgetChars * share)));
+      if (!over()) return done();
+    }
+  }
+
+  // ۶. آخرین راه: بدون ابزار، تا مدل دست‌کم پاسخ متنی بدهد
+  if (activeTools.length) {
     activeTools = [];
     trimmed = true;
   }
-
-  // ۵. آخرین لایه: کوتاه کردن سیستم‌پرامپت/پیام‌های بلند
-  if (estimateRequestTokens(msgs, activeTools) > maxInputTokens && msgs[0]?.content && msgs[0].content.length > 900) {
-    msgs[0].content = truncateText(msgs[0].content, 900);
-    trimmed = true;
+  if (over()) {
+    for (let i = first; i < msgs.length; i++) shorten(i, 200);
+    if (first === 1) shorten(0, 400);
   }
+  return done();
+}
 
-  return { messages: msgs, tools: activeTools, trimmed };
+/** پیام‌های tool که پیام assistantِ دارای tool_calls قبل از آن‌ها حذف شده را کنار می‌گذارد. */
+function dropOrphanToolMessages<M extends { role: string; tool_calls?: unknown }>(messages: M[]): M[] {
+  const out: M[] = [];
+  let open = false;
+  for (const message of messages) {
+    if (message.role === "tool") {
+      if (open) out.push(message);
+      continue;
+    }
+    open = message.role === "assistant" && Boolean(message.tool_calls);
+    out.push(message);
+  }
+  return out;
 }
 
 function distillValue(value: unknown, maxItems: number, maxStr: number, depth = 0): unknown {
