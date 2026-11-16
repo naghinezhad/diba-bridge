@@ -3,7 +3,10 @@ dist
 data
 .env
 .git
+.github
 *.log
 test
+docs
+wordpress-plugin
 Dockerfile
-docker-compose.yml
+docker-compose*.yml

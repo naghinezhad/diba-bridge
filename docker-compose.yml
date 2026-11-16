@@ -1,12 +1,10 @@
-# اجرا با ایمیج آماده: docker compose pull && docker compose up -d
-# ساخت از روی کد:      docker compose up -d --build
+# اجرا (ساخت از روی کد): docker compose up -d --build
 # با HTTPS و دامنه: docker compose --profile https up -d --build
 # راهنمای کامل:    DEPLOY.md
 
 services:
   diba-mcp:
-    # ایمیج آماده از GitHub (docker compose pull) — یا ساخت محلی با --build
-    image: ghcr.io/yunessfa/diba-mcp:latest
+    image: diba-bridge:local
     build: .
     container_name: diba-mcp
     restart: unless-stopped

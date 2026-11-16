@@ -15,7 +15,7 @@ docker compose version     # باید نسخه را نشان دهد
 ## ۲. گرفتن پروژه
 
 ```bash
-git clone https://github.com/yunessfa/diba-MCP.git diba-mcp
+git clone https://github.com/Dibachain-Company/diba-bridge.git diba-mcp
 ```
 
 ```bash
