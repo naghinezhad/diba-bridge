@@ -20,6 +20,11 @@ const EXPECTED: Record<string, { category: string; region: string }> = {
   linkedin: { category: "messenger", region: "international" },
   wordpress: { category: "utility", region: "international" },
   blubank: { category: "banking", region: "iran" },
+  binance: { category: "banking", region: "international" },
+  bybit: { category: "banking", region: "international" },
+  okx: { category: "banking", region: "international" },
+  kucoin: { category: "banking", region: "international" },
+  kraken: { category: "banking", region: "international" },
 };
 
 describe("دسته و منطقه‌ی سرویس‌ها", () => {
@@ -34,8 +39,9 @@ describe("دسته و منطقه‌ی سرویس‌ها", () => {
   });
 
   test("سرویس‌های بانکی از پیام‌رسان‌ها جدا هستند", () => {
-    const banking = builtinProviders.filter((p) => p.category === "banking").map((p) => p.id);
-    assert.deepEqual(banking, ["blubank"]);
+    const banking = builtinProviders.filter((p) => p.category === "banking");
+    assert.deepEqual(banking.filter((p) => p.region === "iran").map((p) => p.id), ["blubank"]);
+    assert.deepEqual(banking.filter((p) => p.region === "international").map((p) => p.id), ["binance", "bybit", "okx", "kucoin", "kraken"]);
   });
 
   test("describeProviders دسته، منطقه و غیررسمی بودن را به داشبورد می‌دهد", () => {

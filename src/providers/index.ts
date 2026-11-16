@@ -2,6 +2,11 @@ import type { ProviderDef } from "../core/types.js";
 import { baleClient } from "./bale-client.js";
 import { blubank } from "./blubank.js";
 import { eitaaClient } from "./eitaa-client.js";
+import { binance } from "./exchanges/binance.js";
+import { bybit } from "./exchanges/bybit.js";
+import { kraken } from "./exchanges/kraken.js";
+import { kucoin } from "./exchanges/kucoin.js";
+import { okx } from "./exchanges/okx.js";
 import { instagram } from "./instagram.js";
 import { linkedinProvider } from "./linkedin.js";
 import { rubikaClient } from "./rubika-client.js";
@@ -29,7 +34,13 @@ export const builtinProviders: ProviderDef[] = [
   linkedinProvider,
   whatsapp,
   x,
+  // صرافی‌های خارجی (API رسمی؛ معامله به‌طور پیش‌فرض خاموش است)
+  binance,
+  bybit,
+  okx,
+  kucoin,
+  kraken,
   wordpress,
 ];
 
-export { baleClient, blubank, eitaaClient, instagram, linkedinProvider, rubikaClient, soroushClient, telegramClient, whatsapp, wordpress, x };
+export { baleClient, binance, blubank, bybit, eitaaClient, instagram, kraken, kucoin, linkedinProvider, okx, rubikaClient, soroushClient, telegramClient, whatsapp, wordpress, x };
