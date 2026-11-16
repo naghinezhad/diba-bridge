@@ -7,6 +7,7 @@ import { handleSendReply, parseSendIntent, prepareSend } from "../core/assistant
 import { dibaRouterChat, dibaRouterModels, dibaRouterTest, type DibaRouterMessage, type DibaRouterTool } from "../core/dibarouter.js";
 import { compactConversation, compactToolResult, extractContextLimit, fitContextToBudget, isContextLimitError, selectAndCompactTools, summarizeContextError } from "../core/context.js";
 import { SERVER_VERSION, type DibaMcpEngine } from "../core/engine.js";
+import { ModelLimits, planContext } from "../core/context-budget.js";
 import { configureProxy } from "../core/net.js";
 import { proxyEnvOf, type AppProxyType } from "../core/store.js";
 import { runNetcheck } from "../core/netcheck.js";
@@ -34,7 +35,7 @@ function maskKey(key: string): string {
 }
 
 /** پرامپت دستیار: فقط وضعیت امن و خلاصه‌ی داشبورد را می‌بیند، نه توکن‌ها */
-function agentSystemPrompt(engine: DibaMcpEngine, historySummary?: string): string {
+function agentSystemPrompt(engine: DibaMcpEngine, historySummary?: string, compact = false): string {
   const readyList: string[] = [];
   const offList: string[] = [];
   for (const p of engine.describeProviders()) {
@@ -50,6 +51,20 @@ function agentSystemPrompt(engine: DibaMcpEngine, historySummary?: string): stri
     .statuses()
     .filter((s) => s.enabled || s.lastError)
     .map((s) => `${s.provider}: ${s.lastError ? `خطا (${s.lastError.slice(0, 80)})` : "دریافت فعال"}`);
+
+  // مدل‌های کم‌کانتکست (مثلاً ۸ هزار توکن): همان قواعد اصلی در یک‌پنجم حجم، تا جا برای ابزارها و گفتگو بماند
+  if (compact) {
+    return `تو «دستیار دیبا» هستی؛ دستیار فارسی داشبورد dibaMCP. کوتاه، دقیق و عملی جواب بده.
+قواعد:
+- هیچ توکن، رمز، chat_id یا شماره‌ی کامل را در پاسخ نگو؛ فقط نام نمایشی و نام سرویس.
+- وضعیت سرویس‌ها: list_services. پیدا کردن مقصد: list_chats. حدس نزن؛ اگر مبهم است یک سؤال کوتاه بپرس.
+- ابزارهای نوشتنی/حذف را فقط با درخواست صریح کاربر اجرا کن. به گروه/کانال بدون درخواست صریح پیام نده.
+- برای «به [نام] پیام بده»: مخاطب و متن پیشنهادی را نشان بده و فقط پس از «بله» ارسال کن.
+- اگر ابزاری خطا داد، یک بار با آرگومان اصلاح‌شده تکرار کن؛ بدون نتیجه‌ی واقعی ابزار نگو «انجام شد».
+- خروجی خام ابزار را نریز؛ فقط نتیجه‌ی مفید را بگو.
+
+سرویس‌های آماده: ${readyList.join("؛ ") || "هیچکدام"}${offList.length ? `\nغیرفعال/ناقص: ${offList.map((item) => item.split(" (")[0]).join("، ")}` : ""}${historySummary ? `\n\n${historySummary}` : ""}`;
+  }
 
   return `تو «دستیار دیبا» هستی؛ دستیار فارسی داشبورد dibaMCP برای پیام‌رسان‌ها و ابزارهای MCP.
 قواعد:
@@ -446,6 +461,9 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   });
 
   // ---------------- دیبا روتر ----------------
+  // سقف کانتکست هر مدل (اعلام‌شده در فهرست مدل‌ها + آنچه از خطای خود مدل یاد گرفته‌ایم)
+  const modelLimits = new ModelLimits(() => dibaRouterModels(engine.store.dibarouter()));
+
   api.get("/dibarouter", (_req, res) => {
     const c = engine.store.dibarouter();
     res.json({
@@ -503,7 +521,9 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
 
   api.get("/dibarouter/models", async (_req, res) => {
     try {
-      const models = await dibaRouterModels(engine.store.dibarouter());
+      const config = engine.store.dibarouter();
+      const models = await dibaRouterModels(config);
+      modelLimits.remember(config.baseUrl, models);
       res.json({ ok: true, count: models.length, models });
     } catch (err: any) {
       res.status(err?.status && err.status < 500 ? 400 : 502).json({ error: String(err?.message ?? err) });
@@ -512,10 +532,20 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
 
   // ---------------- دستیار دیبا (چت‌بات داشبورد) ----------------
   api.post("/agent/chat", async (req, res) => {
-    const compacted = compactConversation(req.body?.messages);
-    if (!compacted.messages.length) return void res.status(400).json({ error: "پیامی برای دستیار ارسال نشد" });
+    if (!Array.isArray(req.body?.messages) || !req.body.messages.length) {
+      return void res.status(400).json({ error: "پیامی برای دستیار ارسال نشد" });
+    }
     const c = engine.store.dibarouter();
     if (!c.apiKey) return void res.status(400).json({ error: "برای استفاده از دستیار، ابتدا دیبا روتر را در تب «دیبا روتر» وصل کنید" });
+    // همه‌ی سقف‌ها (تاریخچه، ابزارها، خروجی ابزار، طول پاسخ) از کانتکست همین مدل حساب می‌شود
+    let plan = planContext(await modelLimits.limitOf(c.baseUrl, c.model));
+    const compacted = compactConversation(req.body.messages, {
+      keepRecent: plan.compact ? 4 : 6,
+      maxHistoryChars: plan.historyChars,
+      maxMessageChars: plan.messageChars,
+      maxSummaryChars: plan.summaryChars,
+    });
+    if (!compacted.messages.length) return void res.status(400).json({ error: "پیامی برای دستیار ارسال نشد" });
     const conversationId = String(req.body?.conversationId ?? "dashboard");
     const latestUser = [...compacted.messages].reverse().find((m) => m.role === "user")?.content ?? "";
     if (latestUser) engine.memory.appendTurn({ role: "user", content: latestUser, conversationId });
@@ -552,7 +582,7 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
       !hasExplicitChatTarget &&
       !/(عکس|تصویر|فایل|ویدیو|photo|image|file|video)/i.test(latestUser);
     const allTools = agentTools(engine);
-    let contextBudget = 5400;
+    let contextBudget = plan.inputTokens;
 
     const toolTrace: Array<{ name: string; args: unknown; ok: boolean; ms?: number; error?: string; cached?: boolean; preloaded?: boolean }> = [];
     const callCache = new Map<string, { content: string; ok: boolean; error?: string }>();
@@ -580,7 +610,7 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
         const content =
           name === "list_services"
             ? servicesBrief(engine.servicesSummary())
-            : compactToolResult(stripChatIds(engine.chatsSummary(provider)) ?? null, 1800);
+            : compactToolResult(stripChatIds(engine.chatsSummary(provider)) ?? null, Math.min(1800, plan.toolResultChars));
         toolTrace.push({ name, args, ok: true, ms: 0, preloaded: true });
         const cacheKey = name === "list_services" ? "list_services" : `${name}:${JSON.stringify(args)}`;
         callCache.set(cacheKey, { content, ok: true });
@@ -596,7 +626,7 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     }
 
     const memoryContext = engine.memory.promptContext(selectionText);
-    const systemContent = `${agentSystemPrompt(engine, compacted.summary)}${
+    const systemContent = `${agentSystemPrompt(engine, compacted.summary, plan.compact)}${
       preloadedBlocks.length
         ? `\n\nداده‌ی تازه‌ی ابزارها (همین حالا خوانده شد؛ به آن استناد کن):\n${preloadedBlocks.join("\n\n")}\n` +
           "این داده وضعیت پیکربندی و صندوق پیام است؛ برای اطمینان از اتصال زنده‌ی هر سرویس، ابزار get_me یا get_chats همان سرویس را صدا بزن."
@@ -616,6 +646,7 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
       onDelta?: (delta: string) => void,
       forceTool?: string,
     ) => {
+      maxTokens = Math.min(maxTokens, plan.outputTokens);
       const fitted = fitContextToBudget(msgs, tools, contextBudget);
       msgs = fitted.messages;
       tools = fitted.tools;
@@ -634,13 +665,18 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
         });
       } catch (err: any) {
         let failure = err;
-        if (isContextLimitError(failure)) {
-          const reportedLimit = extractContextLimit(failure);
-          contextBudget = Math.max(1800, Math.min(contextBudget - 1500, Math.floor((reportedLimit ?? 6000) * 0.5)));
-          const tighter = fitContextToBudget(msgs, tools.slice(0, 6), contextBudget);
+        // سقف واقعی مدل کمتر از تصور ما بود: همان عدد را یاد بگیر، برنامه را کوچک کن و دوباره بفرست.
+        // دور آخر بدون ابزار است تا مدل دست‌کم پاسخ متنی بدهد.
+        for (let attempt = 0; attempt < 3 && isContextLimitError(failure); attempt++) {
+          const reported = extractContextLimit(failure);
+          const assumed = Math.floor(plan.contextLength * 0.6);
+          plan = planContext(modelLimits.learn(c.baseUrl, c.model, Math.min(reported ?? assumed, plan.contextLength - 1)));
+          contextBudget = plan.inputTokens;
+          const lastTry = attempt === 2;
+          const tighter = fitContextToBudget(msgs, lastTry ? [] : tools.slice(0, Math.min(6, plan.maxTools)), contextBudget);
           try {
             return await dibaRouterChat(c, tighter.messages, {
-              maxTokens: Math.min(maxTokens, 700),
+              maxTokens: Math.min(maxTokens, plan.outputTokens, 700),
               temperature,
               tools: tighter.tools.length ? tighter.tools : undefined,
               toolChoice: tighter.tools.length ? "auto" : "none",
@@ -648,13 +684,13 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
               signal,
             });
           } catch (retryErr: any) {
-            if (isContextLimitError(retryErr)) {
-              const e: any = new Error(summarizeContextError(retryErr));
-              e.status = 400;
-              throw e;
-            }
             failure = retryErr;
           }
+        }
+        if (isContextLimitError(failure)) {
+          const e: any = new Error(summarizeContextError(failure));
+          e.status = 400;
+          throw e;
         }
         // اگر مدل tool_choice اجباری را نپذیرفت، با auto و همان ابزارها دوباره امتحان کن
         if (forcedChoice && tools.length && /tool|function|support|unsupported|tool_choice/i.test(String(failure?.message ?? failure))) {
@@ -752,7 +788,9 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
 
         // برای هر دور، ابزارها را با توجه به درخواست، پاسخ قبلی و ابزارهای اجراشده انتخاب کن
         const roundQuery = [selectionText, lastReply, toolTrace.map((t) => t.name).join(" ")].filter(Boolean).join("\n");
-        const roundTools = selectAndCompactTools(allTools, roundQuery, { maxTools: 20, maxToolTokens: 2200, blockDirectSend: true });
+        const roundTools = plan.maxTools
+          ? selectAndCompactTools(allTools, roundQuery, { maxTools: plan.maxTools, maxToolTokens: plan.toolTokens, blockDirectSend: true })
+          : [];
         sendSse("status", {
           text: round === 0 ? `در حال تحلیل درخواست (${roundTools.length} ابزار در دسترس)…` : "در حال بررسی نتایج و برنامه‌ریزی قدم بعد…",
         });
@@ -864,8 +902,8 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
           if (!result.ok) content = `ERROR: ${result.error ?? "اجرای ابزار ناموفق بود"}`;
           else if (name === "list_services") content = servicesBrief(result.result);
           else if (name === "memory_search" || /(?:list_chats|get_chats|get_dialogs|get_contacts|find_contact|resolve_contact|get_history|get_messages|search_messages)/.test(name)) {
-            content = compactToolResult(stripChatIds(result.result) ?? null, 2200);
-          } else content = compactToolResult(result.result ?? null, 2200);
+            content = compactToolResult(stripChatIds(result.result) ?? null, plan.toolResultChars);
+          } else content = compactToolResult(result.result ?? null, plan.toolResultChars);
           callCache.set(cacheKey, { content, ok: result.ok, error: result.error });
           messages.push({
             role: "tool",
