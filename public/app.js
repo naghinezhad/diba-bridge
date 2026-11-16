@@ -1616,9 +1616,24 @@ async function pageOverview(main) {
   const o = await api("overview");
   const verEl = document.getElementById("ver");
   if (verEl) verEl.textContent = `نسخه ${o.version}`;
-  const ready = o.providers.filter((p) => p.ready).length;
-  const readinessPct = o.providers.length ? Math.round((ready / o.providers.length) * 100) : 0;
-  const notReady = o.providers.length - ready;
+  // فقط سرویس‌هایی که کاربر روشن کرده شمرده و نمایش داده می‌شوند؛ بقیه یک خط خلاصه دارند
+  const active = o.providers.filter((p) => p.enabled);
+  const inactive = o.providers.length - active.length;
+  const ready = active.filter((p) => p.ready).length;
+  const readinessPct = active.length ? Math.round((ready / active.length) * 100) : 0;
+  const notReady = active.length - ready;
+  // آماده‌ها بالا می‌آیند؛ بیشتر از این تعداد پشت «نمایش همه» می‌ماند
+  const OV_VISIBLE = 8;
+  const sorted = [...active].sort((a, b) => Number(b.ready) - Number(a.ready));
+  const provCard = (p, hidden) => `
+            <a class="ov-prov ${p.ready ? "is-ready" : "is-warn"}" href="${providerHref(p)}" ${hidden ? "hidden data-ov-more" : ""}>
+              <span class="ov-prov-glyph" style="background:${p.color}">${providerLogo(p)}</span>
+              <span class="ov-prov-text">
+                <b>${esc(serviceLabel(p))}</b>
+                <small>${p.ready ? `${fa(p.toolCount)} ابزار` : "نیاز به تنظیم"}</small>
+              </span>
+              <span class="ov-dot" aria-hidden="true"></span>
+            </a>`;
   main.innerHTML = `
     ${head("نمای کلی", "وضعیت اتصال، مصرف امروز و آخرین فراخوانی‌ها در یک نگاه.", "داشبورد دیباچین")}
     <section class="ov-grid">
@@ -1628,24 +1643,20 @@ async function pageOverview(main) {
             <span class="eyebrow">وضعیت زنده</span>
             <h2>سرویس‌ها</h2>
           </div>
-          <span class="pill ${ready === o.providers.length ? "pill-ok" : ready ? "pill-warn" : "pill-off"}">
-            ${fa(ready)} از ${fa(o.providers.length)} آماده
+          <span class="pill ${active.length && ready === active.length ? "pill-ok" : ready ? "pill-warn" : "pill-off"}">
+            ${active.length ? `${fa(ready)} از ${fa(active.length)} آماده` : "سرویسی فعال نیست"}
           </span>
         </div>
+        ${active.length ? `
         <div class="ov-provider-list">
-          ${o.providers.map((p) => `
-            <a class="ov-prov ${p.ready ? "is-ready" : p.enabled ? "is-warn" : "is-off"}" href="${providerHref(p)}">
-              <span class="ov-prov-glyph" style="background:${p.color}">${providerLogo(p)}</span>
-              <span class="ov-prov-text">
-                <b>${esc(p.nameFa)}</b>
-                <small>${p.ready ? `${fa(p.toolCount)} ابزار` : p.enabled ? "نیاز به تنظیم" : "خاموش"}</small>
-              </span>
-              <span class="ov-dot" aria-hidden="true"></span>
-            </a>`).join("")}
+          ${sorted.map((p, i) => provCard(p, i >= OV_VISIBLE)).join("")}
         </div>
+        ${sorted.length > OV_VISIBLE ? `<button class="ov-more" type="button" id="ov-more" aria-expanded="false">نمایش ${fa(sorted.length - OV_VISIBLE)} سرویس دیگر</button>` : ""}` : `
+        <div class="empty ov-empty"><b>هنوز سرویسی فعال نکرده‌اید</b>از بخش «نصب و مشخصات» سرویس‌هایی که لازم دارید را روشن کنید.</div>`}
+        ${inactive ? `<p class="ov-inactive">${fa(inactive)} سرویس دیگر خاموش است و اینجا نمایش داده نمی‌شود. <a href="#/install">فعال کردن سرویس</a></p>` : ""}
         <div class="ov-status-foot">
           <button class="btn btn-ghost btn-sm" id="netcheck">بررسی دسترسی شبکه</button>
-          <a class="link-arrow" href="#/providers">مدیریت سرویس‌ها</a>
+          <a class="link-arrow" href="#/install">مدیریت سرویس‌ها</a>
         </div>
         <div class="calls ov-net-out" id="net-out" hidden aria-live="polite"></div>
       </div>
@@ -1654,12 +1665,12 @@ async function pageOverview(main) {
         <div class="ov-health">
           <div class="ov-health-head">
             <span>آمادگی سرویس‌ها</span>
-            <b>${fa(ready)}<small>/${fa(o.providers.length)}</small></b>
+            <b>${fa(ready)}<small>/${fa(active.length)}</small></b>
           </div>
-          <div class="ov-meter" role="img" aria-label="${fa(ready)} از ${fa(o.providers.length)} سرویس آماده">
+          <div class="ov-meter" role="img" aria-label="${fa(ready)} از ${fa(active.length)} سرویس فعال آماده">
             <i style="width:${readinessPct}%"></i>
           </div>
-          <small class="ov-health-note">${notReady ? `${fa(notReady)} سرویس هنوز آماده نیست` : "همه‌ی سرویس‌ها آماده‌اند"}</small>
+          <small class="ov-health-note">${!active.length ? "سرویسی فعال نیست" : notReady ? `${fa(notReady)} سرویس فعال هنوز به تنظیم نیاز دارد` : "همه‌ی سرویس‌های فعال آماده‌اند"}</small>
         </div>
         <div class="ov-metric-list">
           <div><span>فراخوانی امروز</span><b>${fa(o.stats.today)}</b></div>
@@ -1669,10 +1680,10 @@ async function pageOverview(main) {
         <div class="ov-next">
           <span class="ov-kicker">قدم بعدی</span>
           <b>${ready === 0 ? "اولین سرویس را وصل کنید" : "ابزارها را به مدل وصل کنید"}</b>
-          <p>${ready === 0 ? "یک پیام‌رسان را روشن کنید تا ابزارهایش در دسترس هوش مصنوعی قرار بگیرد." : "آدرس MCP و توکن اتصال را بردارید و در Claude یا کلاینت MCP ثبت کنید."}</p>
+          <p>${ready === 0 ? "یک سرویس را روشن و حسابش را وصل کنید تا ابزارهایش در دسترس هوش مصنوعی قرار بگیرد." : "آدرس MCP و توکن اتصال را بردارید و در Claude یا کلاینت MCP ثبت کنید."}</p>
           <div class="ov-next-actions">
             ${ready === 0
-      ? `<a class="btn btn-primary" href="#/providers">اتصال سرویس</a><a class="btn btn-ghost" href="#/connect">راهنمای اتصال</a>`
+      ? `<a class="btn btn-primary" href="${active[0] ? providerHref(active[0]) : "#/install"}">اتصال سرویس</a><a class="btn btn-ghost" href="#/connect">راهنمای اتصال</a>`
       : `<a class="btn btn-primary" href="#/connect">اتصال به مدل</a><a class="btn btn-ghost" href="#/logs">${icons.logs} گزارش‌ها</a>`}
           </div>
         </div>
@@ -1690,6 +1701,10 @@ async function pageOverview(main) {
       ${o.recent.length ? o.recent.slice(0, 5).map((l) => callRow(l)).join("") : `<div class="empty"><b>هنوز ابزاری فراخوانی نشده است</b>از بخش «آزمایش ابزارها» اولین پیام را ارسال کنید.</div>`}
     </div>`;
 
+  document.getElementById("ov-more")?.addEventListener("click", (e) => {
+    main.querySelectorAll("[data-ov-more]").forEach((el) => { el.hidden = false; });
+    e.currentTarget.remove();
+  });
   document.getElementById("netcheck").onclick = async (e) => {
     const out = document.getElementById("net-out");
     out.hidden = false;

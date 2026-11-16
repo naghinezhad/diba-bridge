@@ -5266,6 +5266,18 @@ body.agent-fullscreen { overflow: hidden; }
 .svc-item:has(input:checked) .svc-tick { background: var(--brand); border-color: var(--brand); color: #fff; }
 
 /* install page (داخل داشبورد) */
+/* Overview: only active services are listed; the rest is one summary line */
+.ov-more {
+  display: block; width: 100%; margin-top: 8px; padding: 9px 12px;
+  border: 1px dashed var(--line); border-radius: 7px; background: transparent;
+  color: var(--brand-600); font-weight: 700; font-size: 12.5px; cursor: pointer;
+}
+.ov-more:hover { background: var(--brand-50); border-color: var(--brand-300); }
+.ov-inactive { margin: 12px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.8; }
+.ov-inactive a { font-weight: 700; }
+.ov-empty { margin: 4px 0; }
+.ov-prov[hidden] { display: none; }
+
 /* ================================================================
    PROXY LIST (تنظیمات)
    ================================================================ */
