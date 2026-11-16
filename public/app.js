@@ -461,6 +461,16 @@ const providerTutorials = {
       "برای انتشار پست، اپ باید تأییدیهی دسترسی w_member_social را داشته باشد؛ در غیر این صورت LinkedIn خطای دسترسی برمی‌گرداند.",
     ],
   },
+  wordpress: {
+    client: [
+      "آدرس سایت وردپرس را وارد کنید (مثلاً https://example.com).",
+      "روش ۱ — Application Password: در پیشخوان وردپرس ← کاربران ← شناسنامه ← «رمزهای عبور برنامه» یک رمز بسازید و همراه نام کاربری اینجا وارد کنید.",
+      "روش ۲ — افزونه‌ی اتصال: پوشه‌ی wordpress-plugin/diba-bridge-connector را zip و در وردپرس نصب و فعال کنید؛ سپس در «تنظیمات ← Diba Bridge» کلید بسازید و در فیلد «کلید افزونه» وارد کنید.",
+      "برای ابزارهای پیشرفته (ووکامرس، سئو، کش، جستجو و جایگزینی، حالت تعمیرات و ...) روش ۲ لازم است؛ هر دو روش را می‌شود هم‌زمان داشت.",
+      "«تست اتصال» را بزنید؛ نام سایت، نسخه‌ی وردپرس و کاربر متصل نمایش داده می‌شود.",
+      "راهنمای کامل: docs/WORDPRESS.md",
+    ],
+  },
 };
 
 function route() {
@@ -572,6 +582,15 @@ const platformMeta = {
     color: "#0A66C2",
     description: "اتصال رسمی LinkedIn API — پروفایل، انتشار پست و فهرست پست‌ها",
     docsUrl: "https://learn.microsoft.com/en-us/linkedin/",
+  },
+  wordpress: {
+    key: "wordpress",
+    nameFa: "وردپرس",
+    nameEn: "WordPress",
+    logo: "assets/wordpress.svg",
+    color: "#21759b",
+    description: "مدیریت کامل سایت وردپرس — نوشته‌ها، رسانه، دیدگاه‌ها، کاربران، افزونه‌ها، سئو و ووکامرس",
+    docsUrl: "https://developer.wordpress.org/rest-api/",
   },
 };
 
