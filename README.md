@@ -44,6 +44,20 @@
 
 ---
 
+### ⚠️ مسئولیت امنیتی و استفاده‌ی تجاری
+
+دیباپل به حساب‌های پیام‌رسان، **سرویس‌های بانکی و مالی** و سایت شما وصل می‌شود و نشست‌ها، توکن‌ها و کلیدهای این حساب‌ها را روی سرور شما نگه می‌دارد. به همین دلیل:
+
+- **این پروژه «همان‌طور که هست» و بدون هیچ‌گونه ضمانت منتشر شده است** (مطابق مجوز MIT). دیباچین و مشارکت‌کنندگان مسئولیتی در قبال زیان مالی، نشت داده، مسدود شدن حساب یا هر پیامد دیگر استفاده از آن ندارند.
+- **پیش از بازبینی و تأمین امنیت، آن را به‌صورت تجاری یا عملیاتی عرضه نکنید.** اگر دیباپل را در محصول، خدمت یا کسب‌وکار خود به کار می‌گیرید، **مسئولیت کامل امنیت، نگهداری داده و پیامدهای آن بر عهده‌ی خود شماست.**
+- حداقل اقدام‌های لازم پیش از استفاده‌ی واقعی: ممیزی امنیتی مستقل کد و استقرار، اجرا فقط پشت HTTPS و دسترسی محدود، رمز عبور قوی و تنظیم `ADMIN_PASSWORD`، محدود کردن دسترسی به پوشه‌ی `data`، پشتیبان‌گیری رمزنگاری‌شده، پایش لاگ‌ها و به‌روز نگه داشتن وابستگی‌ها.
+- اتصال برخی سرویس‌ها (از جمله سرویس‌های بانکی) از راه API **غیررسمی** انجام می‌شود. رعایت شرایط استفاده‌ی هر سرویس و قوانین و مقررات مالی، بانکی و حفاظت از داده در کشور شما بر عهده‌ی خودتان است.
+- هیچ عملیات مالی را بدون تأیید انسانی و بدون تطبیق با منبع رسمی (اپلیکیشن یا صورت‌حساب بانک) انجام ندهید؛ خروجی مدل‌های هوش مصنوعی ممکن است نادرست باشد.
+
+گزارش مشکلات امنیتی: [SECURITY.md](SECURITY.md)
+
+---
+
 ### قابلیت‌های اصلی دیبا پل
 
 - 🔐 **اتصال با حساب کاربری (بدون ربات):**
@@ -337,6 +351,20 @@ WORDPRESS_CONNECTOR_KEY=dbk_...
 **Diba Bridge (دیبا پل)** is an enterprise-grade, high-performance **Model Context Protocol (MCP)** server with an integrated web management dashboard. It connects leading Iranian messaging networks (**Bale**, **Eitaa**, **Rubika**, and **Soroush Plus**) to modern AI agents, developer tools, and LLM clients including **Claude Code**, **Cursor**, **Claude Desktop**, and custom autonomous workflows.
 
 Developed by **[Dibachain](https://dibachain.ir)**, the dashboard and API strictly follow Dibachain's production design system, delivering a clean, accessible, and responsive user experience.
+
+---
+
+### ⚠️ Security Responsibility and Commercial Use
+
+Diba Bridge connects to messenger accounts, **banking and financial services** and your website, and keeps the sessions, tokens and keys of those accounts on your server. For that reason:
+
+- **The project is provided “as is”, without warranty of any kind** (see the MIT license). Dibachain and the contributors accept no liability for financial loss, data leaks, suspended accounts or any other consequence of using it.
+- **Do not offer it commercially or run it in production before it has been reviewed and secured.** If you use Diba Bridge in your own product, service or business, **you take full responsibility for its security, the data it holds and the consequences.**
+- The minimum before any real use: an independent security audit of the code and your deployment, HTTPS only with restricted access, a strong password and `ADMIN_PASSWORD` set, tight permissions on the `data` directory, encrypted backups, log monitoring and up-to-date dependencies.
+- Some services (including banking services) are reached through **unofficial** APIs. Complying with each service's terms of use and with the financial, banking and data-protection rules of your jurisdiction is your responsibility.
+- Never carry out a financial action without human approval and without checking it against the official source (the bank's app or statement); AI model output can be wrong.
+
+Report security issues as described in [SECURITY.md](SECURITY.md).
 
 ---
 
