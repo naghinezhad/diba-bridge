@@ -866,6 +866,8 @@ export class DibaMcpEngine {
         name: p.name,
         nameFa: p.nameFa,
         category: p.category,
+        region: p.region ?? "international",
+        unofficial: p.unofficial === true,
         color: p.color,
         glyph: p.glyph,
         description: p.description,

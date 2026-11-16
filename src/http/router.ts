@@ -988,8 +988,8 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     const providers = engine.describeProviders();
     res.json({
       version: SERVER_VERSION,
-      providers: providers.map(({ id, nameFa, name, color, glyph, enabled, ready, tools }) => ({
-        id, nameFa, name, color, glyph, enabled, ready, toolCount: tools.length,
+      providers: providers.map(({ id, nameFa, name, category, region, color, glyph, enabled, ready, tools }) => ({
+        id, nameFa, name, category, region, color, glyph, enabled, ready, toolCount: tools.length,
       })),
       activeTools: engine.activeTools().length + 1,
       totalTools: providers.reduce((s, p) => s + p.tools.length, 0) + 1,
@@ -1245,7 +1245,7 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     }),
   );
 
-  router.get(/^\/(overview|providers|inbox|triggers|playground|logs|dibarouter|connect)\/?$/, (req, res) => {
+  router.get(/^\/(overview|providers|banking|inbox|triggers|playground|logs|dibarouter|connect)\/?$/, (req, res) => {
     const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
     res.redirect(`/#/${req.params[0]}${qs}`);
   });

@@ -155,13 +155,20 @@ export interface ProviderAuthDef {
   logout: (ctx: ProviderContext, save: (values: Record<string, string>) => void) => Promise<AuthStep>;
 }
 
-export type Category = "messenger" | "payment" | "sms" | "map" | "utility";
+export type Category = "messenger" | "banking" | "payment" | "sms" | "map" | "utility";
+
+/** خاستگاه سرویس: ایرانی یا خارجی (برای دسته‌بندی در داشبورد) */
+export type Region = "iran" | "international";
 
 export interface ProviderDef {
   id: string;
   name: string;
   nameFa: string;
   category: Category;
+  /** اگر تعیین نشود، سرویس «خارجی» حساب می‌شود */
+  region?: Region;
+  /** اتصال از راه API منتشرنشده‌ی اپلیکیشن است، نه API رسمی سرویس */
+  unofficial?: boolean;
   /** رنگ شاخص برای داشبورد */
   color: string;
   /** حرف نمایشی در آیکن */
