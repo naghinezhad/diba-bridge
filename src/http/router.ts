@@ -8,7 +8,8 @@ import { dibaRouterChat, dibaRouterModels, dibaRouterTest, type DibaRouterMessag
 import { compactConversation, compactToolResult, extractContextLimit, fitContextToBudget, isContextLimitError, selectAndCompactTools, summarizeContextError } from "../core/context.js";
 import { SERVER_VERSION, type DibaMcpEngine } from "../core/engine.js";
 import { ModelLimits, planContext } from "../core/context-budget.js";
-import { configureProxy } from "../core/net.js";
+import { configureProxy, probeViaProxy } from "../core/net.js";
+import { ProxyManager, ProxyPoolError } from "../core/proxy-manager.js";
 import { normalizeProfile, ProfileError, PROFILE_LIMITS } from "../core/profile.js";
 import { proxyEnvOf, type AppProxyType } from "../core/store.js";
 import { runNetcheck } from "../core/netcheck.js";
@@ -563,6 +564,10 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     const before = engine.store.settings();
     engine.store.updateSettings(settings);
     applyProxySettings(settings);
+    // پروکسی دستی جای انتخاب فهرست را می‌گیرد؛ انتخاب خودکار خاموش می‌شود تا آن را برنگرداند
+    const pool = engine.store.proxyPool();
+    const active = pool.entries.find((p) => p.id === pool.activeId);
+    if (active && active.url !== settings.proxyUrl) engine.store.saveProxyPool({ ...pool, auto: false, activeId: undefined });
     res.json({
       ok: true,
       ...engine.store.settings(),
@@ -582,6 +587,71 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     setCookie(req, res, sessions.create(), SESSION_MAX_AGE);
     res.json({ ok: true });
   });
+
+  // ---------------- فهرست پروکسی ----------------
+  // مقصدهای سنجش را می‌شود با PROXY_TEST_URLS (جدا شده با ویرگول) عوض کرد، مثلاً نشانی سرویسی که واقعاً لازم دارید
+  const probeTargets = String(env.PROXY_TEST_URLS ?? "")
+    .split(",")
+    .map((u) => u.trim())
+    .filter((u) => /^https?:\/\//i.test(u));
+  const proxies = new ProxyManager({
+    store: engine.store,
+    probe: probeViaProxy,
+    probeOptions: probeTargets.length ? { targets: probeTargets } : undefined,
+    apply: ({ proxyType, proxyUrl }) => {
+      const current = engine.store.settings();
+      const settings = { proxyType, proxyUrl, logRetentionDays: current.logRetentionDays, mcpWriteLimit: current.mcpWriteLimit };
+      engine.store.updateSettings(settings);
+      applyProxySettings(settings);
+    },
+  });
+  proxies.schedule();
+
+  /** خطای قابل‌انتظار فهرست پروکسی را به پاسخ 400 تبدیل می‌کند */
+  const proxyRoute = (handler: (req: Request, res: Response) => unknown) => async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await handler(req, res);
+    } catch (err) {
+      if (err instanceof ProxyPoolError) return void res.status(400).json({ error: err.message });
+      next(err);
+    }
+  };
+
+  api.get("/proxies", (_req, res) => {
+    res.json(proxies.describe());
+  });
+
+  api.post("/proxies", proxyRoute((req, res) => {
+    const text = typeof req.body?.list === "string" ? req.body.list : "";
+    if (text.length > 20_000) throw new ProxyPoolError("فهرست خیلی طولانی است");
+    const result = proxies.add(text);
+    proxies.schedule();
+    res.json({ ok: true, ...result, ...proxies.describe() });
+  }));
+
+  api.post("/proxies/test", proxyRoute(async (_req, res) => {
+    res.json({ ok: true, ...(await proxies.test()) });
+  }));
+
+  api.put("/proxies/auto", proxyRoute((req, res) => {
+    proxies.setAuto(req.body?.auto === true);
+    res.json({ ok: true, ...proxies.describe() });
+  }));
+
+  api.put("/proxies/:id", proxyRoute((req, res) => {
+    const id = String(req.params.id);
+    if (req.body?.active === true) proxies.activate(id);
+    else if (typeof req.body?.enabled === "boolean") proxies.setEnabled(id, req.body.enabled);
+    else throw new ProxyPoolError("تغییر نامعتبر است");
+    proxies.schedule();
+    res.json({ ok: true, ...proxies.describe() });
+  }));
+
+  api.delete("/proxies/:id", proxyRoute((req, res) => {
+    proxies.remove(String(req.params.id));
+    proxies.schedule();
+    res.json({ ok: true, ...proxies.describe() });
+  }));
 
   // ---------------- دیبا روتر ----------------
   // سقف کانتکست هر مدل (اعلام‌شده در فهرست مدل‌ها + آنچه از خطای خود مدل یاد گرفته‌ایم)
