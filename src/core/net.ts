@@ -6,7 +6,7 @@
  *   HTTPS_PROXY=http://host:3128                 ← پراکسی HTTP معمولی
  *   NO_PROXY=localhost,127.0.0.1                 ← آدرس‌هایی که مستقیم بروند
  */
-import { Agent, EnvHttpProxyAgent, fetch as undiciFetch, FormData as UndiciFormData, Socks5ProxyAgent, type Dispatcher } from "undici";
+import { Agent, EnvHttpProxyAgent, fetch as undiciFetch, FormData as UndiciFormData, ProxyAgent, Socks5ProxyAgent, type Dispatcher } from "undici";
 
 let dispatcher: Dispatcher = new Agent();
 /** اتصال مستقیم، مستقل از پراکسی تنظیم‌شده */
@@ -61,6 +61,40 @@ export function netFetch(url: string, init: FetchInit = {}) {
 /** درخواست بدون پراکسی؛ برای سرویس‌هایی که از هر دو مسیر در دسترس‌اند (مثل دیبا روتر) */
 export function netFetchDirect(url: string, init: FetchInit = {}) {
   return undiciFetch(url, { ...init, dispatcher: directDispatcher });
+}
+
+/** یک dispatcher مستقل برای یک پروکسی مشخص (برای سنجش، بدون تغییر پروکسی فعال برنامه) */
+function dispatcherFor(proxyUrl: string): Dispatcher {
+  const u = new URL(proxyUrl);
+  if (/^socks/i.test(u.protocol)) {
+    return new Socks5ProxyAgent(`socks5://${u.hostname}:${u.port || 1080}`, {
+      username: u.username ? decodeURIComponent(u.username) : undefined,
+      password: u.password ? decodeURIComponent(u.password) : undefined,
+    });
+  }
+  return new ProxyAgent(proxyUrl);
+}
+
+/**
+ * زمان یک درخواست کامل (اتصال، TLS و پاسخ) از راه یک پروکسی مشخص را اندازه می‌گیرد.
+ * خطای اتصال، پایان مهلت و پاسخ خطای خودِ پروکسی (407 یا 5xx) ناموفق حساب می‌شود.
+ */
+export async function probeViaProxy(proxyUrl: string, target: string, timeoutMs: number): Promise<{ ok: boolean; ms: number; error?: string }> {
+  let agent: Dispatcher | undefined;
+  const started = performance.now();
+  try {
+    agent = dispatcherFor(proxyUrl);
+    const res = await undiciFetch(target, { method: "GET", dispatcher: agent, redirect: "manual", signal: AbortSignal.timeout(timeoutMs) });
+    await res.arrayBuffer().catch(() => undefined);
+    const ms = Math.round(performance.now() - started);
+    if (res.status === 407) return { ok: false, ms, error: "پروکسی نام کاربری و رمز می‌خواهد (HTTP 407)" };
+    if (res.status >= 500) return { ok: false, ms, error: `پروکسی یا مقصد خطا داد (HTTP ${res.status})` };
+    return { ok: true, ms };
+  } catch (err) {
+    return { ok: false, ms: Math.round(performance.now() - started), error: describeNetError(err) };
+  } finally {
+    agent?.close().catch(() => undefined);
+  }
 }
 
 export { UndiciFormData as FormData };
