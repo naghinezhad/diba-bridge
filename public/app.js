@@ -4026,6 +4026,25 @@ async function pageSettings(main) {
         <div class="settings-actions"><button class="btn btn-ghost" type="button" id="save-runtime">ذخیره محیط</button><span class="hint" id="runtime-status"></span></div>
       </section>
 
+      <section class="panel settings-proxy-pool" id="proxy-pool">
+        <div class="px-head">
+          <div>
+            <h2>فهرست پروکسی</h2>
+            <p class="desc">چند پروکسی ثبت کنید. با «سنجش سرعت» هر کدام چند بار آزمایش می‌شود و بر اساس سرعت، پایداری و سابقه رتبه می‌گیرد؛ با انتخاب خودکار، سریع‌ترین پروکسی سالم فعال می‌شود و هر ۵ دقیقه دوباره بررسی می‌شود.</p>
+          </div>
+          <label class="px-auto"><span>انتخاب خودکار سریع‌ترین</span><span class="switch"><input type="checkbox" id="px-auto" aria-label="انتخاب خودکار سریع‌ترین پروکسی"><span></span></span></label>
+        </div>
+        <div class="px-add">
+          <textarea class="textarea ltr-input" id="px-list" rows="3" spellcheck="false" placeholder="هر خط یک پروکسی&#10;socks5://user:pass@10.0.0.1:1080&#10;http://10.0.0.2:3128" aria-label="فهرست پروکسی‌های تازه"></textarea>
+          <div class="settings-actions">
+            <button class="btn btn-primary" type="button" id="px-add-btn">افزودن به فهرست</button>
+            <button class="btn btn-ghost" type="button" id="px-test-btn">سنجش سرعت همه</button>
+            <span class="hint" id="px-status" role="status"></span>
+          </div>
+        </div>
+        <div id="px-table"></div>
+      </section>
+
       <section class="panel settings-password-panel">
         <h2>رمز عبور</h2>
         <p class="desc">پس از تغییر رمز، نشست‌های قبلی باطل می‌شوند و همین مرورگر دوباره وارد می‌شود.</p>
@@ -4067,6 +4086,92 @@ async function pageSettings(main) {
   };
   document.getElementById("save-settings").addEventListener("click", () => saveSettings(false));
   document.getElementById("save-runtime").addEventListener("click", () => saveSettings(true));
+
+  // ---- فهرست پروکسی
+  const pxTable = document.getElementById("px-table");
+  const pxStatus = document.getElementById("px-status");
+  const pxAuto = document.getElementById("px-auto");
+  const drawProxies = (pool) => {
+    pxAuto.checked = pool.auto;
+    if (!pool.entries.length) {
+      pxTable.innerHTML = `<div class="empty"><b>هنوز پروکسی‌ای در فهرست نیست</b>نشانی‌ها را بالا وارد کنید و «افزودن به فهرست» را بزنید.</div>`;
+      return;
+    }
+    pxTable.innerHTML = `<div class="px-list" role="list">${pool.entries.map((p, i) => {
+      const state = !p.enabled ? ["pill-off", "خاموش"] : !p.checks ? ["pill-off", "سنجیده نشده"] : p.alive ? ["pill-ok", "سالم"] : ["pill-err", "بدون پاسخ"];
+      return `<div class="px-row${p.active ? " is-active" : ""}${p.enabled ? "" : " is-off"}" role="listitem" data-px="${esc(p.id)}">
+        <span class="px-rank">${p.alive && p.enabled ? fa(i + 1) : "—"}</span>
+        <div class="px-main">
+          <code class="ltr px-url" title="${esc(p.url)}">${esc(p.url)}</code>
+          <div class="px-tags">
+            <span class="pill ${state[0]}">${state[1]}</span>
+            ${p.active ? '<span class="pill pill-ok">فعال</span>' : ""}
+            <span class="px-kind">${p.kind === "socks5" ? "SOCKS5" : "HTTP"}</span>
+            ${p.lastError && p.enabled ? `<span class="px-err" title="${esc(p.lastError)}">${esc(p.lastError)}</span>` : ""}
+          </div>
+        </div>
+        <dl class="px-metrics">
+          <div><dt>تأخیر</dt><dd>${p.ewmaMs === null ? "—" : `${fa(p.ewmaMs)} <small>ms</small>`}</dd></div>
+          <div><dt>نوسان</dt><dd>${p.jitterMs === null ? "—" : `${fa(p.jitterMs)} <small>ms</small>`}</dd></div>
+          <div><dt>موفقیت</dt><dd>${p.successRate === null ? "—" : `${fa(p.successRate)}٪`}</dd></div>
+        </dl>
+        <div class="px-actions">
+          <button class="btn btn-ghost btn-sm" type="button" data-px-use ${p.active ? "disabled" : ""}>${p.active ? "در حال استفاده" : "استفاده"}</button>
+          <label class="switch" title="${p.enabled ? "خاموش کردن این پروکسی" : "روشن کردن این پروکسی"}"><input type="checkbox" data-px-toggle ${p.enabled ? "checked" : ""} aria-label="روشن بودن پروکسی"><span></span></label>
+          <button class="btn btn-icon btn-quiet btn-danger" type="button" data-px-del title="حذف" aria-label="حذف پروکسی">${icons.cross}</button>
+        </div>
+      </div>`;
+    }).join("")}</div>`;
+  };
+  const pxCall = async (btn, fn, done) => {
+    pxStatus.textContent = "";
+    try {
+      const r = btn ? await busy(btn, fn) : await fn();
+      drawProxies(r);
+      // پروکسی فعال برنامه ممکن است عوض شده باشد؛ فرم بالای صفحه هم همان را نشان دهد
+      const fresh = await api("settings");
+      Object.assign(s, fresh);
+      proxyType = fresh.proxyType;
+      proxyInput.value = fresh.proxyUrl || "";
+      proxyInput.disabled = proxyType === "none";
+      main.querySelectorAll("[data-settings-proxy] [data-proxy-type]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.proxyType === proxyType)));
+      if (done) pxStatus.textContent = done(r);
+    } catch (ex) {
+      if (!(ex instanceof AuthError)) pxStatus.textContent = ex.message;
+    }
+  };
+  api("proxies").then(drawProxies).catch((ex) => { if (!(ex instanceof AuthError)) pxStatus.textContent = ex.message; });
+  document.getElementById("px-add-btn").addEventListener("click", (e) => {
+    const box = document.getElementById("px-list");
+    pxCall(e.currentTarget, () => api("proxies", { body: { list: box.value } }), (r) => {
+      if (r.added) box.value = "";
+      const parts = [`${fa(r.added)} پروکسی اضافه شد`];
+      if (r.duplicates) parts.push(`${fa(r.duplicates)} تکراری`);
+      if (r.invalid.length) parts.push(`${fa(r.invalid.length)} خط نامعتبر`);
+      return parts.join(" · ");
+    });
+  });
+  document.getElementById("px-test-btn").addEventListener("click", (e) => {
+    pxStatus.textContent = "در حال سنجش…";
+    pxCall(e.currentTarget, () => api("proxies/test", { body: {} }), (r) => {
+      const alive = r.entries.filter((p) => p.alive && p.enabled).length;
+      const reason = { first: "سریع‌ترین پروکسی فعال شد", faster: "پروکسی سریع‌تر جایگزین شد", failover: "پروکسی قبلی پاسخ نمی‌داد؛ جایگزین شد" }[r.switched?.reason];
+      return `${fa(alive)} از ${fa(r.entries.length)} پروکسی پاسخ داد${reason ? ` · ${reason}` : ""}`;
+    });
+  });
+  pxAuto.addEventListener("change", () => pxCall(null, () => api("proxies/auto", { method: "PUT", body: { auto: pxAuto.checked } }), () => (pxAuto.checked ? "انتخاب خودکار روشن شد؛ با سنجش بعدی سریع‌ترین پروکسی فعال می‌شود." : "انتخاب خودکار خاموش شد.")));
+  pxTable.addEventListener("click", async (e) => {
+    const id = e.target.closest("[data-px]")?.dataset.px;
+    if (!id) return;
+    const use = e.target.closest("[data-px-use]");
+    if (use) return pxCall(use, () => api(`proxies/${id}`, { method: "PUT", body: { active: true } }), () => "این پروکسی فعال شد و انتخاب خودکار خاموش است.");
+    const del = e.target.closest("[data-px-del]");
+    if (del) return pxCall(del, () => api(`proxies/${id}`, { method: "DELETE" }), () => "پروکسی حذف شد.");
+  });
+  pxTable.addEventListener("change", (e) => {
+    const toggle = e.target.closest("[data-px-toggle]");
+    if (toggle) pxCall(null, () => api(`proxies/${toggle.closest("[data-px]").dataset.px}`, { method: "PUT", body: { enabled: toggle.checked } }));
+  });
 
   const passwordForm = document.getElementById("password-form");
   if (passwordForm) passwordForm.addEventListener("submit", async (e) => {

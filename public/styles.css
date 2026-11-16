@@ -5267,6 +5267,52 @@ body.agent-fullscreen { overflow: hidden; }
 
 /* install page (داخل داشبورد) */
 /* ================================================================
+   PROXY LIST (تنظیمات)
+   ================================================================ */
+.shell .settings-proxy-pool { grid-column: 1 / -1; }
+.px-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.px-head > div { flex: 1 1 320px; min-width: 0; }
+.px-auto { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; color: var(--ink-2); cursor: pointer; }
+.px-add .textarea { min-height: 84px; font-size: 12.5px; direction: ltr; text-align: left; font-family: var(--mono); }
+.px-add .settings-actions { margin-top: 10px; }
+#px-table { margin-top: 16px; }
+.px-list { display: grid; gap: 8px; }
+/* نشانی همیشه یک سطر کامل دارد؛ آمار و دکمه‌ها زیر آن می‌نشینند تا در ستون باریک هم بریده نشود */
+.px-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+.px-row.is-active { border-color: var(--brand); background: var(--brand-50); }
+.px-row.is-off { opacity: .6; }
+.px-rank { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--bg-soft); color: var(--ink-2); font-weight: 800; font-size: 13px; }
+.px-row.is-active .px-rank { background: var(--brand); color: #fff; }
+.px-main { min-width: 0; display: grid; gap: 6px; }
+.px-url { display: block; font-size: 12.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.px-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.px-kind { font-family: var(--mono); font-size: 10.5px; font-weight: 700; color: var(--muted); }
+.px-err { font-size: 11px; color: var(--danger, #dc2626); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.px-metrics { display: flex; gap: 16px; margin: 0; }
+.px-metrics div { display: flex; flex-direction: column; align-items: center; min-width: 52px; }
+.px-metrics dt { font-size: 10.5px; color: var(--muted); }
+.px-metrics dd { margin: 0; font-size: 13.5px; font-weight: 800; color: var(--ink); white-space: nowrap; }
+.px-metrics small { font-size: 10px; font-weight: 600; color: var(--muted); }
+.px-actions { display: flex; align-items: center; gap: 8px; }
+.px-main { grid-column: 2 / -1; }
+.px-metrics { grid-column: 2 / 3; padding-top: 8px; border-top: 1px dashed var(--line); }
+.px-actions { grid-column: 3 / 4; padding-top: 8px; border-top: 1px dashed var(--line); justify-content: flex-end; }
+.px-metrics div { align-items: flex-start; }
+@media (max-width: 560px) {
+  .px-metrics, .px-actions { grid-column: 1 / -1; justify-content: space-between; }
+  .px-actions { border-top: 0; padding-top: 0; }
+}
+
+/* ================================================================
    MOBILE HARDENING — هیچ صفحه‌ای نباید اسکرول افقی بدهد
    ================================================================ */
 .shell .main { min-width: 0; }
