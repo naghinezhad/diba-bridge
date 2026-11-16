@@ -18,6 +18,8 @@ Open <http://127.0.0.1:8090/>.
 1. Push this folder and `.github/workflows/pages.yml` to the `main` branch.
 2. In the repository, open **Settings → Pages**.
 3. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+   This one-time setting must be done by a repository admin; `GITHUB_TOKEN`
+   cannot create the Pages site itself.
 4. Run the **Deploy landing page** workflow, or push a change under `landing/`.
 5. The site is published at:
 
