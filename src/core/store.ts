@@ -23,7 +23,25 @@ export interface StoredConfig {
   dibarouter?: DibaRouterStored;
   /** تنظیمات نصب/میزبانی */
   settings?: AppSettingsStored;
+  /** مشخصات سازمان/پروژه و وضعیت نصب اولیه */
+  profile?: ProfileStored;
 }
+
+/** مشخصاتی که در نصب اولیه گرفته می‌شود */
+export interface ProfileStored {
+  /** نام و نام خانوادگی مسئول */
+  ownerName?: string;
+  /** نام شرکت یا پروژه */
+  orgName?: string;
+  description?: string;
+  website?: string;
+  /** لوگو به شکل data URL (فقط تصویر بیت‌مپ؛ در سرور اعتبارسنجی می‌شود) */
+  logo?: string;
+  /** زمان تکمیل نصب اولیه (ISO)؛ تا وقتی خالی است نصب‌کننده نمایش داده می‌شود */
+  installedAt?: string;
+}
+
+export const PROFILE_TEXT_FIELDS = ["ownerName", "orgName", "description", "website"] as const;
 
 export type AppProxyType = "none" | "http" | "socks5";
 
@@ -152,7 +170,7 @@ export class ConfigStore {
     this.persist();
   }
 
-  /** حذف رمز ادمین؛ اجرای بعدی دوباره «کد راه‌اندازی» می‌دهد */
+  /** حذف رمز ادمین؛ اجرای بعدی دوباره در داشبورد رمز تازه می‌خواهد */
   clearAdmin() {
     delete this.data.admin;
     this.data.sessionEpoch++;
@@ -247,6 +265,45 @@ export class ConfigStore {
     this.data.settings = next;
     this.persist();
     return this.settings();
+  }
+
+  // ---------- مشخصات و نصب اولیه ----------
+  profile() {
+    const p = this.data.profile ?? {};
+    return {
+      ownerName: p.ownerName ?? "",
+      orgName: p.orgName ?? "",
+      description: p.description ?? "",
+      website: p.website ?? "",
+      logo: p.logo ?? "",
+      installedAt: p.installedAt ?? "",
+      installed: Boolean(p.installedAt),
+    };
+  }
+
+  /** نصب اولیه هنوز کامل نشده است */
+  get needsInstall(): boolean {
+    return !this.data.profile?.installedAt;
+  }
+
+  /** مقادیر باید از قبل اعتبارسنجی شده باشند؛ رشته‌ی خالی یعنی حذف آن فیلد */
+  updateProfile(patch: Partial<Pick<ProfileStored, (typeof PROFILE_TEXT_FIELDS)[number] | "logo">>) {
+    const next: ProfileStored = { ...(this.data.profile ?? {}) };
+    for (const key of [...PROFILE_TEXT_FIELDS, "logo"] as const) {
+      const value = patch[key];
+      if (value === undefined) continue;
+      if (value) next[key] = value;
+      else delete next[key];
+    }
+    this.data.profile = next;
+    this.persist();
+    return this.profile();
+  }
+
+  markInstalled() {
+    this.data.profile = { ...(this.data.profile ?? {}), installedAt: new Date().toISOString() };
+    this.persist();
+    return this.profile();
   }
 
   // ---------- سرویس‌ها ----------
