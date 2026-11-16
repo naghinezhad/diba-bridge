@@ -9,6 +9,8 @@
 import { Agent, EnvHttpProxyAgent, fetch as undiciFetch, FormData as UndiciFormData, Socks5ProxyAgent, type Dispatcher } from "undici";
 
 let dispatcher: Dispatcher = new Agent();
+/** اتصال مستقیم، مستقل از پراکسی تنظیم‌شده */
+const directDispatcher: Dispatcher = new Agent();
 let mode: { type: "direct" | "http" | "socks5"; target?: string } = { type: "direct" };
 
 function hidePassword(url: string) {
@@ -54,6 +56,11 @@ export type FetchInit = Parameters<typeof undiciFetch>[1];
 
 export function netFetch(url: string, init: FetchInit = {}) {
   return undiciFetch(url, { ...init, dispatcher });
+}
+
+/** درخواست بدون پراکسی؛ برای سرویس‌هایی که از هر دو مسیر در دسترس‌اند (مثل دیبا روتر) */
+export function netFetchDirect(url: string, init: FetchInit = {}) {
+  return undiciFetch(url, { ...init, dispatcher: directDispatcher });
 }
 
 export { UndiciFormData as FormData };

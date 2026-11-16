@@ -175,7 +175,7 @@ export class ConfigStore {
   // ---------- دیبا روتر ----------
   dibarouter() {
     const saved = this.data.dibarouter ?? {};
-    const baseUrl = (this.env.DIBAROUTER_BASE_URL || saved.baseUrl || DIBAROUTER_DEFAULT_BASE).replace(/\/+$/, "");
+    const baseUrl = (this.env.DIBAROUTER_BASE_URL || saved.baseUrl || DIBAROUTER_DEFAULT_BASE).trim().replace(/\/+$/, "");
     return {
       baseUrl,
       apiKey: this.env.DIBAROUTER_API_KEY || saved.apiKey || "",
