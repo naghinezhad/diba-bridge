@@ -127,7 +127,8 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 سپس داشبورد را در مرورگر باز کنید:  
 👉 **http://127.0.0.1:3790**
 
-> **کد راه‌اندازی اولیه:** در اجرای اول (در صورت عدم تعیین `ADMIN_PASSWORD`)، یک کد راه‌اندازی شش‌حرفی در کنسول نمایش داده می‌شود که با استفاده از آن می‌توانید رمز عبور داشبورد را ثبت نمایید.  
+> **نصب اولیه:** در اجرای اول، داشبورد یک نصب‌کننده‌ی مرحله‌به‌مرحله نشان می‌دهد: خوش‌آمد، مشخصات شرکت یا پروژه (نام، آدرس سایت، لوگو)، انتخاب سرویس‌هایی که می‌خواهید فعال شوند و انتخاب رمز عبور داشبورد. بعداً از بخش «نصب و مشخصات» می‌توانید مشخصات را ویرایش و سرویس تازه فعال کنید.  
+> اگر سرور از اینترنت در دسترس است، پیش از اولین اجرا `ADMIN_PASSWORD` را تنظیم کنید؛ در غیر این صورت اولین کسی که داشبورد را باز کند رمز را انتخاب می‌کند.  
 > برای رد شدن کامل از این مرحله، `ADMIN_PASSWORD` را در `.env` تنظیم کنید.
 
 ---
@@ -423,7 +424,8 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 Access the dashboard at:  
 👉 **http://127.0.0.1:3790**
 
-> **Initial Setup:** On first launch without `ADMIN_PASSWORD` in your environment, a 6-character setup code is printed to the console. Enter this code in the dashboard to set your administrative password.  
+> **First-run installer:** On first launch the dashboard opens a step-by-step installer: welcome, your company or project details (name, website, logo), the services you want enabled, and the dashboard password. You can edit the details and enable more services later from the “Install & profile” section.  
+> If the server is reachable from the internet, set `ADMIN_PASSWORD` before the first start; otherwise the first person to open the dashboard chooses the password.  
 > To skip this step entirely, set `ADMIN_PASSWORD` in `.env`.
 
 ---
