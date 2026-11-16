@@ -67,7 +67,10 @@
   - **سروش‌پلاس (Soroush+):** حساب کاربری (پروتکل تلگرامی MTProto)
   - **تلگرام:** حساب کاربری (MTProto)
 - 🌐 **اتصال به وردپرس:** مدیریت کامل سایت وردپرسی از طریق MCP — نوشته‌ها و برگه‌ها، رسانه، دیدگاه‌ها، کاربران، افزونه‌ها و ووکامرس — با رمز برنامه (Application Password) یا افزونه‌ی همراه `wordpress-plugin/diba-bridge-connector`. راهنما: [docs/WORDPRESS.md](docs/WORDPRESS.md)
-- 🏦 **سرویس‌های بانکی:** تب جدای «سرویس‌های بانکی» در داشبورد با زیرمنوی **ایرانی / خارجی**. فعلاً **بلوبانک** (ایرانی) با توکن نشست اپلیکیشن وصل می‌شود و موجودی، کارت‌ها و تراکنش‌ها را می‌خواند؛ هنوز سرویس بانکی خارجی اضافه نشده است. راهنما: [docs/blubank-testing.md](docs/blubank-testing.md)
+- 🏦 **سرویس‌های بانکی:** تب جدای «سرویس‌های بانکی» در داشبورد با زیرمنوی **ایرانی / خارجی**. **بلوبانک** (ایرانی) با توکن نشست اپلیکیشن وصل می‌شود و موجودی، کارت‌ها و تراکنش‌ها را می‌خواند. راهنما: [docs/blubank-testing.md](docs/blubank-testing.md)
+- 📈 **صرافی‌های ارز دیجیتال (خارجی):** **بایننس، بای‌بیت، او‌کی‌ایکس (OKX)، کوکوین و کراکن** با API رسمی هر صرافی و هفت ابزار هم‌شکل: قیمت و آمار ۲۴ساعته، دفتر سفارش، کندل، موجودی، سفارش‌های باز، ثبت سفارش و لغو سفارش. داده‌ی بازار بدون کلید کار می‌کند. **معامله به‌طور پیش‌فرض خاموش است**: تا «اجازه‌ی معامله» را در تنظیمات همان صرافی روشن نکنید ثبت و لغو سفارش رد می‌شود، و ثبت سفارش بدون `confirm=true` فقط پیش‌نمایش برمی‌گرداند. راهنما: [docs/EXCHANGES.md](docs/EXCHANGES.md)
+- 🧭 **نصب‌کننده‌ی اولین اجرا:** خوش‌آمد، مشخصات شرکت یا پروژه (نام، آدرس سایت، لوگو)، انتخاب سرویس‌ها (تک‌تک یا «انتخاب همه») و رمز عبور داشبورد؛ بخش «نصب و مشخصات» در داشبورد برای ویرایش مشخصات و فعال کردن سرویس‌های تازه.
+- 🚦 **فهرست پروکسی با انتخاب خودکار سریع‌ترین:** چند پروکسی HTTP/SOCKS5 ثبت کنید؛ هر کدام چند بار سنجیده می‌شود و امتیازش از میانه‌ی تأخیر (EWMA)، نرخ خطا و نوسان ساخته می‌شود. با انتخاب خودکار، سریع‌ترین پروکسی سالم فعال می‌شود، هر ۵ دقیقه دوباره بررسی می‌شود و با از کار افتادن پروکسی فعال بی‌درنگ جایگزین می‌شود. رمز پروکسی‌ها به مرورگر برنمی‌گردد.
 - 📬 **صندوق پیام‌های دریافتی یکپارچه (Shared Inbox):** مشاهده پیام‌های دریافتی، تفکیک پیام‌های ورودی و خروجی، امکان پاسخ‌گویی مستقیم و استفاده هوش مصنوعی از ابزار `get_updates`.
 - ⚡ **تریگرها و اتوماسیون (Automation Triggers):** صفحه‌ی `#/triggers` با ۳۸ قانون آماده‌ی ویرایش‌پذیر؛ پاسخ خودکار، پاسخ هوشمند دیبا روتر، فوروارد بین پیام‌رسان‌ها، اجرای ابزار MCP و ارسال به Webhook (n8n / Make / CRM). هر تریگر شرط (پیام‌رسان، نوع چت، کلمه‌ی کلیدی، ابزار) و اقدام دارد و با یک کلیک روشن، تست یا خاموش می‌شود. تاریخچه‌ی اجرا در `data/triggers.json` ذخیره می‌شود.
 - 🎨 **داشبورد اختصاصی با زبان طراحی دیباچین:** رابط کاربری مدرن، یک اتصال «حساب کاربری» برای هر پیام‌رسان در آکاردئون اختصاصی، تم تاریک/روشن و واکنش‌گرایی کامل.
@@ -96,7 +99,7 @@
 
 - **پیام‌رسان‌ها:** بالغ و قابل استفاده؛ حساب‌های کاربری، دریافت زنده، ارسال، تریگر و ابزارهای MCP فعال‌اند.
 - **اینستاگرام:** ورود امن با پنجره‌ی مرورگر، عبور از کد واتساپ/۲FA و بازیابی نشست انجام شده است. پروفایل و مدیای حساب هم از طریق ابزارهای MCP خوانده می‌شود. **دایرکت هوشمند هنوز فعال نیست.**
-- **بانکداری:** تب «سرویس‌های بانکی» اضافه شده و **بلوبانک** به‌صورت آزمایشی با توکن نشست اپلیکیشن وصل می‌شود (موجودی، کارت‌ها، تراکنش‌ها). این اتصال از API منتشرنشده‌ی اپلیکیشن است، ورود خودکار ندارد و پاسخ‌ها بدون اسکیمای رسمی خوانده می‌شوند. اتصال به APIهای رسمی بانکی و بانک‌های خارجی هنوز انجام نشده است.
+- **بانکداری:** تب «سرویس‌های بانکی» اضافه شده و **بلوبانک** به‌صورت آزمایشی با توکن نشست اپلیکیشن وصل می‌شود (موجودی، کارت‌ها، تراکنش‌ها). این اتصال از API منتشرنشده‌ی اپلیکیشن است، ورود خودکار ندارد و پاسخ‌ها بدون اسکیمای رسمی خوانده می‌شوند. پنج صرافی خارجی (بایننس، بای‌بیت، OKX، کوکوین، کراکن) با API رسمی اضافه شده‌اند و معامله در آن‌ها پیش‌فرض خاموش است. اتصال به APIهای رسمی بانک‌ها هنوز انجام نشده است.
 
 #### قدم‌های بعدی
 
@@ -274,6 +277,7 @@ MCP_MODE=tools npx diba-mcp
 | **ایتا (حساب کاربری)** | `eitaa_client_get_me`, `eitaa_client_send_message`, `eitaa_client_get_chat`, `eitaa_client_get_chats`, `eitaa_client_get_history`, `eitaa_client_get_updates` |
 | **روبیکا (حساب کاربری)** | `rubika_client_get_me`, `rubika_client_send_message`, `rubika_client_send_photo`, `rubika_client_send_file`, `rubika_client_get_chat`, `rubika_client_get_chats`, `rubika_client_get_history`, `rubika_client_get_updates` + مدیریت گروه/کانال: `list_groups`, `create_group`, `group_members`, `add_group_members`, `remove_group_member`, `edit_group`, `leave_group`, `delete_group`, `list_channels`, `create_channel`, `channel_members`, `add_channel_members`, `remove_channel_member`, `edit_channel`, `delete_channel` |
 | **سروش‌پلاس (حساب کاربری)** | `soroush_client_get_me`, `soroush_client_send_message`, `soroush_client_send_photo`, `soroush_client_send_file`, `soroush_client_get_chat`, `soroush_client_get_chats`, `soroush_client_get_history`, `soroush_client_get_updates` + مدیریت گروه/کانال: `list_groups`, `create_group`, `group_members`, `add_group_members`, `edit_group`, `leave_group`, `delete_group`, `list_channels`, `create_channel`, `channel_members`, `add_channel_members`, `edit_channel`, `leave_channel`, `delete_channel` |
+| **صرافی‌ها** (`binance`, `bybit`, `okx`, `kucoin`, `kraken`) | برای هر صرافی: `<id>_get_ticker`, `<id>_get_orderbook`, `<id>_get_candles`, `<id>_get_balances`, `<id>_get_open_orders`, `<id>_place_order`, `<id>_cancel_order` |
 | **ابزارهای عمومی** | `list_services`, `list_chats` |
 
 ---
@@ -378,7 +382,10 @@ Report security issues as described in [SECURITY.md](SECURITY.md).
   - **Telegram:** Personal User Account (MTProto via GramJS).
 - 🌐 **WordPress integration:** Manage a WordPress site over MCP — posts and pages, media, comments, users, plugins and WooCommerce — using an Application Password or the companion plugin in `wordpress-plugin/diba-bridge-connector`. Guide: [docs/WORDPRESS.md](docs/WORDPRESS.md)
   - **WhatsApp:** Personal account via QR multi-device login (Baileys).
-- 🏦 **Banking services:** a dedicated “Banking services” tab in the dashboard with an **Iranian / International** submenu. **BluBank** (Iranian) is the first provider: it connects with an app session token and reads balances, cards and transactions. No international banking provider has been added yet. Guide: [docs/blubank-testing.md](docs/blubank-testing.md)
+- 🏦 **Banking services:** a dedicated “Banking services” tab in the dashboard with an **Iranian / International** submenu. **BluBank** (Iranian) connects with an app session token and reads balances, cards and transactions. Guide: [docs/blubank-testing.md](docs/blubank-testing.md)
+- 📈 **Crypto exchanges (international):** **Binance, Bybit, OKX, KuCoin and Kraken** through each exchange's official API, with the same seven tools: ticker and 24h statistics, order book, candles, balances, open orders, place order and cancel order. Market data works without a key. **Trading is off by default**: placing and cancelling orders is refused until you turn on “allow trading” for that exchange, and placing an order without `confirm=true` only returns a preview. Guide: [docs/EXCHANGES.md](docs/EXCHANGES.md)
+- 🧭 **First-run installer:** welcome, company or project details (name, website, logo), service selection (one by one or “select all”) and the dashboard password; an “Install & profile” section in the dashboard to edit the details and enable more services later.
+- 🚦 **Proxy list with automatic fastest-proxy selection:** register several HTTP/SOCKS5 proxies; each one is probed several times and scored from its median latency (EWMA), failure rate and jitter. With automatic selection on, the fastest healthy proxy becomes active, is re-checked every five minutes and is replaced immediately when it stops answering. Proxy passwords are never sent back to the browser.
 - 💬 **Integrated Live Inbox:** Synchronize real-time conversations across personal accounts, allowing two-way responses from either the dashboard or the AI agent (`get_updates`).
 - ⚡ **Automation Triggers:** A dedicated `#/triggers` page ships with 38 editable presets — auto-replies, DibaRouter AI answers, cross-messenger forwarding, MCP tool calls and outbound webhooks (n8n / Make / CRM). Each rule has a condition (provider, chat type, keywords, tool) and an action, and can be toggled, tested or deleted in one click; run history lives in `data/triggers.json`.
 - 🎨 **Dibachain Design System:** Production-grade UI with one account connection per messenger, Dark/Light modes, and accessible RTL typography.
@@ -407,7 +414,7 @@ This roadmap shows where the product stands today and where it is heading. The w
 
 - **Messaging:** mature and usable. User-account connections, live ingestion, sending, triggers, and MCP tools are in place.
 - **Instagram:** secure sign-in through a real browser window, WhatsApp/2FA code handling, and session restoration are complete. Profile and media data are available through MCP tools. **Smart Direct is not live yet.**
-- **Banking:** the “Banking services” tab is in place and **BluBank** connects experimentally with an app session token (balances, cards, transactions). It uses the app's unpublished API, has no automated sign-in, and decodes responses without an official schema. Official banking APIs and international banks are not connected yet.
+- **Banking:** the “Banking services” tab is in place and **BluBank** connects experimentally with an app session token (balances, cards, transactions). It uses the app's unpublished API, has no automated sign-in, and decodes responses without an official schema. Five international exchanges (Binance, Bybit, OKX, KuCoin, Kraken) were added through their official APIs, with trading off by default. Official bank APIs are not connected yet.
 
 #### What comes next
 
@@ -516,6 +523,7 @@ claude mcp add --transport http diba-bridge http://127.0.0.1:3790/mcp --header "
 | **Eitaa (User Account)** | `eitaa_client_get_me`, `eitaa_client_send_message`, `eitaa_client_get_chat`, `eitaa_client_get_chats`, `eitaa_client_get_history`, `eitaa_client_get_updates` |
 | **Rubika (User Account)** | `rubika_client_get_me`, `rubika_client_send_message`, `rubika_client_send_photo`, `rubika_client_send_file`, `rubika_client_get_chat`, `rubika_client_get_chats`, `rubika_client_get_history`, `rubika_client_get_updates` + group/channel management: `rubika_client_list_groups`, `create_group`, `group_members`, `add_group_members`, `remove_group_member`, `edit_group`, `leave_group`, `delete_group`, `list_channels`, `create_channel`, `channel_members`, `add_channel_members`, `remove_channel_member`, `edit_channel`, `delete_channel` |
 | **Soroush Plus (User Account)** | `soroush_client_get_me`, `soroush_client_send_message`, `soroush_client_send_photo`, `soroush_client_send_file`, `soroush_client_get_chat`, `soroush_client_get_chats`, `soroush_client_get_history`, `soroush_client_get_updates` + group/channel management: `soroush_client_list_groups`, `create_group`, `group_members`, `add_group_members`, `edit_group`, `leave_group`, `delete_group`, `list_channels`, `create_channel`, `channel_members`, `add_channel_members`, `edit_channel`, `leave_channel`, `delete_channel` |
+| **Exchanges** (`binance`, `bybit`, `okx`, `kucoin`, `kraken`) | Per exchange: `<id>_get_ticker`, `<id>_get_orderbook`, `<id>_get_candles`, `<id>_get_balances`, `<id>_get_open_orders`, `<id>_place_order`, `<id>_cancel_order` |
 | **General Utilities** | `list_services`, `list_chats` |
 
 ---
