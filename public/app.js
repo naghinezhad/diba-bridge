@@ -332,7 +332,13 @@ async function api(path, opts = {}) {
   });
   const data = await res.json().catch(() => ({}));
   if (res.status === 401 && !path.startsWith("auth/")) { boot(); throw new AuthError(); }
-  if (!res.ok) throw new Error(data.error || `خطای ${res.status}`);
+  if (!res.ok) {
+    const err = new Error(data.error || `خطای ${res.status}`);
+    // سرور نام فیلد ایرادناک را می‌فرستد تا فرم آن را علامت بزند
+    if (data.field) err.field = data.field;
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 
@@ -3289,6 +3295,13 @@ const trgActionFa = {
   call_tool: "اجرای ابزار MCP",
   webhook: "ارسال Webhook",
 };
+const trgActionHint = {
+  reply_template: "یک متن ثابت (با متغیرها) به همان چت پاسخ می‌دهد.",
+  ai_reply: "دیبا روتر بر اساس متن پیام یک پاسخ می‌سازد و می‌فرستد.",
+  forward: "همان پیام را به یک سرویس و چت دیگر می‌فرستد.",
+  call_tool: "یک ابزار MCP را با آرگومان دلخواه اجرا می‌کند.",
+  webhook: "داده‌ی رویداد را به یک آدرس بیرونی (n8n، Make، CRM) POST می‌کند.",
+};
 const trgChatTypeFa = { "*": "همه", private: "خصوصی", group: "گروه", channel: "کانال" };
 
 // نمونه‌های آماده برای «ساخت اتوماسیون جدید» — با کلیک، فرم از همین داده پر می‌شود
@@ -3547,11 +3560,13 @@ async function pageTriggers(main, q) {
     <section class="trg-builder">
       <div class="trg-preview" id="trg-preview" aria-live="polite"></div>
 
-      <form class="trg-form" id="trg-form">
+      <div class="trg-form-err" id="trg-form-err" role="alert" hidden></div>
+
+      <form class="trg-form" id="trg-form" novalidate>
         <div class="trg-step">
-          <div class="trg-step-title"><b>۲. مشخصات و رویداد (When)</b></div>
+          <div class="trg-step-head"><span class="trg-step-num">۱</span><div><b>چه زمانی اجرا شود؟</b><span>رویداد و شرطی که این اتوماسیون را فعال می‌کند.</span></div></div>
           <div class="trg-grid">
-            <label><span>نام اتوماسیون</span><input class="input" name="name" required value="${esc(t.name)}" placeholder="مثلاً پاسخ خودکار سلام"></label>
+            <label><span>نام اتوماسیون</span><input class="input" name="name" required maxlength="80" value="${esc(t.name)}" placeholder="مثلاً پاسخ خودکار سلام"></label>
             <label><span>دسته‌بندی</span>
               ${selectControl("category", Object.entries(trgCatFa), t.category || "", "", "دسته‌بندی")}
             </label>
@@ -3568,7 +3583,7 @@ async function pageTriggers(main, q) {
             <label><span>نوع گفتگو</span>
               ${selectControl("chatType", Object.entries(trgChatTypeFa), t.match?.chatType || "*", "", "نوع گفتگو")}
             </label>
-            <label><span>کلمات کلیدی (اختیاری — برای پاسخ هوشمند خالی بگذارید)</span><input class="input" name="contains" value="${esc(t.match?.contains || "")}" placeholder="خالی = پاسخ به همه‌ی پیام‌ها؛ مثلاً: سلام, /start, قیمت"></label>
+            <label><span>کلمات کلیدی <small>(اختیاری)</small></span><input class="input" name="contains" value="${esc(t.match?.contains || "")}" placeholder="خالی = همه‌ی پیام‌ها؛ مثلاً: سلام, /start, قیمت"><small class="trg-hint">با ویرگول جدا کنید. <code class="ltr">*</code> در هر کلمه مثل الگو عمل می‌کند. خالی یعنی روی هر پیامی اجرا شود.</small></label>
           </div>
 
           <div class="trg-grid" id="trg-cond-mcp" ${!isIncoming && !isManual ? "" : "hidden"}>
@@ -3582,17 +3597,19 @@ async function pageTriggers(main, q) {
         </div>
 
         <div class="trg-step">
-          <div class="trg-step-title">
-            <b>۳. اقدام (Then)</b>
+          <div class="trg-step-head"><span class="trg-step-num">۲</span><div><b>چه کاری انجام شود؟</b><span>وقتی شرط بالا برقرار شد، این اقدام اجرا می‌شود.</span></div></div>
+          <div class="trg-step-title trg-vars-row">
             <div class="trg-vars">
               <span>متغیرهای قابل استفاده:</span>
               ${vars.map((v) => `<button class="trg-var-chip" type="button" data-insert-var="${v}">${v}</button>`).join("")}
             </div>
           </div>
-          <div class="trg-grid">
-            <label><span>نوع اقدام (Action)</span>
-              ${selectControl("actionType", Object.entries(trgActionFa), ac2, "trg-action-type", "نوع اقدام")}
-            </label>
+          <div class="trg-action-pick" role="radiogroup" aria-label="نوع اقدام">
+            ${Object.entries(trgActionFa).map(([v, label]) => `
+              <label class="trg-action-opt${ac2 === v ? " active" : ""}">
+                <input type="radio" name="actionType" value="${v}" ${ac2 === v ? "checked" : ""}>
+                <b>${label}</b><span>${trgActionHint[v] || ""}</span>
+              </label>`).join("")}
           </div>
 
           <div class="trg-action-fields" data-ac-group="reply_template" ${ac2 === "reply_template" ? "" : "hidden"}>
@@ -3647,6 +3664,7 @@ async function pageTriggers(main, q) {
     const ev = String(fd.get("event") || "incoming_message");
     const act = String(fd.get("actionType") || "reply_template");
     const keywords = String(fd.get("contains") || "").trim();
+    // نوع اقدام ممکن است دکمه‌ی رادیویی باشد؛ FormData همان مقدار انتخاب‌شده را می‌دهد
     const cond =
       ev === "incoming_message"
         ? `وقتی پیام ورودی در «${String(fd.get("provider") || "*").trim() || "*"}» (${trgChatTypeFa[String(fd.get("chatType") || "*")] || "همه"})${keywords ? ` شامل (${keywords})` : ""} برسد`
@@ -3826,7 +3844,11 @@ async function pageTriggers(main, q) {
       drawCards();
       return;
     }
-    if (e.target.closest("#trg-form")) updatePreview();
+    if (e.target.closest("#trg-form")) {
+      const errBox = main.querySelector("#trg-form-err");
+      if (errBox && !errBox.hidden) errBox.hidden = true;
+      updatePreview();
+    }
   }, on);
 
   main.addEventListener("click", async (e) => {
@@ -3962,11 +3984,10 @@ async function pageTriggers(main, q) {
       updatePreview();
       return;
     }
-    if (e.target.id === "trg-action-type") {
+    if (e.target.name === "actionType") {
       const act = e.target.value;
-      main.querySelectorAll("[data-ac-group]").forEach((el) => {
-        el.hidden = el.dataset.acGroup !== act;
-      });
+      main.querySelectorAll("[data-ac-group]").forEach((el) => { el.hidden = el.dataset.acGroup !== act; });
+      main.querySelectorAll(".trg-action-opt").forEach((el) => el.classList.toggle("active", el.querySelector("input").checked));
       updatePreview();
       return;
     }
@@ -4010,7 +4031,16 @@ async function pageTriggers(main, q) {
         toolArgs: String(fd.get("toolArgs") || "").trim(),
       },
     };
-    if (!payload.name) return toast("نام اتوماسیون را وارد کنید", true);
+    const errBox = main.querySelector("#trg-form-err");
+    const showFormErr = (msg, field) => {
+      if (errBox) { errBox.textContent = msg; errBox.hidden = false; errBox.scrollIntoView({ block: "nearest" }); }
+      // نام فیلد سرور مثل action.template است؛ به input متناظر نگاشت می‌شود
+      const byName = { name: "name", description: "description", contains: "contains" };
+      const sel = field && (byName[field] ? `[name="${byName[field]}"]` : field.startsWith("action.") || field.startsWith("match.") ? `[name="${field.split(".").pop()}"]` : null);
+      const el = sel && main.querySelector(sel);
+      if (el) el.focus();
+    };
+    if (!payload.name) return showFormErr("نام اتوماسیون را وارد کنید", "name");
     try {
       if (mode === "create") {
         await api("triggers", { body: { ...payload, enabled: true } });
@@ -4025,7 +4055,8 @@ async function pageTriggers(main, q) {
       data = await api("triggers");
       render();
     } catch (err) {
-      toast(err.message, true);
+      if (err instanceof AuthError) return;
+      showFormErr(err.message, err.field);
     }
   }, on);
 }
