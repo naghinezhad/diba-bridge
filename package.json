@@ -1,7 +1,7 @@
 {
   "name": "diba-mcp",
   "version": "5.0.0",
-  "description": "MCP server for Iranian messengers (Bale, Eitaa, Rubika, Soroush Plus) with a built-in Persian dashboard",
+  "description": "MCP server for Iranian messengers and social services (Bale, Eitaa, Rubika, Soroush Plus, Telegram, WhatsApp, Instagram, X, LinkedIn) and WordPress, with a built-in Persian dashboard",
   "keywords": [
     "mcp",
     "model-context-protocol",
@@ -12,15 +12,19 @@
     "rubika",
     "soroush",
     "dashboard",
-    "ai"
+    "ai",
+    "wordpress",
+    "telegram",
+    "whatsapp",
+    "dibachain"
   ],
-  "homepage": "https://github.com/yunessfa/diba-MCP#readme",
+  "homepage": "https://github.com/Dibachain-Company/diba-bridge#readme",
   "bugs": {
-    "url": "https://github.com/yunessfa/diba-MCP/issues"
+    "url": "https://github.com/Dibachain-Company/diba-bridge/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yunessfa/diba-MCP.git"
+    "url": "git+https://github.com/Dibachain-Company/diba-bridge.git"
   },
   "license": "MIT",
   "author": "Yuness",
