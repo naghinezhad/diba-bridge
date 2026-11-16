@@ -22,7 +22,7 @@ Open <http://127.0.0.1:8090/>.
 5. The site is published at:
 
 ```text
-https://dibachain-company.github.io/diba-mcp/
+https://dibachain-company.github.io/diba-bridge/
 ```
 
 All paths are relative, so the page also works under a project subpath.
