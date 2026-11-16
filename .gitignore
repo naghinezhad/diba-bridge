@@ -15,8 +15,6 @@ skills-lock.json
 # خروجی‌های محلی ابزارها و داده‌ی واقعی حساب‌ها — هرگز کامیت نشوند
 mcp_dump/
 .diba/
-.claude/
-.cursor/
 .vscode/
 .idea/
 *.tgz
