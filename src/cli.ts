@@ -26,7 +26,7 @@ const HELP = `dibaMCP v${SERVER_VERSION} — سرور MCP برای پیام‌ر
   diba-mcp selftest <id>     تست کامل یک پیام‌رسان (bale، bale_client، eitaa، eitaa_client، rubika، rubika_client، soroush، soroush_client)
                             --send: پیام و عکس آزمایشی هم بفرستد   --chat <id>: چت مقصد
   diba-mcp token            نمایش توکن اتصال MCP
-  diba-mcp reset-password   حذف رمز داشبورد (اجرای بعدی کد راه‌اندازی می‌دهد)
+  diba-mcp reset-password   حذف رمز داشبورد (در اجرای بعدی، داشبورد دوباره رمز می‌خواهد)
 
 گزینه‌ها:
   -p, --port <n>       پورت (پیش‌فرض 3790 یا PORT)
@@ -125,7 +125,7 @@ switch (command) {
   }
   case "reset-password": {
     new ConfigStore(dataDir).clearAdmin();
-    console.log("رمز داشبورد حذف شد. با اجرای بعدی، کد راه‌اندازی در ترمینال چاپ می‌شود.");
+    console.log("رمز داشبورد حذف شد. در اجرای بعدی، با باز کردن داشبورد رمز تازه انتخاب می‌کنید.");
     if (process.env.ADMIN_PASSWORD) console.log("توجه: ADMIN_PASSWORD در env تنظیم است و همچنان همان رمز کار می‌کند.");
     break;
   }

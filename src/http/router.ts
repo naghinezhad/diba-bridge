@@ -9,6 +9,7 @@ import { compactConversation, compactToolResult, extractContextLimit, fitContext
 import { SERVER_VERSION, type DibaMcpEngine } from "../core/engine.js";
 import { ModelLimits, planContext } from "../core/context-budget.js";
 import { configureProxy } from "../core/net.js";
+import { normalizeProfile, ProfileError, PROFILE_LIMITS } from "../core/profile.js";
 import { proxyEnvOf, type AppProxyType } from "../core/store.js";
 import { runNetcheck } from "../core/netcheck.js";
 import { enrichChatTitles } from "../core/assistant/resolver.js";
@@ -280,12 +281,10 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   // محدودیت درخواست به اندپوینت MCP به ازای هر IP (پیش‌فرض ۱۲۰ در دقیقه)
   const mcpLimiter = new RateLimiter(Math.max(1, Number(env.MCP_RATE_LIMIT) || 120), 60_000);
 
-  // کد راه‌اندازی اولیه — فقط وقتی هنوز رمز ادمین تعیین نشده
-  let setupCode: string | null = null;
+  // راه‌اندازی اولیه: تا وقتی رمز ادمین تعیین نشده، اولین بازدیدکننده در نصب‌کننده رمز را می‌سازد
   const needsSetup = () => !env.ADMIN_PASSWORD && !engine.store.admin;
   if (needsSetup()) {
-    setupCode = randomBytes(3).toString("hex").toUpperCase();
-    console.error(`\n[diba-mcp] کد راه‌اندازی داشبورد: ${setupCode}\n`);
+    console.error("\n[diba-mcp] رمز داشبورد هنوز ساخته نشده است؛ داشبورد را باز کنید و نصب را کامل کنید.\n");
   }
 
   // ---------------- MCP ----------------
@@ -365,16 +364,88 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.setHeader("Set-Cookie", `${COOKIE}=${value}; Path=${path}; HttpOnly; SameSite=Strict${secure}${age}`);
   };
 
-  api.get("/auth/status", (req, res) => {
-    res.json({ authenticated: sessions.valid(sid(req)), needsSetup: needsSetup(), version: SERVER_VERSION });
+  // ---------------- کمک‌تابع‌های نصب (هم در راه‌اندازی اولیه و هم پس از ورود استفاده می‌شوند) ----------------
+  const installServices = () =>
+    engine.describeProviders().map((p) => ({
+      id: p.id,
+      name: p.name,
+      nameFa: p.nameFa,
+      category: p.category,
+      region: p.region,
+      color: p.color,
+      glyph: p.glyph,
+      description: p.description,
+      enabled: p.enabled,
+      enabledFromEnv: p.enabledFromEnv,
+      ready: p.ready,
+      toolCount: p.tools.length,
+    }));
+
+  /** متن خطا اگر فهرست سرویس‌ها نامعتبر باشد */
+  const servicesProblem = (raw: unknown): string | null => {
+    if (!Array.isArray(raw) || raw.some((id) => typeof id !== "string")) return "فهرست سرویس‌ها معتبر نیست";
+    const known = new Set(engine.providers.map((p) => p.id));
+    const unknown = raw.filter((id: string) => !known.has(id));
+    return unknown.length ? `سرویس ناشناخته: ${unknown.join("، ")}` : null;
+  };
+
+  /**
+   * `ids` فهرست کامل انتخاب است؛ فقط سرویس‌هایی که وضعیتشان فرق می‌کند تغییر می‌کنند.
+   * خطای یک سرویس (مثلاً نشست خراب هنگام شروع دریافت پیام) بقیه را متوقف نمی‌کند؛
+   * نام سرویس‌های ناموفق برگردانده می‌شود.
+   */
+  const applyServices = (ids: string[]): string[] => {
+    const selected = new Set(ids);
+    const failed: string[] = [];
+    for (const p of engine.providers) {
+      // سرویسی که از env کنترل می‌شود از اینجا تغییر نمی‌کند
+      if (engine.store.enabledFromEnv(p)) continue;
+      const want = selected.has(p.id);
+      if (engine.store.isEnabled(p) === want) continue;
+      try {
+        engine.updateProvider(p.id, { enabled: want });
+      } catch (err) {
+        console.error(`[diba-mcp] تغییر وضعیت سرویس ${p.id} ناموفق بود`, err);
+        failed.push(p.nameFa);
+      }
+    }
+    return failed;
+  };
+
+  /** بدنه‌ی نصب را بررسی می‌کند؛ تا وقتی همه‌چیز معتبر نباشد هیچ چیزی ذخیره نمی‌شود */
+  const parseInstall = (body: any): { profile: ReturnType<typeof normalizeProfile>; services: string[] } | { error: string; field: string } => {
+    let profile;
+    try {
+      profile = normalizeProfile(body?.profile);
+    } catch (err) {
+      if (err instanceof ProfileError) return { error: err.message, field: err.field };
+      throw err;
+    }
+    const problem = servicesProblem(body?.services);
+    if (problem) return { error: problem, field: "services" };
+    return { profile, services: body.services as string[] };
+  };
+
+  const completeInstall = (input: { profile: ReturnType<typeof normalizeProfile>; services: string[] }) => {
+    engine.store.updateProfile(input.profile);
+    const failed = applyServices(input.services);
+    return { profile: engine.store.markInstalled(), services: installServices(), failed };
+  };
+
+  api.get("/auth/status", (req, res) => {    const authenticated = sessions.valid(sid(req));
+    res.json({
+      authenticated,
+      needsSetup: needsSetup(),
+      version: SERVER_VERSION,
+      // مشخصات سازمان فقط پس از ورود برگردانده می‌شود
+      ...(authenticated ? { needsInstall: engine.store.needsInstall, profile: engine.store.profile() } : {}),
+    });
   });
 
   api.post("/auth/setup", (req, res) => {
     if (!needsSetup()) return void res.status(400).json({ error: "رمز ادمین قبلاً تعیین شده است" });
     if (!loginLimiter.allow(req.ip ?? "?")) return void res.status(429).json({ error: "تلاش زیاد؛ چند دقیقه بعد امتحان کنید" });
-    const { code, password } = req.body ?? {};
-    if (!setupCode || String(code ?? "").trim().toUpperCase() !== setupCode)
-      return void res.status(403).json({ error: "کد راه‌اندازی اشتباه است (در کنسول سرور چاپ شده)" });
+    const { password } = req.body ?? {};
     if (typeof password !== "string" || password.length < 8)
       return void res.status(400).json({ error: "رمز باید حداقل ۸ کاراکتر باشد" });
     let settings;
@@ -383,12 +454,24 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     } catch (err: any) {
       return void res.status(400).json({ error: String(err?.message ?? err) });
     }
+    // نصب‌کننده مشخصات و سرویس‌ها را هم در همین درخواست می‌فرستد؛ قبل از ثبت رمز بررسی می‌شوند
+    // تا با ورودی نامعتبر هیچ چیزی نیمه‌کاره ذخیره نشود.
+    const install = req.body?.install === undefined ? null : parseInstall(req.body.install);
+    if (install && "error" in install) return void res.status(400).json(install);
     engine.store.updateSettings(settings);
     applyProxySettings(settings);
     engine.store.setAdmin(hashPassword(password));
-    setupCode = null;
     setCookie(req, res, sessions.create(), SESSION_MAX_AGE);
-    res.json({ ok: true, settings });
+    res.json({ ok: true, settings, ...(install ? completeInstall(install) : {}) });
+  });
+
+  /**
+   * فهرست سرویس‌ها برای نصب‌کننده، پیش از ساخته شدن رمز ادمین.
+   * فقط تا وقتی راه‌اندازی اولیه انجام نشده پاسخ می‌دهد و چیزی جز نام سرویس‌ها ندارد.
+   */
+  api.get("/auth/setup-info", (_req, res) => {
+    if (!needsSetup()) return void res.status(403).json({ error: "راه‌اندازی اولیه قبلاً انجام شده است" });
+    res.json({ profile: engine.store.profile(), services: installServices(), limits: PROFILE_LIMITS });
   });
 
   api.post("/auth/login", (req, res) => {
@@ -423,6 +506,46 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   api.use((req, res, next) => {
     if (!sessions.valid(sid(req))) return void res.status(401).json({ error: "ابتدا وارد شوید" });
     next();
+  });
+
+  // ---------------- نصب اولیه و مشخصات سازمان ----------------
+  api.get("/install", (_req, res) => {
+    res.json({
+      needsInstall: engine.store.needsInstall,
+      profile: engine.store.profile(),
+      services: installServices(),
+      limits: PROFILE_LIMITS,
+    });
+  });
+
+  /**
+   * تکمیل نصب: مشخصات ذخیره و سرویس‌های انتخاب‌شده روشن می‌شوند.
+   * `services` فهرست کامل انتخاب است؛ سرویسی که در آن نیست خاموش می‌شود (نشست ذخیره‌شده‌اش می‌ماند).
+   */
+  api.post("/install", (req, res) => {
+    const install = parseInstall(req.body);
+    if ("error" in install) return void res.status(400).json(install);
+    res.json({ ok: true, ...completeInstall(install) });
+  });
+
+  /** تغییر سرویس‌های فعال پس از نصب (بخش «نصب و مشخصات» داشبورد) */
+  api.put("/install/services", (req, res) => {
+    const raw = req.body?.services;
+    const problem = servicesProblem(raw);
+    if (problem) return void res.status(400).json({ error: problem, field: "services" });
+    const failed = applyServices(raw);
+    res.json({ ok: true, services: installServices(), failed });
+  });
+
+  api.put("/profile", (req, res) => {
+    let profile;
+    try {
+      profile = normalizeProfile(req.body);
+    } catch (err) {
+      if (err instanceof ProfileError) return void res.status(400).json({ error: err.message, field: err.field });
+      throw err;
+    }
+    res.json({ ok: true, profile: engine.store.updateProfile(profile) });
   });
 
   // ---------------- تنظیمات نصب ----------------
@@ -1226,6 +1349,17 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.json({ token: engine.store.rotateMcpToken() });
   });
 
+  // هر خطای پیش‌بینی‌نشده در API به شکل JSON برمی‌گردد تا داشبورد پیام روشن نشان دهد، نه صفحه‌ی HTML
+  api.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) return next(err);
+    const tooLarge = err?.type === "entity.too.large";
+    const badJson = err?.type === "entity.parse.failed";
+    if (!tooLarge && !badJson) console.error("[diba-mcp] API error", err);
+    res
+      .status(tooLarge ? 413 : badJson ? 400 : 500)
+      .json({ error: tooLarge ? "حجم درخواست بیشتر از حد مجاز است" : badJson ? "بدنه‌ی درخواست JSON معتبر نیست" : "خطای داخلی سرور؛ جزئیات در لاگ سرور ثبت شد" });
+  });
+
   router.use("/api", api);
 
   // ---------------- فایل‌های داشبورد ----------------
@@ -1245,7 +1379,7 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     }),
   );
 
-  router.get(/^\/(overview|providers|banking|inbox|triggers|playground|logs|dibarouter|connect)\/?$/, (req, res) => {
+  router.get(/^\/(overview|providers|banking|install|inbox|triggers|playground|logs|dibarouter|connect)\/?$/, (req, res) => {
     const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
     res.redirect(`/#/${req.params[0]}${qs}`);
   });
