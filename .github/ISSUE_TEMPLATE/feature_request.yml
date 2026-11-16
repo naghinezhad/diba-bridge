@@ -1,0 +1,26 @@
+name: پیشنهاد قابلیت
+description: ایده یا قابلیت جدید
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: چه مشکلی را حل می‌کند؟
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: راه‌حل پیشنهادی
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: راه‌های جایگزین
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: مشارکت
+      options:
+        - label: حاضرم برای این قابلیت Pull Request بفرستم

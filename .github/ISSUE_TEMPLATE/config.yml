@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: گزارش مشکل امنیتی
+    url: https://github.com/Dibachain-Company/diba-bridge/security/policy
+    about: مشکلات امنیتی را عمومی ثبت نکنید؛ طبق SECURITY.md گزارش دهید.
+  - name: وب‌سایت دیباچین
+    url: https://dibachain.ir
+    about: خدمات، مشاوره و ارتباط با تیم دیباچین

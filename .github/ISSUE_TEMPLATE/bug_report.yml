@@ -1,0 +1,55 @@
+name: گزارش باگ
+description: چیزی درست کار نمی‌کند
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: چه اتفاقی افتاد؟
+      description: رفتار فعلی و رفتاری که انتظار داشتید را بنویسید.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: مراحل بازتولید
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: بخش مرتبط
+      options:
+        - دستیار دیبا (diba_agent)
+        - داشبورد
+        - بله
+        - ایتا
+        - روبیکا
+        - سروش‌پلاس
+        - تلگرام
+        - واتس‌اپ
+        - اینستاگرام
+        - لینکدین
+        - X
+        - وردپرس
+        - تریگرها و اتوماسیون
+        - نصب / داکر
+        - سایر
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: نسخه
+      description: خروجی `diba-mcp --version` و نسخه‌ی Node.js
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: لاگ یا پیام خطا
+      description: توکن، شماره‌ی تلفن و شناسه‌ی چت‌ها را حذف کنید.
+      render: text
