@@ -606,7 +606,7 @@ export function defaultTriggers(): TriggerDef[] {
       action: {
         type: "call_tool",
         toolName: "bale_client_send_message",
-        toolArgs: '{"chat_id":"{{chatId}}","text":"📣 اعلان دریافت شد و در صف ارسال قرار گرفت.\nفرستنده: {{sender}}"}',
+        toolArgs: '{"chat_id":"{{chatId}}","text":"📣 اعلان دریافت شد و در صف ارسال قرار گرفت.\\nفرستنده: {{sender}}"}',
       },
     },
 
@@ -876,6 +876,27 @@ export class TriggerEngine {
       id: prev.id,
       match: patch.match ? { ...prev.match, ...patch.match } : prev.match,
       action: patch.action ? { ...prev.action, ...patch.action } : prev.action,
+    };
+    this.save();
+    return this.data.triggers[idx];
+  }
+
+  /**
+   * محتوای تریگر را کامل جایگزین می‌کند (شرط و اقدام ادغام نمی‌شوند)،
+   * ولی شناسه، نمونه بودن و آمار اجرا می‌ماند.
+   */
+  replace(id: string, input: Pick<TriggerDef, "name" | "description" | "category" | "enabled" | "event" | "match" | "action">): TriggerDef | undefined {
+    const idx = this.data.triggers.findIndex((t) => t.id === id);
+    if (idx < 0) return undefined;
+    const prev = this.data.triggers[idx];
+    this.data.triggers[idx] = {
+      id: prev.id,
+      builtin: prev.builtin,
+      hitCount: prev.hitCount,
+      lastRunAt: prev.lastRunAt,
+      lastError: prev.lastError,
+      ...input,
+      description: input.description || prev.description,
     };
     this.save();
     return this.data.triggers[idx];
