@@ -11,6 +11,7 @@ import { ModelLimits, planContext } from "../core/context-budget.js";
 import { configureProxy, probeViaProxy } from "../core/net.js";
 import { ProxyManager, ProxyPoolError } from "../core/proxy-manager.js";
 import { normalizeProfile, ProfileError, PROFILE_LIMITS } from "../core/profile.js";
+import { normalizeTrigger, TriggerValidationError } from "../core/trigger-schema.js";
 import { proxyEnvOf, type AppProxyType } from "../core/store.js";
 import { runNetcheck } from "../core/netcheck.js";
 import { enrichChatTitles } from "../core/assistant/resolver.js";
@@ -1331,20 +1332,21 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.json(engine.triggers.list());
   });
 
+  /** ورودی تریگر را بررسی می‌کند؛ در صورت خطا پاسخ 400 با نام فیلد می‌دهد و null برمی‌گرداند */
+  const parseTrigger = (res: Response, body: unknown) => {
+    try {
+      return normalizeTrigger(body);
+    } catch (err) {
+      if (!(err instanceof TriggerValidationError)) throw err;
+      res.status(400).json({ error: err.message, field: err.field });
+      return null;
+    }
+  };
+
   api.post("/triggers", (req, res) => {
-    const b = req.body ?? {};
-    const name = String(b.name ?? "").trim();
-    if (!name) return void res.status(400).json({ error: "نام تریگر الزامی است" });
-    const item = engine.triggers.create({
-      name,
-      description: String(b.description ?? "").trim() || "تریگر سفارشی",
-      category: b.category || "social",
-      enabled: b.enabled !== false,
-      event: b.event || "incoming_message",
-      match: b.match && typeof b.match === "object" ? b.match : {},
-      action: b.action && typeof b.action === "object" ? b.action : { type: "reply_template", template: "" },
-    });
-    res.json({ ok: true, trigger: item });
+    const input = parseTrigger(res, req.body);
+    if (!input) return;
+    res.json({ ok: true, trigger: engine.triggers.create({ ...input, description: input.description || "تریگر سفارشی" }) });
   });
 
   api.post("/triggers/reset-defaults", (_req, res) => {
@@ -1357,9 +1359,19 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   });
 
   api.put("/triggers/:id", (req, res) => {
-    const updated = engine.triggers.update(String(req.params.id), req.body ?? {});
-    if (!updated) return void res.status(404).json({ error: "تریگر پیدا نشد" });
-    res.json({ ok: true, trigger: updated });
+    const id = String(req.params.id);
+    const current = engine.triggers.list().triggers.find((t) => t.id === id);
+    if (!current) return void res.status(404).json({ error: "تریگر پیدا نشد" });
+    const body = (req.body && typeof req.body === "object" ? req.body : {}) as Record<string, unknown>;
+    // روشن/خاموش کردن تنها، محتوای تریگر را عوض نمی‌کند و بررسی دوباره نمی‌خواهد
+    if (Object.keys(body).every((k) => k === "enabled")) {
+      if (typeof body.enabled !== "boolean") return void res.status(400).json({ error: "وضعیت تریگر نامعتبر است", field: "enabled" });
+      return void res.json({ ok: true, trigger: engine.triggers.update(id, { enabled: body.enabled }) });
+    }
+    // ویرایش: تریگر کامل پس از اعمال تغییرها بررسی و جایگزین می‌شود تا فیلدهای اقدام قبلی جا نماند
+    const input = parseTrigger(res, { ...current, ...body });
+    if (!input) return;
+    res.json({ ok: true, trigger: engine.triggers.replace(id, { ...input, enabled: typeof body.enabled === "boolean" ? body.enabled : current.enabled }) });
   });
 
   api.delete("/triggers/:id", (req, res) => {
