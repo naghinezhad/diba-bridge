@@ -841,6 +841,15 @@ code, .mono {
   padding: 2px 8px;
   border-radius: var(--radius-pill);
 }
+.region-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
 .prov-desc {
   margin: 0;
   font-size: 13.5px;
@@ -2524,8 +2533,11 @@ pre.json .b { color: var(--error); }
     padding: 8px 12px;
   }
   .nav a span { display: none; }
-  .nav-group { display: none; }
-  .nav a[data-page="providers"] { display: flex; }
+  /* در موبایل هر گروه فقط آیکن خودش را نشان می‌دهد؛ زیرمنوی ایرانی/خارجی پنهان است */
+  .nav-group { display: contents; }
+  .nav-group .nav-sub,
+  .nav-group.open .nav-sub { display: none; }
+  .nav-parent svg:last-child { display: none; }
   .side-foot {
     margin: 0 0 0 auto;
     padding: 0;
