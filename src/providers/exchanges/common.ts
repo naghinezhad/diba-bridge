@@ -12,13 +12,16 @@
  *   <id>_place_order       ثبت سفارش خرید/فروش             (کلید API + مجوز معامله)
  *   <id>_cancel_order      لغو سفارش                       (کلید API + مجوز معامله)
  *
+ * صرافی‌هایی که دفتر سفارش، کندل یا لغو سفارش ندارند همان متد را در adapter نمی‌نویسند و
+ * ابزارش هم ساخته نمی‌شود.
+ *
  * معامله به‌طور پیش‌فرض خاموش است: تا وقتی «اجازه‌ی معامله» در تنظیمات همان صرافی روشن نشود،
  * ثبت و لغو سفارش رد می‌شود. ثبت سفارش بدون confirm فقط پیش‌نمایش برمی‌گرداند.
  */
 import { createHmac } from "node:crypto";
 import { z } from "zod";
 import { netFetch } from "../../core/net.js";
-import { defineTool, ProviderError, type ProviderContext, type ProviderDef, type ProviderField } from "../../core/types.js";
+import { defineTool, ProviderError, type ProviderContext, type ProviderDef, type ProviderField, type Region, type ToolDef } from "../../core/types.js";
 
 export type OrderSide = "buy" | "sell";
 export type OrderType = "market" | "limit";
@@ -93,17 +96,33 @@ export interface ExchangeAdapter {
   symbolExample: string;
   /** این صرافی علاوه بر کلید و رمز، Passphrase هم می‌خواهد */
   needsPassphrase?: boolean;
+  /** خاستگاه صرافی؛ اگر تعیین نشود «خارجی» است */
+  region?: Region;
+  /**
+   * وضعیت API Secret: required (پیش‌فرض)، optional (بدون آن هم با توکن ساده کار می‌کند)،
+   * none (این صرافی فقط یک کلید دارد و فیلد Secret نشان داده نمی‌شود)
+   */
+  secret?: "required" | "optional" | "none";
+  /** برچسب و راهنمای فیلد Secret، اگر با پیش‌فرض فرق دارد */
+  secretLabel?: string;
+  secretHelp?: string;
+  /** برچسب فیلد کلید، اگر «API Key» نیست */
+  keyLabel?: string;
   /** متن راهنما برای ساخت کلید */
   keyHelp: string;
+  /** نکته‌ای که مدل باید بداند (مثلاً واحد قیمت)؛ به توضیح ابزارهای قیمت و سفارش اضافه می‌شود */
+  note?: string;
+  /** معنی quantity در ثبت سفارش، اگر همیشه «مقدار ارز پایه» نیست */
+  quantityHint?: string;
   /** «BTC/USDT» یا «btc-usdt» را به شکل نماد همان صرافی درمی‌آورد */
   symbol: (input: string) => string;
   ticker: (ctx: ProviderContext, symbol: string) => Promise<Ticker>;
-  orderBook: (ctx: ProviderContext, symbol: string, depth: number) => Promise<OrderBook>;
-  candles: (ctx: ProviderContext, symbol: string, interval: CandleInterval, limit: number) => Promise<Candle[]>;
+  orderBook?: (ctx: ProviderContext, symbol: string, depth: number) => Promise<OrderBook>;
+  candles?: (ctx: ProviderContext, symbol: string, interval: CandleInterval, limit: number) => Promise<Candle[]>;
   balances: (ctx: ProviderContext) => Promise<Balance[]>;
-  openOrders: (ctx: ProviderContext, symbol?: string) => Promise<OpenOrder[]>;
+  openOrders?: (ctx: ProviderContext, symbol?: string) => Promise<OpenOrder[]>;
   placeOrder: (ctx: ProviderContext, order: OrderInput) => Promise<{ id: string; raw: unknown }>;
-  cancelOrder: (ctx: ProviderContext, symbol: string, orderId: string) => Promise<unknown>;
+  cancelOrder?: (ctx: ProviderContext, symbol: string, orderId: string) => Promise<unknown>;
 }
 
 // ---------------------------------------------------------------- کمک‌تابع‌ها
@@ -115,11 +134,13 @@ export function baseOf(ctx: ProviderContext, fallback: string): string {
   return String(ctx.config.baseUrl || fallback).replace(/\/+$/, "");
 }
 
-export function credentials(ctx: ProviderContext, name: string, needsPassphrase = false) {
+export function credentials(ctx: ProviderContext, name: string, needsPassphrase = false, secret: ExchangeAdapter["secret"] = "required") {
   const apiKey = String(ctx.config.apiKey ?? "").trim();
   const apiSecret = String(ctx.config.apiSecret ?? "").trim();
   const passphrase = String(ctx.config.passphrase ?? "").trim();
-  if (!apiKey || !apiSecret) throw new ProviderError(`برای این کار، کلید و رمز API ${name} را در تنظیمات ثبت کنید.`);
+  if (secret !== "required") {
+    if (!apiKey) throw new ProviderError(`برای این کار، کلید API ${name} را در تنظیمات ثبت کنید.`);
+  } else if (!apiKey || !apiSecret) throw new ProviderError(`برای این کار، کلید و رمز API ${name} را در تنظیمات ثبت کنید.`);
   if (needsPassphrase && !passphrase) throw new ProviderError(`Passphrase کلید API ${name} ثبت نشده است.`);
   return { apiKey, apiSecret, passphrase };
 }
@@ -158,7 +179,10 @@ export async function exchangeFetch(name: string, url: string, init: ExchangeReq
     data = { raw: text.slice(0, 300) };
   }
   if (!res.ok) {
-    const reason = data?.msg || data?.message || data?.retMsg || (Array.isArray(data?.error) ? data.error.join("، ") : data?.error) || `HTTP ${res.status}`;
+    const reason =
+      data?.msg || data?.message || data?.retMsg || data?.detail || data?.error_message ||
+      (Array.isArray(data?.error) ? data.error.join("، ") : typeof data?.error === "string" ? data.error : "") ||
+      `HTTP ${res.status}`;
     throw new ProviderError(`${name}: ${reason}`, { status: res.status, body: data });
   }
   return data;
@@ -168,6 +192,43 @@ export async function exchangeFetch(name: string, url: string, init: ExchangeReq
 export function splitSymbol(input: string): [string, string] | null {
   const parts = String(input ?? "").trim().toUpperCase().split(/[\/\-_\s:]+/).filter(Boolean);
   return parts.length === 2 ? [parts[0], parts[1]] : null;
+}
+
+/**
+ * نماد چسبیده یا جداشده را با فهرست ارزهای نقل‌قولِ همان صرافی می‌شکند:
+ * «BTCIRT»، «btc/irt»، «BTC_IRT» → ["BTC","IRT"]. اگر قابل تشخیص نباشد null.
+ */
+export function splitByQuote(input: string, quotes: string[]): [string, string] | null {
+  const parts = splitSymbol(input);
+  if (parts) return parts;
+  const s = String(input ?? "").trim().toUpperCase();
+  // نقل‌قول بلندتر اول، تا «USDT» پیش از «DT» یا «T» بررسی شود
+  for (const q of [...quotes].sort((a, b) => b.length - a.length)) {
+    if (s.length > q.length && s.endsWith(q)) return [s.slice(0, -q.length), q];
+  }
+  return null;
+}
+
+/** صفرهای اضافه‌ی اعشار را برمی‌دارد: «17400.0000» → «17400»، «0.00150» → «0.0015» */
+export function trimDecimal(value: unknown): string {
+  const s = String(value ?? "").trim();
+  if (!/^-?\d+\.\d+$/.test(s)) return s;
+  const out = s.replace(/0+$/, "").replace(/\.$/, "");
+  return out === "-0" ? "0" : out;
+}
+
+/** تفریق دو عدد اعشاری رشته‌ای بدون خطای ممیز شناور (تا ۱۸ رقم اعشار) */
+export function decimalMinus(a: unknown, b: unknown): string {
+  const scale = (v: unknown) => {
+    const m = /^(-?)(\d+)(?:\.(\d+))?$/.exec(String(v ?? "0").trim());
+    if (!m) return 0n;
+    const n = BigInt(m[2] + (m[3] ?? "").slice(0, 18).padEnd(18, "0"));
+    return m[1] ? -n : n;
+  };
+  const r = scale(a) - scale(b);
+  const neg = r < 0n;
+  const digits = (neg ? -r : r).toString().padStart(19, "0");
+  return trimDecimal(`${neg ? "-" : ""}${digits.slice(0, -18)}.${digits.slice(-18)}`);
 }
 
 const zSymbol = (example: string) => z.string().trim().min(3).max(30).regex(/^[A-Za-z0-9\/\-_:]+$/, "نماد نامعتبر است").describe(`Trading pair, e.g. ${example} (BTC/USDT style is also accepted)`);
@@ -187,8 +248,10 @@ function requireTrading(ctx: ProviderContext, name: string) {
 /** از روی adapter یک سرویس کامل با ابزارهای هم‌شکل می‌سازد */
 export function defineExchange(a: ExchangeAdapter): ProviderDef {
   const fields: ProviderField[] = [
-    { key: "apiKey", label: "API Key", type: "secret", help: a.keyHelp },
-    { key: "apiSecret", label: "API Secret", type: "secret", help: "فقط روی همین سرور ذخیره می‌شود و برای امضای درخواست‌ها استفاده می‌شود." },
+    { key: "apiKey", label: a.keyLabel ?? "API Key", type: "secret", help: a.keyHelp },
+    ...(a.secret === "none"
+      ? []
+      : [{ key: "apiSecret", label: a.secretLabel ?? "API Secret", type: "secret" as const, help: a.secretHelp ?? "فقط روی همین سرور ذخیره می‌شود و برای امضای درخواست‌ها استفاده می‌شود." }]),
     ...(a.needsPassphrase ? [{ key: "passphrase", label: "Passphrase", type: "secret" as const, help: "عبارتی که هنگام ساخت کلید API انتخاب کرده‌اید." }] : []),
     {
       key: "allowTrading",
@@ -200,16 +263,19 @@ export function defineExchange(a: ExchangeAdapter): ProviderDef {
     { key: "baseUrl", label: "آدرس پایه API", type: "url", default: a.defaultBase },
   ];
   const sym = zSymbol(a.symbolExample);
+  const note = a.note ? ` ${a.note}` : "";
+  const features = ["قیمت و بازار", "موجودی", ...(a.openOrders ? ["سفارش‌های باز"] : []), "معامله (در صورت روشن بودن اجازه‌ی معامله)"];
+  const optional = (on: unknown, build: () => ToolDef<any>): ToolDef<any>[] => (on ? [build()] : []);
 
   return {
     id: a.id,
     name: a.name,
     nameFa: a.nameFa,
     category: "banking",
-    region: "international",
+    region: a.region ?? "international",
     color: a.color,
     glyph: a.glyph,
-    description: `صرافی ${a.nameFa} با API رسمی — قیمت و بازار، موجودی، سفارش‌های باز و معامله (در صورت روشن بودن اجازه‌ی معامله)`,
+    description: `صرافی ${a.nameFa} با API رسمی — ${features.join("، ")}`,
     docsUrl: a.docsUrl,
     fields,
     // داده‌ی بازار عمومی است؛ اگر کلید ثبت شده باشد، خودِ کلید هم با خواندن موجودی آزمایش می‌شود
@@ -223,23 +289,23 @@ export function defineExchange(a: ExchangeAdapter): ProviderDef {
       defineTool({
         name: `${a.id}_get_ticker`,
         title: `قیمت لحظه‌ای ${a.nameFa}`,
-        description: `Latest price and 24h statistics for a trading pair on ${a.name}. Public market data; no API key needed.`,
+        description: `Latest price and 24h statistics for a trading pair on ${a.name}. Public market data; no API key needed.${note}`,
         input: { symbol: sym },
         annotations: { readOnlyHint: true, openWorldHint: true },
         handler: (args, ctx) => a.ticker(ctx, a.symbol(args.symbol)),
       }),
-      defineTool({
+      ...optional(a.orderBook, () => defineTool({
         name: `${a.id}_get_orderbook`,
         title: `دفتر سفارش ${a.nameFa}`,
-        description: `Order book (best bids and asks) for a trading pair on ${a.name}. Public market data.`,
+        description: `Order book (best bids and asks) for a trading pair on ${a.name}. Public market data.${note}`,
         input: { symbol: sym, depth: z.number().int().min(1).max(50).optional().describe("Number of price levels per side (default 10)") },
         annotations: { readOnlyHint: true, openWorldHint: true },
-        handler: (args, ctx) => a.orderBook(ctx, a.symbol(args.symbol), args.depth ?? 10),
-      }),
-      defineTool({
+        handler: (args, ctx) => a.orderBook!(ctx, a.symbol(args.symbol), args.depth ?? 10),
+      })),
+      ...optional(a.candles, () => defineTool({
         name: `${a.id}_get_candles`,
         title: `کندل‌های ${a.nameFa}`,
-        description: `OHLCV candles for a trading pair on ${a.name}, oldest first. Public market data.`,
+        description: `OHLCV candles for a trading pair on ${a.name}, oldest first. Public market data.${note}`,
         input: {
           symbol: sym,
           interval: z.enum(CANDLE_INTERVALS as [CandleInterval, ...CandleInterval[]]).optional().describe("Candle size (default 1h)"),
@@ -247,10 +313,10 @@ export function defineExchange(a: ExchangeAdapter): ProviderDef {
         },
         annotations: { readOnlyHint: true, openWorldHint: true },
         handler: async (args, ctx) => {
-          const rows = await a.candles(ctx, a.symbol(args.symbol), args.interval ?? "1h", args.limit ?? 50);
+          const rows = await a.candles!(ctx, a.symbol(args.symbol), args.interval ?? "1h", args.limit ?? 50);
           return rows.sort((x, y) => x.time.localeCompare(y.time));
         },
-      }),
+      })),
       defineTool({
         name: `${a.id}_get_balances`,
         title: `موجودی ${a.nameFa}`,
@@ -259,25 +325,25 @@ export function defineExchange(a: ExchangeAdapter): ProviderDef {
         annotations: { readOnlyHint: true, openWorldHint: true },
         handler: async (_args, ctx) => (await a.balances(ctx)).filter((b) => Number(b.free) > 0 || Number(b.locked) > 0),
       }),
-      defineTool({
+      ...optional(a.openOrders, () => defineTool({
         name: `${a.id}_get_open_orders`,
         title: `سفارش‌های باز ${a.nameFa}`,
         description: `Open (unfilled) orders of the connected ${a.name} account. Requires an API key.`,
         input: { symbol: sym.optional() },
         annotations: { readOnlyHint: true, openWorldHint: true },
-        handler: (args, ctx) => a.openOrders(ctx, args.symbol ? a.symbol(args.symbol) : undefined),
-      }),
+        handler: (args, ctx) => a.openOrders!(ctx, args.symbol ? a.symbol(args.symbol) : undefined),
+      })),
       defineTool({
         name: `${a.id}_place_order`,
         title: `ثبت سفارش در ${a.nameFa}`,
         description:
           `Place a REAL spot order on ${a.name} with the user's funds. Only call this when the user explicitly asked for this exact trade. ` +
-          `Without confirm=true it returns a preview and sends nothing. Requires an API key and the "allow trading" setting.`,
+          `Without confirm=true it returns a preview and sends nothing. Requires an API key and the "allow trading" setting.${note}`,
         input: {
           symbol: sym,
           side: z.enum(["buy", "sell"]),
           type: z.enum(["market", "limit"]),
-          quantity: zAmount.describe("Amount of the base asset, as a decimal string (e.g. \"0.001\")"),
+          quantity: zAmount.describe(a.quantityHint ?? "Amount of the base asset, as a decimal string (e.g. \"0.001\")"),
           price: zAmount.optional().describe("Limit price, required for limit orders"),
           confirm: z.boolean().optional().describe("Must be true to actually send the order"),
         },
@@ -290,12 +356,12 @@ export function defineExchange(a: ExchangeAdapter): ProviderDef {
           if (args.confirm !== true) {
             return { sent: false, preview: order, note: "این فقط پیش‌نمایش است و سفارشی ثبت نشد. پس از تأیید کاربر، با confirm=true دوباره فراخوانی کنید." };
           }
-          credentials(ctx, a.nameFa, a.needsPassphrase);
+          credentials(ctx, a.nameFa, a.needsPassphrase, a.secret);
           const result = await a.placeOrder(ctx, order);
           return { sent: true, orderId: result.id, order, raw: result.raw };
         },
       }),
-      defineTool({
+      ...optional(a.cancelOrder, () => defineTool({
         name: `${a.id}_cancel_order`,
         title: `لغو سفارش در ${a.nameFa}`,
         description: `Cancel an open order on ${a.name}. Requires an API key and the "allow trading" setting.`,
@@ -303,10 +369,10 @@ export function defineExchange(a: ExchangeAdapter): ProviderDef {
         annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: true },
         handler: async (args, ctx) => {
           requireTrading(ctx, a.nameFa);
-          credentials(ctx, a.nameFa, a.needsPassphrase);
-          return { cancelled: true, orderId: args.order_id, raw: await a.cancelOrder(ctx, a.symbol(args.symbol), args.order_id) };
+          credentials(ctx, a.nameFa, a.needsPassphrase, a.secret);
+          return { cancelled: true, orderId: args.order_id, raw: await a.cancelOrder!(ctx, a.symbol(args.symbol), args.order_id) };
         },
-      }),
+      })),
     ],
   };
 }
