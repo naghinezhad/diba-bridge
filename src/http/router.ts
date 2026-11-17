@@ -290,6 +290,15 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     telegram_client: "telegram_client_get_chats",
     whatsapp: "whatsapp_get_chats",
   };
+  const POST_CHAT_INFO_TOOLS: Record<string, string> = {
+    bale_client: "bale_client_get_chat",
+    eitaa_client: "eitaa_client_get_chat",
+    rubika_client: "rubika_client_get_chat",
+    soroush_client: "soroush_client_get_chat",
+    telegram_client: "telegram_client_get_chat",
+    whatsapp: "whatsapp_get_chat",
+  };
+  const postChatNames = new Map<string, string>();
   const loginLimiter = new RateLimiter(8, 10 * 60_000);
   // محدودیت درخواست به اندپوینت MCP به ازای هر IP (پیش‌فرض ۱۲۰ در دقیقه)
   const mcpLimiter = new RateLimiter(Math.max(1, Number(env.MCP_RATE_LIMIT) || 120), 60_000);
@@ -522,17 +531,51 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   });
 
   // ---------------- پست و ارسال گروهی ----------------
-  const normalizePostTarget = (provider: string, raw: any): (PostTarget & { lastText?: string }) | null => {
+  const postIsIdLike = (value: unknown, chatId: string): boolean => {
+    const text = String(value ?? "").trim();
+    if (!text) return true;
+    if (text === chatId) return true;
+    // شناسه‌های عددی، peer idهایی مثل 12345|2 و آدرس‌های فنی، نام نیستند.
+    return /^[\d\s|@._:\-]+$/.test(text);
+  };
+  const postNameOf = (raw: any, chatId: string): string => {
+    const nick = typeof raw?.nick === "object" ? raw.nick?.value : raw?.nick;
+    const fullName = [raw?.first_name, raw?.last_name].filter(Boolean).join(" ");
+    const candidates = [
+      raw?.title,
+      raw?.name,
+      raw?.display_name,
+      raw?.displayName,
+      raw?.full_name,
+      raw?.fullName,
+      raw?.contact_name,
+      raw?.contactName,
+      raw?.push_name,
+      raw?.pushName,
+      nick,
+      fullName,
+      raw?.username,
+    ];
+    for (const candidate of candidates) {
+      const text = String(candidate ?? "").trim();
+      if (text && !postIsIdLike(text, chatId)) return text.slice(0, 160);
+    }
+    return "";
+  };
+  const normalizePostTarget = (provider: string, raw: any, inboxTitle?: string): (PostTarget & { lastText?: string }) | null => {
     const chatId = String(raw?.chat_id ?? raw?.chatId ?? raw?.id ?? raw?.object_guid ?? raw?.guid ?? raw?.peer_id ?? "").trim();
     if (!chatId) return null;
     const typeRaw = String(raw?.type ?? raw?.chat_type ?? raw?.kind ?? "private").toLowerCase();
     const type = /channel/.test(typeRaw) ? "channel" : /group|supergroup|chat/.test(typeRaw) ? "group" : "private";
+    const inboxName = inboxTitle && !postIsIdLike(inboxTitle, chatId) ? inboxTitle.trim().slice(0, 160) : "";
+    const lastRaw = raw?.last_message ?? raw?.lastText ?? raw?.last_text;
+    const lastText = typeof lastRaw === "string" ? lastRaw.trim().slice(0, 200) : "";
     return {
       provider,
       chatId,
-      title: String(raw?.title ?? raw?.name ?? raw?.username ?? chatId).trim().slice(0, 160),
+      title: postNameOf(raw, chatId) || inboxName || chatId,
       type,
-      lastText: String(raw?.last_message ?? raw?.lastText ?? raw?.last_text ?? "").trim().slice(0, 200) || undefined,
+      lastText: lastText || undefined,
     };
   };
 
@@ -544,9 +587,36 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     if (!r.ok) return void res.status(502).json({ error: r.error ?? "دریافت فهرست گفتگوها ناموفق بود." });
     const result: any = r.result;
     const list = Array.isArray(result?.chats) ? result.chats : Array.isArray(result?.dialogs) ? result.dialogs : Array.isArray(result) ? result : [];
-    const chats = list.map((x: any) => normalizePostTarget(provider, x)).filter(Boolean);
+    const inboxTitles = new Map(
+      engine.inbox
+        .chats(provider)
+        .filter((chat) => chat.title && !postIsIdLike(chat.title, chat.chatId))
+        .map((chat) => [chat.chatId, String(chat.title)]),
+    );
+    for (const [chatId, title] of inboxTitles) postChatNames.set(`${provider}:${chatId}`, title);
+    const chats = list.map((x: any) => {
+      const chatId = String(x?.chat_id ?? x?.chatId ?? x?.id ?? x?.object_guid ?? x?.guid ?? x?.peer_id ?? "").trim();
+      const cached = postChatNames.get(`${provider}:${chatId}`);
+      const chat = normalizePostTarget(provider, x, inboxTitles.get(chatId) || cached);
+      if (chat && cached) chat.title = cached;
+      return chat;
+    }).filter(Boolean) as Array<PostTarget & { lastText?: string }>;
+    // اگر فهرست گفتگوها فقط شناسه برگردانده باشد، نام واقعی را از خود سرویس می‌گیریم.
+    const missingNames = chats.filter((x) => postIsIdLike(x.title, x.chatId)).slice(0, 20);
+    const infoTool = POST_CHAT_INFO_TOOLS[provider];
+    if (infoTool && missingNames.length) {
+      await Promise.all(missingNames.map(async (chat) => {
+        const info = await engine.callTool(infoTool, { chat_id: chat.chatId }, "dashboard");
+        if (!info.ok) return;
+        const name = postNameOf(info.result, chat.chatId);
+        if (name) {
+          chat.title = name;
+          postChatNames.set(`${provider}:${chat.chatId}`, name);
+        }
+      }));
+    }
     const seen = new Set<string>();
-    res.json({ chats: chats.filter((x: any) => !seen.has(x.chatId) && seen.add(x.chatId)) });
+    res.json({ chats: chats.filter((x) => !seen.has(x.chatId) && seen.add(x.chatId)) });
   });
 
   api.get("/post-templates", (_req, res) => {
