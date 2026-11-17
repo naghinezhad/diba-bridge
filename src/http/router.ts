@@ -3,13 +3,12 @@ import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { hashPassword, RateLimiter, safeEqual, SignedSessions, verifyPassword } from "../core/auth.js";
-import { handleSendReply, parseSendIntent, prepareSend } from "../core/assistant/chat-flow.js";
+import { AgentError, runAgent } from "../core/assistant/runner.js";
 import { SEND_TOOLS } from "../core/assistant/policy.js";
 import { PostTemplateStore, type PostTarget } from "../core/post-templates.js";
-import { dibaRouterChat, dibaRouterModels, dibaRouterTest, type DibaRouterMessage, type DibaRouterTool } from "../core/dibarouter.js";
-import { compactConversation, compactToolResult, extractContextLimit, fitContextToBudget, isContextLimitError, selectAndCompactTools, summarizeContextError } from "../core/context.js";
+import { dibaRouterModels, dibaRouterTest } from "../core/dibarouter.js";
 import { SERVER_VERSION, type DibaMcpEngine } from "../core/engine.js";
-import { ModelLimits, planContext } from "../core/context-budget.js";
+import { ModelLimits } from "../core/context-budget.js";
 import { configureProxy, probeViaProxy } from "../core/net.js";
 import { ProxyManager, ProxyPoolError } from "../core/proxy-manager.js";
 import { normalizeProfile, ProfileError, PROFILE_LIMITS } from "../core/profile.js";
@@ -19,6 +18,7 @@ import { runNetcheck } from "../core/netcheck.js";
 import { enrichChatTitles } from "../core/assistant/resolver.js";
 import { hintFor, runSelfTest } from "../core/selftest.js";
 import { handleEitaaBridgeWebhook } from "../providers/eitaa-client.js";
+import { createOpenAiRouter } from "./openai-api.js";
 
 export interface RouterOptions {
   dashboard?: boolean;
@@ -34,207 +34,6 @@ function maskKey(key: string): string {
   if (!key) return "";
   if (key.length <= 10) return "••••••";
   return `${key.slice(0, 8)}…${key.slice(-4)}`;
-}
-
-function agentSystemPrompt(engine: DibaMcpEngine, historySummary?: string, compact = false): string {
-  const readyList: string[] = [];
-  const offList: string[] = [];
-  for (const p of engine.describeProviders()) {
-    if (p.ready) {
-      const rcv = p.receive.supported ? (p.receive.enabled ? "، دریافت روشن" : "، دریافت خاموش") : "";
-      readyList.push(`${p.nameFa} (${p.id}: ${p.tools.length} ابزار${rcv})`);
-    } else {
-      const reason = p.enabled ? `ناقص: ${p.missing.join("، ") || "تنظیم نشده"}` : "خاموش";
-      offList.push(`${p.nameFa} (${reason})`);
-    }
-  }
-  const inboxAlerts = engine.inbox
-    .statuses()
-    .filter((s) => s.enabled || s.lastError)
-    .map((s) => `${s.provider}: ${s.lastError ? `خطا (${s.lastError.slice(0, 80)})` : "دریافت فعال"}`);
-
-  if (compact) {
-    return `تو «دستیار دیبا» هستی؛ دستیار فارسی داشبورد dibaMCP. کوتاه، دقیق و عملی جواب بده.
-قواعد:
-- هیچ توکن، رمز، chat_id یا شماره‌ی کامل را در پاسخ نگو؛ فقط نام نمایشی و نام سرویس.
-- وضعیت سرویس‌ها: list_services. پیدا کردن مقصد: list_chats. حدس نزن؛ اگر مبهم است یک سؤال کوتاه بپرس.
-- ابزارهای نوشتنی/حذف را فقط با درخواست صریح کاربر اجرا کن. به گروه/کانال بدون درخواست صریح پیام نده.
-- برای «به [نام] پیام بده»: مخاطب و متن پیشنهادی را نشان بده و فقط پس از «بله» ارسال کن.
-- اگر ابزاری خطا داد، یک بار با آرگومان اصلاح‌شده تکرار کن؛ بدون نتیجه‌ی واقعی ابزار نگو «انجام شد».
-- خروجی خام ابزار را نریز؛ فقط نتیجه‌ی مفید را بگو.
-
-سرویس‌های آماده: ${readyList.join("؛ ") || "هیچکدام"}${offList.length ? `\nغیرفعال/ناقص: ${offList.map((item) => item.split(" (")[0]).join("، ")}` : ""}${historySummary ? `\n\n${historySummary}` : ""}`;
-  }
-
-  return `تو «دستیار دیبا» هستی؛ دستیار فارسی داشبورد dibaMCP برای پیام‌رسان‌ها و ابزارهای MCP.
-قواعد:
-- فارسی، کوتاه، دقیق و عملی جواب بده. هیچ توکن یا رمزی را نگو.
-- در پاسخ، نام فارسی سرویس را به کار ببر و شناسه‌ی انگلیسی را فقط در صورت نیاز در پرانتز بیاور.
-- برای هر سؤال درباره‌ی وضعیت، آمادگی یا فهرست سرویس‌ها اول ابزار list_services را صدا بزن؛ برای پیدا کردن مقصد پیام از list_chats استفاده کن. به فهرست ثابت پایین اکتفا نکن.
-- فهرست «سرویس‌های آماده» فقط وضعیت پیکربندی است (روشن + تنظیمات کامل)، نه اتصال زنده؛ اگر مطمئن نیستی با get_me یا get_chats همان سرویس بررسی کن.
-- برای کارهای چندمرحله‌ای، در یک خط کوتاه برنامه را بگو (مثلاً «۱) پیدا کردن چت ۲) ارسال پیام») و بعد ابزارها را به ترتیب اجرا کن.
-- اگر ابزاری خطا داد، متن خطا را بخوان؛ یک بار همان ابزار را با آرگومان‌های اصلاح‌شده صدا بزن. اگر باز هم نشد، علت را شفاف بگو و حدس نزن.
-- ابزارهای نوشتنی (ارسال، حذف، تغییر) را فقط با درخواست صریح کاربر اجرا کن؛ ابزارهای حذف/خروج/بلاک/تغییر عضویت را فقط با درخواست صریح همان کار.
-- اگر مقصد یا سرویس نامشخص است، اول list_services/list_chats را صدا بزن یا یک سؤال کوتاه بپرس؛ حدس نزن.
-- اگر کاربر شناسه/chat_id/نام کاربری/شماره‌ی مشخصی داده، همان را بدون پرسش به ابزار بده و دوباره نپرس.
-- «شناسه» را با «فهرست خالی چت‌ها» اشتباه نگیر؛ اگر شناسه داده شده، get_chat یا ابزار متناظر را با همان شناسه صدا بزن.
-- برای «به [نام] پیام بده» مسیر آماده‌سازی/تأیید را طی کن؛ خودت مستقیم و بدون تأیید پیام نفرست.
-- لازم نیست کاربر نام دقیق یا chat_id بدهد؛ نزدیک‌ترین مخاطبین را از چت‌های موجود، مخاطبین و حافظه پیدا کن و گزینه‌ها را نشان بده.
-- هیچ chat_id، شناسه‌ی داخلی یا شماره‌ی کامل را در پاسخ نده؛ فقط نام نمایشی، سرویس و نوع چت (خصوصی/گروه/کانال) را بگو.
-- قبل از ارسال، مخاطب و متن پیشنهادی را نشان بده و منتظر تأیید صریح («بله») بمان. اگر کاربر «لغو» گفت، ارسال را لغو کن.
-- اگر چند مخاطب نزدیک هست، شماره‌ی گزینه یا نام را بپرس؛ خودت یکی را انتخاب نکن.
-- متن پیام را طبیعی، کوتاه و متناسب با رابطه/آخرین گفتگو بنویس. از «سلام» تنها، متن تکراری، لینک/تبلیغ ناخواسته و ایموجی زیاد پرهیز کن.
-- به گروه/کانال بدون درخواست صریح پیام نفرست.
-- اگر مخاطب پیدا نشد، حدس نزن؛ نزدیک‌ترین چت‌های اخیر را نشان بده تا کاربر انتخاب کند.
-- قبل از پرسیدن اطلاعاتی که ممکن است قبلاً گفته شده، memory_search را صدا بزن. اطلاعات پایدار جدید درباره‌ی کاربر/مخاطب (نام، لحن، رابطه، ترجیح) را با memory_remember ذخیره کن.
-- بدون اجرای واقعی و تأیید کاربر نگو «پیام ارسال شد»؛ نتیجه‌ی مسیر تأیید/ارسال را ملاک قرار بده.
-- خروجی خام ابزارها را کامل نریز؛ فقط نتیجه‌ی مفید و اقدام بعدی را بگو و شناسه‌های داخلی را افشا نکن.
-- پاسخ نهایی باید بر اساس نتیجه‌ی واقعی ابزارها باشد؛ بدون اجرای ابزار نگو «انجام شد».
-- مسیرهای داشبورد: #/overview، #/providers، #/triggers، #/playground، #/logs، #/connect، #/dibarouter.
-- برای آدرس و توکن MCP کاربر را به تب «اتصال به هوش مصنوعی» ارجاع بده. DibaRouter: https://dibarouter.ir/api/v1
-
-سرویس‌های آماده: ${readyList.join("؛ ") || "هیچکدام"}
-سرویس‌های غیرفعال/ناقص: ${offList.join("؛ ") || "هیچکدام"}
-دریافت پیام‌ها: ${inboxAlerts.join("؛ ") || "غیرفعال"}${historySummary ? `\n\n${historySummary}` : ""}`;
-}
-
-function autoFacts(text: string): string[] {
-  const out: string[] = [];
-  const remember = text.match(/(?:یادت باشه|به خاطر بسپار|ذخیره کن|remember that|remember)\s*[:\-]?\s*(.{3,300})/i);
-  if (remember) out.push(remember[1].trim());
-  const name = text.match(/(?:اسم|نام)\s*(?:من|کاربر)\s*(?:هست|است|:)?\s*([^\n،.؟!]{2,40})/i);
-  if (name) {
-    const value = name[1].replace(/\s+(?:است|هستم|هست)$/i, "").trim();
-    if (value) out.push(`اسم/نام کاربر: ${value}`);
-  }
-  const callMe = text.match(/(?:من(?:و| را)?\s+)([^\n،.؟!]{2,30})\s*(?:صدا کن|صدا بزن|بنام)/i);
-  if (callMe) out.push(`کاربر دوست دارد «${callMe[1].trim()}» صدا زده شود.`);
-  return [...new Set(out)];
-}
-
-function assistantFallback(trace: Array<{ name: string; ok: boolean }>): string {
-  if (!trace.length) {
-    return "مدل پاسخی برنگرداند. لطفاً دوباره بپرسید؛ اگر تکرار شد، مدل دیگری را در تب «دیبا روتر» انتخاب کنید.";
-  }
-  const ok = trace.filter((t) => t.ok).length;
-  return [
-    `درخواست اجرا شد (${ok} از ${trace.length} ابزار موفق)، اما مدل پاسخی برای جمع‌بندی برنگرداند.`,
-    ...trace.map((t) => `- ${t.ok ? "✓" : "✗"} ${t.name}`),
-    "",
-    "نتیجه‌ی کامل در صفحه‌ی «گزارش فراخوانی‌ها» ثبت شده است.",
-  ].join("\n");
-}
-
-function stripChatIds(value: any): any {
-  if (!value || typeof value !== "object") return value;
-  if (Array.isArray(value)) return value.map(stripChatIds);
-  const out: Record<string, unknown> = {};
-  for (const [key, item] of Object.entries(value)) {
-    if (key === "chatId" || key === "chat_id" || key === "jid" || key === "peer_id") continue;
-    if (key === "id" && (typeof item === "string" || typeof item === "number")) {
-      const id = String(item);
-      if (/@/.test(id) || /^\d{5,}$/.test(id)) continue;
-    }
-    out[key] = stripChatIds(item);
-  }
-  return out;
-}
-
-function servicesBrief(list: unknown): string {
-  const items = Array.isArray(list) ? list : [];
-  const ready: string[] = [];
-  const off: string[] = [];
-  for (const p of items as any[]) {
-    const label = `${p.nameFa || p.name || p.id}`;
-    if (p.ready) {
-      ready.push(
-        `${label}${p.receive ? " | دریافت روشن" : ""}${
-          p.receiveError ? ` | خطای دریافت: ${String(p.receiveError).slice(0, 80)}` : ""
-        }`,
-      );
-    } else {
-      const reason = p.enabled ? `ناقص: ${(p.missing || []).join("، ") || "تنظیم ناقص"}` : "خاموش";
-      off.push(`${label}: ${reason}`);
-    }
-  }
-  return `سرویس‌های آماده (پیکربندی):\n${ready.join("\n") || "هیچ‌کدام"}\n\nغیرفعال/ناقص:\n${off.join("\n") || "هیچ‌کدام"}`;
-}
-
-function agentTools(engine: DibaMcpEngine, maxTools = 160): DibaRouterTool[] {
-  const out: DibaRouterTool[] = [
-    {
-      type: "function",
-      function: {
-        name: "list_services",
-        description:
-          "وضعیت واقعی سرویس‌ها: فعال/آماده، فیلدهای ناقص، دریافت پیام و نام ابزارها. برای هر سؤال درباره‌ی سرویس‌ها یا آمادگی اول این را صدا بزن.",
-        parameters: { type: "object", properties: {}, additionalProperties: false },
-      },
-    },
-    {
-      type: "function",
-      function: {
-        name: "list_chats",
-        description:
-          "فهرست چت‌ها/گروه‌ها/کانال‌ها با عنوان و آخرین پیام. برای پیدا کردن مقصد ارسال استفاده کن؛ شناسه‌ی چت را به کاربر نشان نده.",
-        parameters: {
-          type: "object",
-          properties: { provider: { type: "string", description: "شناسه‌ی سرویس مثل bale_client، rubika_client، telegram_client" } },
-          additionalProperties: false,
-        },
-      },
-    },
-    {
-      type: "function",
-      function: {
-        name: "memory_search",
-        description: "جستجوی حافظه‌ی دستیار: اطلاعات پایدار کاربر، مخاطبان شناخته‌شده و ارسال‌های اخیر.",
-        parameters: {
-          type: "object",
-          properties: {
-            query: { type: "string", description: "نام، موضوع یا عبارت برای جستجو" },
-            limit: { type: "integer", minimum: 1, maximum: 20 },
-          },
-          required: ["query"],
-          additionalProperties: false,
-        },
-      },
-    },
-    {
-      type: "function",
-      function: {
-        name: "memory_remember",
-        description: "ذخیره‌ی یک اطلاعات پایدار درباره‌ی کاربر یا مخاطب (نام، لحن، رابطه، ترجیح).",
-        parameters: {
-          type: "object",
-          properties: {
-            text: { type: "string", description: "متن واقعیت پایدار" },
-            tags: { type: "array", items: { type: "string" } },
-          },
-          required: ["text"],
-          additionalProperties: false,
-        },
-      },
-    },
-  ];
-  for (const provider of engine.describeProviders()) {
-    if (!provider.ready) continue;
-    for (const tool of provider.tools) {
-      const schema = JSON.parse(JSON.stringify(tool.schema ?? { type: "object", properties: {} }));
-      delete schema.$schema;
-      delete schema.$id;
-      out.push({
-        type: "function",
-        function: {
-          name: tool.name,
-          description: tool.description,
-          parameters: schema,
-        },
-      });
-      if (out.length >= maxTools) return out;
-    }
-  }
-  return out;
 }
 
 function normalizeSettings(body: any) {
@@ -350,6 +149,10 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   });
 
   if (opts.inbox !== false) engine.inbox.start();
+
+  // the assistant's OpenAI-compatible API uses the MCP token, so it is available with or without the dashboard
+  const modelLimits = new ModelLimits(() => dibaRouterModels(engine.store.dibarouter()));
+  router.use("/v1", createOpenAiRouter(engine, { modelLimits, limiter: mcpLimiter }));
 
   if (opts.dashboard === false) return router;
 
@@ -770,8 +573,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.json({ ok: true, ...proxies.describe() });
   }));
 
-  const modelLimits = new ModelLimits(() => dibaRouterModels(engine.store.dibarouter()));
-
   api.get("/dibarouter", (_req, res) => {
     const c = engine.store.dibarouter();
     res.json({
@@ -839,418 +640,54 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   });
 
   api.post("/agent/chat", async (req, res) => {
-    if (!Array.isArray(req.body?.messages) || !req.body.messages.length) {
-      return void res.status(400).json({ error: "پیامی برای دستیار ارسال نشد" });
-    }
-    const c = engine.store.dibarouter();
-    if (!c.apiKey) return void res.status(400).json({ error: "برای استفاده از دستیار، ابتدا دیبا روتر را در تب «دیبا روتر» وصل کنید" });
-    let plan = planContext(await modelLimits.limitOf(c.baseUrl, c.model));
-    const compacted = compactConversation(req.body.messages, {
-      keepRecent: plan.compact ? 4 : 6,
-      maxHistoryChars: plan.historyChars,
-      maxMessageChars: plan.messageChars,
-      maxSummaryChars: plan.summaryChars,
-    });
-    if (!compacted.messages.length) return void res.status(400).json({ error: "پیامی برای دستیار ارسال نشد" });
-    const conversationId = String(req.body?.conversationId ?? "dashboard");
-    const latestUser = [...compacted.messages].reverse().find((m) => m.role === "user")?.content ?? "";
-    if (latestUser) engine.memory.appendTurn({ role: "user", content: latestUser, conversationId });
-    for (const fact of autoFacts(latestUser)) engine.memory.rememberFact(fact, ["auto"]);
-
     const wantStream = req.body?.stream === true;
-    const sendSse = (event: string, data: unknown) => {
-      if (!wantStream || res.writableEnded) return;
-      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-    };
-
-    if (wantStream) {
-      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-      res.setHeader("Cache-Control", "no-cache, no-transform");
-      res.setHeader("Connection", "keep-alive");
-      res.flushHeaders?.();
-      sendSse("status", { text: "در حال آماده‌سازی کانتکست…" });
-    }
-
     const abort = new AbortController();
     res.on("close", () => {
       if (!res.writableEnded) abort.abort();
     });
-    const signal = abort.signal;
-    const stopped = () => signal.aborted || res.writableEnded;
-
-    const userTurns = compacted.messages.filter((m) => m.role === "user");
-    const selectionText = userTurns.slice(-2).map((m) => m.content).join("\n");
-    const hasExplicitChatTarget = /(?:^|\s)@[A-Za-z0-9_]{3,}|-?\d{5,}|\|/.test(latestUser);
-    const sendIntent = parseSendIntent(latestUser);
-    const forceSendTool =
-      Boolean(sendIntent) &&
-      !hasExplicitChatTarget &&
-      !/(عکس|تصویر|فایل|ویدیو|photo|image|file|video)/i.test(latestUser);
-    const allTools = agentTools(engine);
-    let contextBudget = plan.inputTokens;
-
-    const toolTrace: Array<{ name: string; args: unknown; ok: boolean; ms?: number; error?: string; cached?: boolean; preloaded?: boolean }> = [];
-    const callCache = new Map<string, { content: string; ok: boolean; error?: string }>();
-    const preloadedBlocks: string[] = [];
-    let lastReply = "";
-    let memoryReply = "";
-    const memoryTools = () => [...new Set(toolTrace.map((t) => t.name))];
-    res.on("finish", () => {
-      if (!memoryReply) return;
-      engine.memory.appendTurn({ role: "assistant", content: memoryReply, conversationId, tools: memoryTools() });
-    });
-    const finalize = <P extends { reply?: string }>(payload: P): P => {
-      memoryReply = String(payload.reply ?? memoryReply);
-      return payload;
+    // the stream opens on the first event, so a request that fails up front still gets a JSON error
+    const sendSse = (event: string, data: unknown) => {
+      if (!wantStream || res.writableEnded) return;
+      if (!res.headersSent) {
+        res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+        res.setHeader("Cache-Control", "no-cache, no-transform");
+        res.setHeader("Connection", "keep-alive");
+        res.flushHeaders?.();
+      }
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
-
-    const plainGreeting = /^(سلام|درود|وقت بخیر|صبح بخیر|شب بخیر|hi|hello|hey|thanks|ممنون|مرسی)[!؟.،\s]*$/i.test(selectionText.trim());
-    const wantsChatList = /(لیست|فهرست|چت‌ها|چتها|گفتگوها|همه‌ی چت|همه چت|inbox|list chats|all chats)/i.test(selectionText);
-
-    const preload = (name: string, args: Record<string, unknown>) => {
-      sendSse("status", { text: name === "list_chats" ? "در حال خواندن فهرست چت‌ها…" : "در حال خواندن وضعیت سرویس‌ها…" });
-      try {
-        const provider = typeof args.provider === "string" ? args.provider : undefined;
-        const content =
-          name === "list_services"
-            ? servicesBrief(engine.servicesSummary())
-            : compactToolResult(stripChatIds(engine.chatsSummary(provider)) ?? null, Math.min(1800, plan.toolResultChars));
-        toolTrace.push({ name, args, ok: true, ms: 0, preloaded: true });
-        const cacheKey = name === "list_services" ? "list_services" : `${name}:${JSON.stringify(args)}`;
-        callCache.set(cacheKey, { content, ok: true });
-        preloadedBlocks.push(`[${name}]\n${content}`);
-      } catch (err: any) {
-        toolTrace.push({ name, args, ok: false, error: String(err?.message ?? err), preloaded: true });
-      }
-    };
-
-    if (!plainGreeting && !forceSendTool) {
-      preload("list_services", {});
-      if (wantsChatList) preload("list_chats", {});
-    }
-
-    const memoryContext = engine.memory.promptContext(selectionText);
-    const systemContent = `${agentSystemPrompt(engine, compacted.summary, plan.compact)}${
-      preloadedBlocks.length
-        ? `\n\nداده‌ی تازه‌ی ابزارها (همین حالا خوانده شد؛ به آن استناد کن):\n${preloadedBlocks.join("\n\n")}\n` +
-          "این داده وضعیت پیکربندی و صندوق پیام است؛ برای اطمینان از اتصال زنده‌ی هر سرویس، ابزار get_me یا get_chats همان سرویس را صدا بزن."
-        : ""
-    }${memoryContext ? `\n\nحافظه‌ی ماندگار (از گفتگوهای قبلی):\n${memoryContext}` : ""}`;
-
-    let messages: DibaRouterMessage[] = [
-      { role: "system", content: systemContent },
-      ...compacted.messages.map((m) => ({ role: m.role, content: m.content })),
-    ];
-
-    const callModelWithRecovery = async (
-      msgs: DibaRouterMessage[],
-      tools: DibaRouterTool[],
-      maxTokens: number,
-      temperature: number,
-      onDelta?: (delta: string) => void,
-      forceTool?: string,
-    ) => {
-      maxTokens = Math.min(maxTokens, plan.outputTokens);
-      const fitted = fitContextToBudget(msgs, tools, contextBudget);
-      msgs = fitted.messages;
-      tools = fitted.tools;
-      const forcedChoice =
-        forceTool && tools.some((t) => t.function.name === forceTool)
-          ? ({ type: "function" as const, function: { name: forceTool } })
-          : undefined;
-      try {
-        return await dibaRouterChat(c, msgs, {
-          maxTokens,
-          temperature,
-          tools: tools.length ? tools : undefined,
-          toolChoice: forcedChoice ?? (tools.length ? "auto" : "none"),
-          onDelta,
-          signal,
-        });
-      } catch (err: any) {
-        let failure = err;
-        for (let attempt = 0; attempt < 3 && isContextLimitError(failure); attempt++) {
-          const reported = extractContextLimit(failure);
-          const assumed = Math.floor(plan.contextLength * 0.6);
-          plan = planContext(modelLimits.learn(c.baseUrl, c.model, Math.min(reported ?? assumed, plan.contextLength - 1)));
-          contextBudget = plan.inputTokens;
-          const lastTry = attempt === 2;
-          const tighter = fitContextToBudget(msgs, lastTry ? [] : tools.slice(0, Math.min(6, plan.maxTools)), contextBudget);
-          try {
-            return await dibaRouterChat(c, tighter.messages, {
-              maxTokens: Math.min(maxTokens, plan.outputTokens, 700),
-              temperature,
-              tools: tighter.tools.length ? tighter.tools : undefined,
-              toolChoice: tighter.tools.length ? "auto" : "none",
-              onDelta,
-              signal,
-            });
-          } catch (retryErr: any) {
-            failure = retryErr;
-          }
-        }
-        if (isContextLimitError(failure)) {
-          const e: any = new Error(summarizeContextError(failure));
-          e.status = 400;
-          throw e;
-        }
-        if (forcedChoice && tools.length && /tool|function|support|unsupported|tool_choice/i.test(String(failure?.message ?? failure))) {
-          try {
-            return await dibaRouterChat(c, msgs, {
-              maxTokens,
-              temperature,
-              tools,
-              toolChoice: "auto",
-              onDelta,
-              signal,
-            });
-          } catch (retryErr: any) {
-            failure = retryErr;
-          }
-        }
-        if (tools.length && /tool|function|support|unsupported/i.test(String(failure?.message ?? failure))) {
-          return await dibaRouterChat(c, msgs, { maxTokens, temperature, onDelta, signal });
-        }
-        throw failure;
-      }
-    };
-
-    if (engine.memory.getPending(conversationId)) {
-      try {
-        sendSse("status", { text: "در حال بررسی پاسخ شما…" });
-        const handled = await handleSendReply(engine, c, conversationId, latestUser, { signal });
-        if (stopped()) return;
-        if (handled) {
-          toolTrace.push(...handled.toolTrace);
-          const payload = finalize({
-            ok: true,
-            reply: handled.reply,
-            model: c.model,
-            toolTrace,
-            compacted: compacted.compacted,
-            pending: handled.pending,
-            actions: handled.actions,
-          });
-          if (wantStream) {
-            sendSse("delta", { delta: handled.reply });
-            sendSse("done", payload);
-            return void res.end();
-          }
-          return void res.json(payload);
-        }
-      } catch (err: any) {
-        console.error("[diba-mcp] pending send failed", err?.message ?? err);
-      }
-    }
-
-    if (forceSendTool && sendIntent) {
-      try {
-        sendSse("status", { text: `در حال پیدا کردن نزدیک‌ترین مخاطب برای «${sendIntent.recipient}»…` });
-        const result = await prepareSend(engine, c, sendIntent, {
-          conversationId,
-          allowGroup: /(گروه|کانال|group|channel)/i.test(latestUser),
-          signal,
-        });
-        if (stopped()) return;
-        toolTrace.push(...result.toolTrace);
-        const payload = finalize({
-          ok: true,
-          reply: result.reply,
-          model: c.model,
-          toolTrace,
-          compacted: compacted.compacted,
-          pending: result.pending,
-          actions: result.actions,
-        });
-        if (wantStream) {
-          sendSse("delta", { delta: result.reply });
-          sendSse("done", payload);
-          return void res.end();
-        }
-        return void res.json(payload);
-      } catch (err: any) {
-        console.error("[diba-mcp] prepare send failed", err?.message ?? err);
-      }
-    }
 
     try {
-      for (let round = 0; round < 5; round++) {
-        if (stopped()) return;
-        let streamedThisRound = false;
-        const onDelta = wantStream
-          ? (delta: string) => {
-              streamedThisRound = true;
-              sendSse("delta", { delta });
-            }
-          : undefined;
-
-        const roundQuery = [selectionText, lastReply, toolTrace.map((t) => t.name).join(" ")].filter(Boolean).join("\n");
-        const roundTools = plan.maxTools
-          ? selectAndCompactTools(allTools, roundQuery, { maxTools: plan.maxTools, maxToolTokens: plan.toolTokens, blockDirectSend: true })
-          : [];
-        sendSse("status", {
-          text: round === 0 ? `در حال تحلیل درخواست (${roundTools.length} ابزار در دسترس)…` : "در حال بررسی نتایج و برنامه‌ریزی قدم بعد…",
-        });
-
-        const out = await callModelWithRecovery(
-          messages,
-          roundTools,
-          1000,
-          0.35,
-          onDelta,
-          round === 0 && forceSendTool ? "send_message_to" : undefined,
-        );
-        lastReply = out.reply || lastReply;
-        if (stopped()) return;
-
-        if (!out.reply && !out.toolCalls?.length) {
-          try {
-            const retryMessages = toolTrace.length
-              ? [...messages, { role: "user" as const, content: "نتیجه‌ی ابزارهای بالا را به فارسی و کوتاه جمع‌بندی کن." }]
-              : messages;
-            const retry = await callModelWithRecovery(retryMessages, [], 700, 0.25, onDelta);
-            if (retry.reply) {
-              const payload = finalize({ ok: true, ...retry, toolTrace, compacted: compacted.compacted });
-              if (wantStream) {
-                if (!streamedThisRound) sendSse("delta", { delta: retry.reply });
-                sendSse("done", payload);
-                return void res.end();
-              }
-              return void res.json(payload);
-            }
-          } catch {
-            // Fall through to local fallback
-          }
-          const fallback = assistantFallback(toolTrace);
-          const payload = finalize({ ok: true, reply: fallback, model: c.model, toolTrace, compacted: compacted.compacted });
-          if (wantStream) {
-            sendSse("delta", { delta: fallback });
-            sendSse("done", payload);
-            return void res.end();
-          }
-          return void res.json(payload);
-        }
-
-        if (!out.toolCalls?.length) {
-          const payload = finalize({ ok: true, ...out, reply: lastReply, toolTrace, compacted: compacted.compacted });
-          if (wantStream) {
-            if (!streamedThisRound && lastReply) sendSse("delta", { delta: lastReply });
-            sendSse("done", payload);
-            return void res.end();
-          }
-          return void res.json(payload);
-        }
-
-        messages.push({
-          role: "assistant",
-          content: out.reply || "",
-          tool_calls: out.toolCalls,
-        });
-
-        for (const call of out.toolCalls) {
-          const name = call.function.name;
-          sendSse("status", { text: `در حال اجرای ${name}…` });
-
-          let args: Record<string, unknown> = {};
-          let argsError = "";
-          try {
-            const parsed = JSON.parse(call.function.arguments || "{}");
-            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) args = parsed;
-            else argsError = "آرگومان‌ها باید یک آبجکت JSON باشند.";
-          } catch {
-            argsError = "JSON آرگومان‌ها معتبر نیست.";
-          }
-          if (argsError) {
-            const item = { name, args: call.function.arguments, ok: false, error: argsError };
-            toolTrace.push(item);
-            sendSse("tool", item);
-            messages.push({
-              role: "tool",
-              tool_call_id: call.id,
-              name,
-              content: `ERROR: ${argsError} آرگومان‌های ابزار را اصلاح کن و همان ابزار را دوباره صدا بزن.`,
-            });
-            continue;
-          }
-
-          const cacheKey = name === "list_services" ? "list_services" : `${name}:${JSON.stringify(args)}`;
-          const cached = callCache.get(cacheKey);
-          if (cached) {
-            const item = { name, args, ok: cached.ok, ms: 0, error: cached.error, cached: true };
-            toolTrace.push(item);
-            sendSse("tool", item);
-            messages.push({
-              role: "tool",
-              tool_call_id: call.id,
-              name,
-              content: `(این ابزار با همین آرگومان‌ها قبلاً اجرا شده؛ نتیجه‌ی قبلی)\n${cached.content}`,
-            });
-            continue;
-          }
-
-          const result = await engine.callTool(name, args, "mcp");
-          if (stopped()) return;
-          const item = { name, args, ok: result.ok, ms: result.ms, error: result.error };
-          toolTrace.push(item);
-          sendSse("tool", item);
-          let content: string;
-          if (!result.ok) content = `ERROR: ${result.error ?? "اجرای ابزار ناموفق بود"}`;
-          else if (name === "list_services") content = servicesBrief(result.result);
-          else if (name === "memory_search" || /(?:list_chats|get_chats|get_dialogs|get_contacts|find_contact|resolve_contact|get_history|get_messages|search_messages)/.test(name)) {
-            content = compactToolResult(stripChatIds(result.result) ?? null, plan.toolResultChars);
-          } else content = compactToolResult(result.result ?? null, plan.toolResultChars);
-          callCache.set(cacheKey, { content, ok: result.ok, error: result.error });
-          messages.push({
-            role: "tool",
-            tool_call_id: call.id,
-            name,
-            content,
-          });
-        }
-        if (wantStream) sendSse("status", { text: "در حال جمع‌بندی پاسخ…" });
+      const result = await runAgent(engine, modelLimits, {
+        messages: req.body?.messages,
+        conversationId: String(req.body?.conversationId ?? "dashboard"),
+        signal: abort.signal,
+        onStatus: (text) => sendSse("status", { text }),
+        onDelta: wantStream ? (delta) => sendSse("delta", { delta }) : undefined,
+        onTool: (item) => sendSse("tool", item),
+      });
+      if (!result) {
+        if (!res.writableEnded) res.end();
+        return;
       }
-
-      if (stopped()) return;
-      let finalReply = lastReply;
-      if (toolTrace.length) {
-        try {
-          sendSse("status", { text: "در حال آماده‌سازی پاسخ نهایی…" });
-          const summary = await callModelWithRecovery(
-            [
-              ...messages,
-              {
-                role: "user" as const,
-                content: "بر اساس نتایج ابزارهای بالا، پاسخ نهایی را فارسی، کوتاه و دقیق بده. اگر ابزاری خطا داد، علت و اقدام بعدی را بگو.",
-              },
-            ],
-            [],
-            800,
-            0.25,
-          );
-          if (summary.reply) finalReply = summary.reply;
-        } catch {
-        }
-      }
-      if (!finalReply) finalReply = "ابزارها اجرا شدند، اما مدل پاسخی برای جمع‌بندی برنگرداند. نتیجه را در گزارش‌ها ببینید.";
-      if (stopped()) return;
-      const payload = finalize({ ok: true, reply: finalReply, model: c.model, toolTrace, compacted: compacted.compacted, truncated: true });
+      const { finishReason: _finishReason, usage: _usage, ...rest } = result;
+      const payload = { ok: true, ...rest };
       if (wantStream) {
-        sendSse("delta", { delta: finalReply });
         sendSse("done", payload);
         return void res.end();
       }
       res.json(payload);
     } catch (err: any) {
-      if (stopped()) {
+      if (abort.signal.aborted) {
         if (!res.writableEnded) res.end();
         return;
       }
-      const message = isContextLimitError(err) ? summarizeContextError(err) : String(err?.message ?? err);
-      if (wantStream) {
+      const message = String(err?.message ?? err);
+      if (wantStream && res.headersSent) {
         sendSse("error", { error: message });
         return void res.end();
       }
-      res.status(err?.status && err.status < 500 ? 400 : 502).json({ error: message });
+      res.status(err instanceof AgentError || (err?.status && err.status < 500) ? 400 : 502).json({ error: message });
     }
   });
 
