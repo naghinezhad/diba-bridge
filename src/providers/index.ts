@@ -54,7 +54,5 @@ export const builtinProviders: ProviderDef[] = [
   wordpress,
 ];
 
-export {
-  abantether, baleClient, binance, bitpin, blubank, bybit, eitaaClient, instagram, kraken, kucoin, linkedinProvider, nobitex, okx,
-  rubikaClient, soroushClient, tabdeal, telegramClient, wallex, whatsapp, wordpress, x,
-};
+// prettier-ignore
+export { abantether, baleClient, binance, bitpin, blubank, bybit, eitaaClient, instagram, kraken, kucoin, linkedinProvider, nobitex, okx, rubikaClient, soroushClient, tabdeal, telegramClient, wallex, whatsapp, wordpress, x };
