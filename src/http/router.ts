@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { hashPassword, RateLimiter, safeEqual, SignedSessions, verifyPassword } from "../core/auth.js";
 import { handleSendReply, parseSendIntent, prepareSend } from "../core/assistant/chat-flow.js";
+import { SEND_TOOLS } from "../core/assistant/policy.js";
+import { PostTemplateStore, type PostTarget } from "../core/post-templates.js";
 import { dibaRouterChat, dibaRouterModels, dibaRouterTest, type DibaRouterMessage, type DibaRouterTool } from "../core/dibarouter.js";
 import { compactConversation, compactToolResult, extractContextLimit, fitContextToBudget, isContextLimitError, selectAndCompactTools, summarizeContextError } from "../core/context.js";
 import { SERVER_VERSION, type DibaMcpEngine } from "../core/engine.js";
@@ -279,6 +281,15 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   const router = express.Router();
   const env = process.env;
   const sessions = new SignedSessions(() => engine.store.sessionSecret, () => engine.store.sessionEpoch);
+  const postTemplates = new PostTemplateStore(engine.store.dir);
+  const POST_CHAT_TOOLS: Record<string, string> = {
+    bale_client: "bale_client_get_dialogs",
+    eitaa_client: "eitaa_client_get_chats",
+    rubika_client: "rubika_client_get_chats",
+    soroush_client: "soroush_client_get_chats",
+    telegram_client: "telegram_client_get_chats",
+    whatsapp: "whatsapp_get_chats",
+  };
   const loginLimiter = new RateLimiter(8, 10 * 60_000);
   // محدودیت درخواست به اندپوینت MCP به ازای هر IP (پیش‌فرض ۱۲۰ در دقیقه)
   const mcpLimiter = new RateLimiter(Math.max(1, Number(env.MCP_RATE_LIMIT) || 120), 60_000);
@@ -508,6 +519,95 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   api.use((req, res, next) => {
     if (!sessions.valid(sid(req))) return void res.status(401).json({ error: "ابتدا وارد شوید" });
     next();
+  });
+
+  // ---------------- پست و ارسال گروهی ----------------
+  const normalizePostTarget = (provider: string, raw: any): (PostTarget & { lastText?: string }) | null => {
+    const chatId = String(raw?.chat_id ?? raw?.chatId ?? raw?.id ?? raw?.object_guid ?? raw?.guid ?? raw?.peer_id ?? "").trim();
+    if (!chatId) return null;
+    const typeRaw = String(raw?.type ?? raw?.chat_type ?? raw?.kind ?? "private").toLowerCase();
+    const type = /channel/.test(typeRaw) ? "channel" : /group|supergroup|chat/.test(typeRaw) ? "group" : "private";
+    return {
+      provider,
+      chatId,
+      title: String(raw?.title ?? raw?.name ?? raw?.username ?? chatId).trim().slice(0, 160),
+      type,
+      lastText: String(raw?.last_message ?? raw?.lastText ?? raw?.last_text ?? "").trim().slice(0, 200) || undefined,
+    };
+  };
+
+  api.get("/posts/chats", async (req, res) => {
+    const provider = String(req.query.provider ?? "");
+    const tool = POST_CHAT_TOOLS[provider];
+    if (!tool) return void res.status(400).json({ error: "این سرویس برای ارسال پست پشتیبانی نمی‌شود." });
+    const r = await engine.callTool(tool, { limit: 100 }, "dashboard");
+    if (!r.ok) return void res.status(502).json({ error: r.error ?? "دریافت فهرست گفتگوها ناموفق بود." });
+    const result: any = r.result;
+    const list = Array.isArray(result?.chats) ? result.chats : Array.isArray(result?.dialogs) ? result.dialogs : Array.isArray(result) ? result : [];
+    const chats = list.map((x: any) => normalizePostTarget(provider, x)).filter(Boolean);
+    const seen = new Set<string>();
+    res.json({ chats: chats.filter((x: any) => !seen.has(x.chatId) && seen.add(x.chatId)) });
+  });
+
+  api.get("/post-templates", (_req, res) => {
+    res.json({ templates: postTemplates.list() });
+  });
+
+  api.post("/post-templates", (req, res) => {
+    try {
+      res.json({ ok: true, template: postTemplates.create(req.body) });
+    } catch (err: any) {
+      res.status(400).json({ error: String(err?.message ?? err) });
+    }
+  });
+
+  api.put("/post-templates/:id", (req, res) => {
+    try {
+      res.json({ ok: true, template: postTemplates.update(String(req.params.id), req.body) });
+    } catch (err: any) {
+      res.status(400).json({ error: String(err?.message ?? err) });
+    }
+  });
+
+  api.delete("/post-templates/:id", (req, res) => {
+    try {
+      postTemplates.remove(String(req.params.id));
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(400).json({ error: String(err?.message ?? err) });
+    }
+  });
+
+  api.post("/posts/send", async (req, res) => {
+    const text = String(req.body?.text ?? "").trim();
+    if (!text) return void res.status(400).json({ error: "متن پست خالی است." });
+    if (text.length > 4096) return void res.status(400).json({ error: "متن پست حداکثر ۴۰۹۶ کاراکتر است." });
+    if (req.body?.confirm !== true) return void res.status(400).json({ error: "ارسال باید تأیید شود." });
+    const rawTargets = Array.isArray(req.body?.targets) ? req.body.targets : [];
+    const seen = new Set<string>();
+    const targets: PostTarget[] = [];
+    for (const item of rawTargets) {
+      const provider = String(item?.provider ?? "").trim();
+      const chatId = String(item?.chatId ?? item?.chat_id ?? "").trim();
+      if (!provider || !chatId) continue;
+      const key = `${provider}:${chatId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      targets.push({ provider, chatId, title: String(item?.title ?? "").trim().slice(0, 160) || undefined, type: String(item?.type ?? "").trim().slice(0, 24) || undefined });
+      if (targets.length >= 200) break;
+    }
+    if (!targets.length) return void res.status(400).json({ error: "حداقل یک مقصد انتخاب کنید." });
+    const results: any[] = [];
+    for (const target of targets) {
+      const tool = SEND_TOOLS[target.provider];
+      if (!tool) {
+        results.push({ target, ok: false, error: "این سرویس برای ارسال پست پشتیبانی نمی‌شود." });
+        continue;
+      }
+      const r = await engine.callTool(tool, { chat_id: target.chatId, text }, "dashboard");
+      results.push({ target, ok: r.ok, error: r.error, ms: r.ms });
+    }
+    res.json({ ok: results.every((r) => r.ok), results });
   });
 
   // ---------------- نصب اولیه و مشخصات سازمان ----------------

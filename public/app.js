@@ -381,13 +381,15 @@ icons.dibarouter = icons.router;
 icons.install = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v11M7.5 10l4.5 4.5 4.5-4.5M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/></svg>';
 icons.banking = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9.5L12 4l9 5.5M4.5 9.5h15M6 10v7M10 10v7M14 10v7M18 10v7M3.5 20h17M5 17h14"/></svg>';
 icons.services = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><path d="M17 14v6M14 17h6"/></svg>';
+icons.posts = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/><path d="M10 14l4-4"/></svg>';
 
 const pages = [
   { id: "overview", title: "نمای کلی" },
-  // سه دسته‌ی سرویس: شبکه‌های اجتماعی، سرویس‌های مالی و بقیه
+  // سه دسته‌ی سرویس: شبکه‌های اجتماعی، سرویس‌های مالی و ابزارها
   { id: "providers", title: "شبکه‌های اجتماعی", submenu: true },
   { id: "banking", title: "سرویس‌های مالی", submenu: true },
-  { id: "services", title: "بقیه سرویس‌ها" },
+  { id: "services", title: "ابزارها" },
+  { id: "posts", title: "ارسال پست" },
   { id: "triggers", title: "تریگرها و اتوماسیون" },
   { id: "playground", title: "آزمایش ابزارها" },
   { id: "logs", title: "گزارش فراخوانی‌ها" },
@@ -401,14 +403,17 @@ const pages = [
 // اگر سرور هنوز نسخه‌ی قدیمی باشد و region را نفرستد، همین فهرست‌ها ملاک است تا دسته‌بندی به‌هم نریزد
 const legacyIranianPlatforms = new Set(["bale", "eitaa", "rubika", "soroush", "blubank"]);
 const legacyBankingProviders = new Set(["blubank"]);
+// وردپرس و ابزارهای مدیریت محتوا هرگز نباید در دسته‌ی شبکه‌های اجتماعی بیفتند؛
+// حتی اگر سرور قدیمی category را نفرستد.
+const legacyToolProviders = new Set(["wordpress"]);
 const isBankingProvider = (p) => p?.category === "banking" || (!p?.region && legacyBankingProviders.has(p?.id));
 const isIranianProvider = (p) =>
   p?.region ? p.region === "iran" : legacyIranianPlatforms.has(String(p?.id ?? "").replace(/_client$/, ""));
 // بانک، صرافی و درگاه پرداخت همه «مالی» هستند
 const isFinanceProvider = (p) => isBankingProvider(p) || p?.category === "payment";
 // پیام‌رسان‌ها و شبکه‌های اجتماعی؛ سرور قدیمی که category نمی‌فرستد هم همین‌جا می‌افتد
-const isSocialProvider = (p) => !isFinanceProvider(p) && (!p?.category || p.category === "messenger");
-/** صفحه‌ای که هر سرویس در آن مدیریت می‌شود: شبکه‌های اجتماعی، سرویس‌های مالی یا بقیه سرویس‌ها */
+const isSocialProvider = (p) => !isFinanceProvider(p) && !legacyToolProviders.has(p?.id) && (!p?.category || p.category === "messenger");
+/** صفحه‌ای که هر سرویس در آن مدیریت می‌شود: شبکه‌های اجتماعی، سرویس‌های مالی یا ابزارها */
 const providerSection = (p) => (isFinanceProvider(p) ? "banking" : isSocialProvider(p) ? "providers" : "services");
 const providerHref = (p) => `#/${providerSection(p)}?open=${encodeURIComponent(p.id)}`;
 
@@ -876,7 +881,7 @@ function serviceGroups(services) {
     { key: "social-intl", title: "شبکه‌های اجتماعی خارجی", items: [] },
     { key: "finance-ir", title: "سرویس‌های مالی ایرانی", items: [] },
     { key: "finance-intl", title: "سرویس‌های مالی خارجی", items: [] },
-    { key: "other", title: "بقیه سرویس‌ها", items: [] },
+    { key: "other", title: "ابزارها", items: [] },
   ];
   for (const s of services) {
     const section = providerSection(s);
@@ -1630,7 +1635,7 @@ async function render() {
   document.title = `${pages.find((p) => p.id === page).title} — Diba Bridge (دیبا پل) | دیباچین`;
   const main = document.getElementById("main");
   try {
-    await ({ overview: pageOverview, providers: pageProviders, banking: (m, query) => pageProviders(m, query, "banking"), services: (m, query) => pageProviders(m, query, "services"), playground: pagePlayground, triggers: pageTriggers, logs: pageLogs, dibarouter: pageDibaRouter, connect: pageConnect, install: pageInstall, settings: pageSettings })[page](main, q);
+    await ({ overview: pageOverview, providers: pageProviders, banking: (m, query) => pageProviders(m, query, "banking"), services: (m, query) => pageProviders(m, query, "services"), posts: pagePosts, playground: pagePlayground, triggers: pageTriggers, logs: pageLogs, dibarouter: pageDibaRouter, connect: pageConnect, install: pageInstall, settings: pageSettings })[page](main, q);
   } catch (e) {
     if (!(e instanceof AuthError)) main.innerHTML = `<div class="err-box">${esc(e.message)}</div>`;
   }
@@ -2021,9 +2026,341 @@ function platformAccordionHtml(plat) {
   </article>`;
 }
 
+// ---------------------------------------------------------------- posts / broadcast
+const POST_PROVIDER_IDS = ["whatsapp", "telegram_client", "bale_client", "eitaa_client", "rubika_client", "soroush_client"];
+const postTargetKey = (t) => `${t.provider}:${t.chatId}`;
+const postTypeLabel = (type) => ({ private: "خصوصی", group: "گروه", channel: "کانال" }[type] || "مقصد");
+
+async function pagePosts(main) {
+  state.providers = await api("providers");
+  const templatesResponse = await api("post-templates").catch(() => ({ templates: [] }));
+  const providers = state.providers.filter((p) => POST_PROVIDER_IDS.includes(p.id));
+  const chats = new Map();
+  const loading = new Set();
+  const errors = new Map();
+  const selectedProviders = new Set();
+  const targets = new Map();
+  let filter = "all";
+  let search = "";
+  let editingId = "";
+  let templates = templatesResponse.templates || [];
+
+  const providerById = (id) => providers.find((p) => p.id === id);
+  const providerName = (id) => {
+    const p = providerById(id);
+    return p ? serviceLabel(p) : id;
+  };
+  const allChats = () => [...selectedProviders].flatMap((id) => (chats.get(id) || []).map((c) => ({ ...c, provider: id })));
+  const visibleChats = () => allChats().filter((c) => (filter === "all" || c.type === filter) && (!search || `${c.title} ${c.lastText || ""}`.toLowerCase().includes(search.toLowerCase())));
+
+  main.innerHTML = `${head("ارسال پست", "متن را یک‌بار بنویس، مقصدها را انتخاب کن و همان پست را برای همه‌ی چت‌ها، گروه‌ها و کانال‌ها بفرست.", "ارسال گروهی",
+    `<button class="btn btn-ghost btn-sm" type="button" data-post-new><span aria-hidden="true">+</span> قالب جدید</button>`)}
+    <div class="post-layout">
+      <section class="panel post-compose">
+        <div class="post-section-head">
+          <div><h2>متن پست</h2><p class="desc">یک قالب بساز و بعداً با یک کلیک دوباره استفاده کن.</p></div>
+          <span class="post-target-count" data-target-count>۰ مقصد</span>
+        </div>
+        <div class="field post-name-field">
+          <label for="post-name">نام قالب <span class="req">*</span></label>
+          <input id="post-name" class="input" maxlength="80" placeholder="مثلاً اطلاعیه‌ی ساعت کاری">
+        </div>
+        <div class="field">
+          <label for="post-text">متن پست <span class="req">*</span></label>
+          <textarea id="post-text" class="textarea post-textarea" maxlength="4096" rows="8" placeholder="متن خود را بنویس…"></textarea>
+          <div class="post-counter"><span data-char-count>۰</span><span>از ۴۰۹۶ کاراکتر</span></div>
+        </div>
+        <div class="post-preview-wrap">
+          <span class="post-mini-label">پیش‌نمایش</span>
+          <div class="post-preview" data-post-preview><span class="hint">متن پست اینجا نمایش داده می‌شود.</span></div>
+        </div>
+        <div class="post-actions">
+          <button class="btn btn-primary" type="button" data-post-send>${icons.posts} ارسال به همه</button>
+          <button class="btn btn-ghost" type="button" data-post-save>ذخیره‌ی قالب</button>
+          <span class="hint" data-post-save-state></span>
+        </div>
+        <div class="post-result" data-post-result></div>
+      </section>
+
+      <section class="panel post-targets">
+        <div class="post-section-head">
+          <div><h2>مقصدها</h2><p class="desc">سرویس را انتخاب کن؛ سپس چت، گروه یا کانال را تیک بزن.</p></div>
+          <span class="post-target-count" data-target-count>۰ مقصد</span>
+        </div>
+        <div class="post-provider-grid" id="post-provider-grid" aria-label="انتخاب سرویس">
+          ${providers.map((p) => {
+            const disabled = !p.ready;
+            return `<button class="post-provider ${selectedProviders.has(p.id) ? "is-on" : ""}" type="button" data-post-provider="${p.id}" ${disabled ? "disabled" : ""} aria-pressed="${selectedProviders.has(p.id)}">
+              <span class="post-provider-logo" style="background:${esc(p.color)}">${providerLogo(p)}</span>
+              <span class="post-provider-text"><b>${esc(serviceLabel(p))}</b><small>${disabled ? "نیاز به اتصال" : "آماده"}</small></span>
+              <span class="post-provider-tick">${selectedProviders.has(p.id) ? icons.check : ""}</span>
+            </button>`;
+          }).join("")}
+        </div>
+        <div id="post-chat-panel"></div>
+      </section>
+    </div>
+
+    <section class="post-library">
+      <div class="post-library-head"><div><h2>قالب‌های ذخیره‌شده</h2><p class="desc">قالب‌های آماده برای ارسال سریع به همان مقصدها.</p></div><span class="meta" data-template-count></span></div>
+      <div class="post-template-grid" data-template-list></div>
+    </section>`;
+
+  const providerGrid = document.getElementById("post-provider-grid");
+  const chatPanel = document.getElementById("post-chat-panel");
+  const nameInput = document.getElementById("post-name");
+  const textInput = document.getElementById("post-text");
+  const preview = document.querySelector("[data-post-preview]");
+  const resultBox = document.querySelector("[data-post-result]");
+  const templateList = document.querySelector("[data-template-list]");
+  const saveState = document.querySelector("[data-post-save-state]");
+
+  function updateCounts() {
+    document.querySelectorAll("[data-target-count]").forEach((el) => (el.textContent = `${fa(targets.size)} مقصد`));
+  }
+
+  function renderPreview() {
+    const value = textInput.value.trim();
+    preview.innerHTML = value ? esc(value) : `<span class="hint">متن پست اینجا نمایش داده می‌شود.</span>`;
+    document.querySelector("[data-char-count]").textContent = fa(textInput.value.length);
+  }
+
+  function providerCard(p) {
+    const disabled = !p.ready;
+    return `<button class="post-provider ${selectedProviders.has(p.id) ? "is-on" : ""}" type="button" data-post-provider="${p.id}" ${disabled ? "disabled" : ""} aria-pressed="${selectedProviders.has(p.id)}">
+      <span class="post-provider-logo" style="background:${esc(p.color || "#64748b")}">${providerLogo(p)}</span>
+      <span class="post-provider-text"><b>${esc(serviceLabel(p))}</b><small>${disabled ? "نیاز به اتصال" : "آماده"}</small></span>
+      <span class="post-provider-tick">${selectedProviders.has(p.id) ? icons.check : ""}</span>
+    </button>`;
+  }
+
+  function renderProviderGrid() {
+    providerGrid.innerHTML = providers.map(providerCard).join("");
+  }
+
+  function chatMatches(c) {
+    const q = search.trim().toLowerCase();
+    if (filter !== "all" && c.type !== filter) return false;
+    if (q && !`${c.title} ${c.lastText || ""}`.toLowerCase().includes(q)) return false;
+    return true;
+  }
+
+  function chatRow(c) {
+    const key = postTargetKey(c);
+    const checked = targets.has(key);
+    return `<label class="post-chat">
+      <input type="checkbox" data-post-chat="${esc(key)}" ${checked ? "checked" : ""}>
+      <span class="post-chat-kind post-kind-${esc(c.type || "private")}">${esc(postTypeLabel(c.type))}</span>
+      <span class="post-chat-body"><b>${esc(c.title)}</b><small>${esc(c.lastText || "بدون پیام اخیر")}</small></span>
+      <span class="post-chat-provider">${esc(providerName(c.provider))}</span>
+    </label>`;
+  }
+
+  function renderChatPanel() {
+    updateCounts();
+    if (!selectedProviders.size) {
+      chatPanel.innerHTML = `<div class="post-empty"><b>هنوز سرویسی انتخاب نشده</b><span>یکی از سرویس‌های بالا را انتخاب کن تا چت‌ها، گروه‌ها و کانال‌هایش را ببینی.</span></div>`;
+      return;
+    }
+    const filters = [["all", "همه"], ["private", "خصوصی"], ["group", "گروه"], ["channel", "کانال"]];
+    const selectedChats = [...selectedProviders].map((id) => {
+      const loadingNow = loading.has(id);
+      const err = errors.get(id);
+      return `<section class="post-provider-block">
+        <div class="post-provider-block-head">
+          <div><span class="post-provider-logo" style="background:${esc(providerById(id)?.color || "#64748b")}">${providerById(id) ? providerLogo(providerById(id)) : ""}</span><b>${esc(providerName(id))}</b></div>
+          <div class="post-provider-block-actions">
+            <button class="post-mini-link" type="button" data-post-refresh="${id}">${icons.refresh} به‌روزرسانی</button>
+            <button class="post-mini-link" type="button" data-post-select-all="${id}">انتخاب همه</button>
+          </div>
+        </div>
+        ${loadingNow ? `<div class="post-loading"><span class="boot-dot"></span>در حال دریافت گفتگوها…</div>` : err ? `<div class="err-box">${esc(err)}</div>` : (() => {
+          const list = (chats.get(id) || []).filter(chatMatches);
+          return list.length ? `<div class="post-chat-list">${list.map(chatRow).join("")}</div>` : `<div class="post-empty post-empty-small">گفتگویی با این فیلتر پیدا نشد.</div>`;
+        })()}
+      </section>`;
+    }).join("");
+    chatPanel.innerHTML = `<div class="post-chat-toolbar">
+        <div class="post-filter" role="group" aria-label="نوع مقصد">
+          ${filters.map(([key, label]) => `<button type="button" class="post-filter-btn ${filter === key ? "is-on" : ""}" data-post-filter="${key}">${label}</button>`).join("")}
+        </div>
+        <label class="post-search"><span class="sr-only">جستجوی مقصد</span><input class="input" type="search" placeholder="جستجوی نام مقصد…" value="${esc(search)}" data-post-search></label>
+      </div>${selectedChats}`;
+  }
+
+  async function loadChats(id) {
+    if (loading.has(id)) return;
+    loading.add(id);
+    errors.delete(id);
+    renderChatPanel();
+    try {
+      const r = await api(`posts/chats?provider=${encodeURIComponent(id)}`);
+      chats.set(id, r.chats || []);
+    } catch (err) {
+      errors.set(id, err.message);
+    } finally {
+      loading.delete(id);
+      renderChatPanel();
+    }
+  }
+
+  function addTemplateTargets(t) {
+    for (const target of t.targets || []) {
+      if (!target?.provider || !target?.chatId) continue;
+      targets.set(postTargetKey(target), { provider: target.provider, chatId: target.chatId, title: target.title || target.chatId, type: target.type || "private" });
+      if (!selectedProviders.has(target.provider)) selectedProviders.add(target.provider);
+    }
+    for (const id of t.providerIds || []) if (providers.some((p) => p.id === id)) selectedProviders.add(id);
+  }
+
+  function renderTemplates() {
+    document.querySelector("[data-template-count]").textContent = `${fa(templates.length)} قالب`;
+    if (!templates.length) {
+      templateList.innerHTML = `<div class="post-empty"><b>هنوز قالبی ذخیره نشده</b><span>متن را بنویس، مقصدها را انتخاب کن و «ذخیره‌ی قالب» را بزن.</span></div>`;
+      return;
+    }
+    templateList.innerHTML = templates.map((t) => `<article class="post-template-card ${editingId === t.id ? "is-editing" : ""}">
+      <div class="post-template-top"><b>${esc(t.name)}</b><span>${fa((t.targets || []).length)} مقصد</span></div>
+      <p>${esc((t.text || "").slice(0, 160))}${(t.text || "").length > 160 ? "…" : ""}</p>
+      <div class="post-template-targets">${[...new Set((t.targets || []).map((x) => x.provider))].map((id) => `<span>${esc(providerName(id))}</span>`).join("") || "<span>بدون مقصد</span>"}</div>
+      <div class="post-template-actions"><button class="btn btn-ghost btn-sm" type="button" data-post-load="${t.id}">بارگذاری</button><button class="btn btn-quiet btn-sm btn-danger" type="button" data-post-delete="${t.id}">حذف</button></div>
+    </article>`).join("");
+  }
+
+  function collectTargets() {
+    return [...targets.values()];
+  }
+
+  function validateCompose(requireName = true) {
+    const name = nameInput.value.trim();
+    const text = textInput.value.trim();
+    if (!text) { toast("متن پست را وارد کنید.", true); textInput.focus(); return null; }
+    if (requireName && !name) { toast("نام قالب را وارد کنید.", true); nameInput.focus(); return null; }
+    return { name, text, providerIds: [...selectedProviders], targets: collectTargets() };
+  }
+
+  providerGrid.addEventListener("click", async (e) => {
+    const button = e.target.closest("[data-post-provider]");
+    if (!button || button.disabled) return;
+    const id = button.dataset.postProvider;
+    if (selectedProviders.has(id)) {
+      selectedProviders.delete(id);
+      for (const [key, target] of targets) if (target.provider === id) targets.delete(key);
+    } else {
+      selectedProviders.add(id);
+    }
+    renderProviderGrid();
+    renderChatPanel();
+    if (selectedProviders.has(id) && !chats.has(id)) await loadChats(id);
+  });
+
+  chatPanel.addEventListener("click", async (e) => {
+    const filterBtn = e.target.closest("[data-post-filter]");
+    if (filterBtn) { filter = filterBtn.dataset.postFilter; renderChatPanel(); return; }
+    const refresh = e.target.closest("[data-post-refresh]");
+    if (refresh) { const id = refresh.dataset.postRefresh; chats.delete(id); await loadChats(id); return; }
+    const all = e.target.closest("[data-post-select-all]");
+    if (all) {
+      const id = all.dataset.postSelectAll;
+      for (const c of (chats.get(id) || []).filter(chatMatches)) targets.set(postTargetKey(c), { provider: c.provider, chatId: c.chatId, title: c.title, type: c.type });
+      renderChatPanel(); return;
+    }
+  });
+  chatPanel.addEventListener("change", (e) => {
+    const cb = e.target.closest("[data-post-chat]");
+    if (!cb) return;
+    const raw = cb.dataset.postChat;
+    const sep = raw.indexOf(":");
+    const provider = raw.slice(0, sep), chatId = raw.slice(sep + 1);
+    if (cb.checked) {
+      const c = allChats().find((x) => x.provider === provider && x.chatId === chatId);
+      targets.set(postTargetKey({ provider, chatId }), { provider, chatId, title: c?.title || chatId, type: c?.type || "private" });
+    } else {
+      targets.delete(postTargetKey({ provider, chatId }));
+    }
+    updateCounts();
+  });
+  chatPanel.addEventListener("input", (e) => {
+    if (!e.target.matches("[data-post-search]")) return;
+    search = e.target.value;
+    chatPanel.querySelectorAll(".post-chat").forEach((row) => {
+      row.hidden = !row.innerText.toLowerCase().includes(search.trim().toLowerCase());
+    });
+  });
+
+  templateList.addEventListener("click", async (e) => {
+    const load = e.target.closest("[data-post-load]");
+    if (load) {
+      const t = templates.find((x) => x.id === load.dataset.postLoad);
+      if (!t) return;
+      editingId = t.id;
+      nameInput.value = t.name || "";
+      textInput.value = t.text || "";
+      selectedProviders.clear();
+      targets.clear();
+      addTemplateTargets(t);
+      renderProviderGrid(); renderPreview(); renderChatPanel(); renderTemplates();
+      await Promise.all([...selectedProviders].filter((id) => !chats.has(id)).map(loadChats));
+      return;
+    }
+    const del = e.target.closest("[data-post-delete]");
+    if (del) {
+      const t = templates.find((x) => x.id === del.dataset.postDelete);
+      if (!t || !(await openModal({ title: "حذف قالب", message: `قالب «${t.name}» حذف شود؟`, confirmText: "حذف", tone: "danger" }))) return;
+      try { await api(`post-templates/${t.id}`, { method: "DELETE" }); templates = templates.filter((x) => x.id !== t.id); if (editingId === t.id) editingId = ""; renderTemplates(); toast("قالب حذف شد"); } catch (err) { toast(err.message, true); }
+    }
+  });
+
+  document.querySelector("[data-post-new]").onclick = () => {
+    editingId = ""; nameInput.value = ""; textInput.value = ""; selectedProviders.clear(); targets.clear();
+    renderProviderGrid(); renderChatPanel(); renderPreview(); renderTemplates(); nameInput.focus();
+  };
+  textInput.addEventListener("input", renderPreview);
+  document.querySelector("[data-post-save]").onclick = async (e) => {
+    const data = validateCompose();
+    if (!data) return;
+    const btn = e.currentTarget;
+    saveState.textContent = "";
+    try {
+      const r = await busy(btn, () => api(editingId ? `post-templates/${editingId}` : "post-templates", { method: editingId ? "PUT" : "POST", body: data }));
+      editingId = r.template?.id || editingId;
+      templates = [r.template, ...templates.filter((x) => x.id !== r.template?.id)];
+      renderTemplates();
+      saveState.textContent = "ذخیره شد";
+      toast("قالب ذخیره شد");
+    } catch (err) {
+      saveState.textContent = "";
+      toast(err.message, true);
+    }
+  };
+  document.querySelector("[data-post-send]").onclick = async (e) => {
+    const data = validateCompose(false);
+    if (!data) return;
+    if (!data.targets.length) { toast("حداقل یک چت، گروه یا کانال انتخاب کنید.", true); return; }
+    if (!(await openModal({ title: "ارسال پست", message: `این پست برای ${fa(data.targets.length)} مقصد در ${fa(new Set(data.targets.map((t) => t.provider)).size)} سرویس ارسال شود؟`, confirmText: "ارسال به همه" }))) return;
+    const btn = e.currentTarget;
+    resultBox.innerHTML = `<div class="post-loading"><span class="boot-dot"></span>در حال ارسال به ${fa(data.targets.length)} مقصد…</div>`;
+    try {
+      const r = await busy(btn, () => api("posts/send", { body: { text: data.text, targets: data.targets, confirm: true } }));
+      const ok = (r.results || []).filter((x) => x.ok).length;
+      const failed = (r.results || []).length - ok;
+      resultBox.innerHTML = `<div class="post-result-head"><b>${fa(ok)} ارسال موفق</b>${failed ? `<span class="post-result-fail">${fa(failed)} ناموفق</span>` : ""}</div>
+        <div class="post-result-list">${(r.results || []).map((x) => `<div class="post-result-row ${x.ok ? "is-ok" : "is-fail"}"><span>${x.ok ? icons.check : icons.cross}</span><b>${esc(x.target?.title || x.target?.chatId || "")}</b><small>${esc(providerName(x.target?.provider))}</small>${x.error ? `<em>${esc(x.error)}</em>` : ""}</div>`).join("")}</div>`;
+      toast(failed ? `${fa(ok)} موفق، ${fa(failed)} ناموفق` : "پست برای همه ارسال شد", failed > 0);
+    } catch (err) {
+      resultBox.innerHTML = `<div class="err-box">${esc(err.message)}</div>`;
+    }
+  };
+
+  renderPreview();
+  updateCounts();
+  renderChatPanel();
+  renderTemplates();
+}
+
 async function pageProviders(main, q, section = "providers") {
   state.providers = await api("providers");
-  // «بقیه سرویس‌ها» زیرمنوی ایرانی/خارجی ندارد
+  // «ابزارها» زیرمنوی ایرانی/خارجی ندارد
   const region = section === "services" ? "" : q.get("region") === "iran" ? "iran" : q.get("region") === "other" ? "other" : "";
   const focus = q.get("focus");
   const open = q.get("open");
@@ -2074,13 +2411,13 @@ async function pageProviders(main, q, section = "providers") {
       },
     },
     services: {
-      title: { "": "بقیه سرویس‌ها" },
-      desc: { "": "سایت، مدیریت محتوا و ابزارهایی که شبکه‌ی اجتماعی یا سرویس مالی نیستند. هر سرویس با یک کلید روشن یا خاموش می‌شود." },
-      empty: { "": "هنوز سرویسی در این دسته به دیباپل اضافه نشده است." },
+      title: { "": "ابزارها" },
+      desc: { "": "وردپرس، ووکامرس و ابزارهای مدیریت محتوا؛ ابزارهایی که پیام‌رسان یا سرویس مالی نیستند. هر سرویس با یک کلید روشن یا خاموش می‌شود." },
+      empty: { "": "هنوز ابزاری در این دسته به دیباپل اضافه نشده است." },
     },
   }[section];
   main.innerHTML = `
-    ${head(copy.title[region], copy.desc[region], "مدیریت سرویس‌ها")}
+    ${head(copy.title[region], copy.desc[region], section === "services" ? "مدیریت ابزارها" : "مدیریت سرویس‌ها")}
     <div class="providers-accordion-list" id="provs">
       ${platforms.length ? platforms.map(platformAccordionHtml).join("") : `<div class="empty"><b>هنوز سرویسی در این دسته ثبت نشده</b>${copy.empty[region]}</div>`}
     </div>`;
