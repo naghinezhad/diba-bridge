@@ -71,6 +71,7 @@
 - 🏦 **سرویس‌های مالی:** **بلوبانک** (ایرانی) با توکن نشست اپلیکیشن وصل می‌شود و موجودی، کارت‌ها و تراکنش‌ها را می‌خواند. راهنما: [docs/blubank-testing.md](docs/blubank-testing.md)
 - 🇮🇷 **صرافی‌های ایرانی:** **نوبیتکس، والکس، بیت‌پین، تبدیل و آبان‌تتر** با API رسمی هر صرافی: قیمت، دفتر سفارش و کندل (هر جا صرافی داشته باشد)، موجودی، سفارش‌های باز و ثبت و لغو سفارش. واحد قیمت هر صرافی (ریال در نوبیتکس، تومان در بقیه) به مدل گفته می‌شود. راهنما: [docs/EXCHANGES.md](docs/EXCHANGES.md)
 - 📈 **صرافی‌های خارجی:** **بایننس، بای‌بیت، او‌کی‌ایکس (OKX)، کوکوین و کراکن** با API رسمی هر صرافی و هفت ابزار هم‌شکل: قیمت و آمار ۲۴ساعته، دفتر سفارش، کندل، موجودی، سفارش‌های باز، ثبت سفارش و لغو سفارش. داده‌ی بازار بدون کلید کار می‌کند. **معامله به‌طور پیش‌فرض خاموش است**: تا «اجازه‌ی معامله» را در تنظیمات همان صرافی روشن نکنید ثبت و لغو سفارش رد می‌شود، و ثبت سفارش بدون `confirm=true` فقط پیش‌نمایش برمی‌گرداند. راهنما: [docs/EXCHANGES.md](docs/EXCHANGES.md)
+- 🤖 **API دستیار، سازگار با OpenAI:** دستیار دیبا از مسیر `/v1/chat/completions` با هر SDK سازگار با OpenAI در دسترس است. ابزارها روی سرور شما اجرا می‌شوند و پاسخ نهایی برمی‌گردد؛ استریم، خطاهای استاندارد و حافظه‌ی هر گفتگو پشتیبانی می‌شود. راهنما: [docs/AGENT_API.md](docs/AGENT_API.md)
 - 🧭 **نصب‌کننده‌ی اولین اجرا:** خوش‌آمد، مشخصات شرکت یا پروژه (نام، آدرس سایت، لوگو)، انتخاب سرویس‌ها (تک‌تک یا «انتخاب همه») و رمز عبور داشبورد؛ بخش «نصب و مشخصات» در داشبورد برای ویرایش مشخصات و فعال کردن سرویس‌های تازه.
 - 🚦 **فهرست پروکسی با انتخاب خودکار سریع‌ترین:** چند پروکسی HTTP/SOCKS5 ثبت کنید؛ هر کدام چند بار سنجیده می‌شود و امتیازش از میانه‌ی تأخیر (EWMA)، نرخ خطا و نوسان ساخته می‌شود. با انتخاب خودکار، سریع‌ترین پروکسی سالم فعال می‌شود، هر ۵ دقیقه دوباره بررسی می‌شود و با از کار افتادن پروکسی فعال بی‌درنگ جایگزین می‌شود. رمز پروکسی‌ها به مرورگر برنمی‌گردد.
 - 📬 **صندوق پیام‌های دریافتی یکپارچه (Shared Inbox):** مشاهده پیام‌های دریافتی، تفکیک پیام‌های ورودی و خروجی، امکان پاسخ‌گویی مستقیم و استفاده هوش مصنوعی از ابزار `get_updates`.
@@ -200,6 +201,49 @@ claude mcp add --transport http diba-bridge http://127.0.0.1:3790/mcp --header "
   }
 }
 ```
+
+---
+
+### API دستیار دیبا (سازگار با OpenAI)
+
+علاوه بر MCP، خودِ دستیار دیبا یک API با استاندارد OpenAI می‌دهد. هر برنامه‌ای که با OpenAI کار می‌کند (SDK رسمی، LangChain، n8n، Open WebUI و ...) فقط با عوض کردن آدرس پایه و کلید، با دستیار حرف می‌زند. دستیار ابزارها را روی سرور شما اجرا می‌کند و پاسخ نهایی را برمی‌گرداند.
+
+| تنظیم | مقدار |
+|---|---|
+| آدرس پایه | `http://127.0.0.1:3790/v1` |
+| کلید API | همان توکن MCP (صفحه‌ی «اتصال به هوش مصنوعی») |
+| مدل | `diba-agent` یا `diba-agent:<شناسه‌ی مدل دیبا روتر>` |
+
+پیش‌نیاز: دیبا روتر باید در تب «دیبا روتر» وصل باشد.
+
+```bash
+curl -s http://127.0.0.1:3790/v1/chat/completions \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"diba-agent","messages":[{"role":"user","content":"قیمت بیت‌کوین در نوبیتکس و والکس چقدر است؟"}]}'
+```
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://127.0.0.1:3790/v1", api_key="<YOUR_TOKEN>")
+answer = client.chat.completions.create(
+    model="diba-agent",
+    messages=[{"role": "user", "content": "کدام سرویس‌ها آماده‌اند؟"}],
+)
+print(answer.choices[0].message.content)
+```
+
+| مسیر | کار |
+|---|---|
+| `GET /v1/models` | فهرست مدل‌ها (`diba-agent`) |
+| `POST /v1/chat/completions` | گفتگو با دستیار؛ با `"stream": true` به شکل SSE |
+
+- **گفتگو و تأیید:** برای هر کاربر یا رشته‌گفتگو یک کلید جدا با هدر `X-Conversation-Id` (یا فیلد `user`) بفرستید تا حافظه و تأیید ارسال پیام قاطی نشود.
+- **ایمنی:** همان قواعد دستیار داشبورد برقرار است: ارسال پیام پس از تأیید، معامله فقط با روشن بودن «اجازه‌ی معامله» و تأیید صریح، و بدون افشای توکن و شناسه‌ها.
+- **خطاها** با قالب استاندارد OpenAI برمی‌گردند (`401 invalid_api_key`، `404 model_not_found`، `503 model_not_configured` و ...).
+
+مرجع کامل فیلدها، استریم، خطاها و نمونه‌ها: [docs/AGENT_API.md](docs/AGENT_API.md)
 
 ---
 
@@ -387,6 +431,7 @@ Report security issues as described in [SECURITY.md](SECURITY.md).
   - **WhatsApp:** Personal account via QR multi-device login (Baileys).
 - 🗂️ **Three dashboard groups:** “Social networks” and “Financial services”, each with an **Iranian / International** submenu, plus “Other services” for websites and other tools.
 - 🏦 **Financial services:** **BluBank** (Iranian) connects with an app session token and reads balances, cards and transactions. Guide: [docs/blubank-testing.md](docs/blubank-testing.md)
+- 🤖 **OpenAI-compatible assistant API:** the Diba assistant is reachable at `/v1/chat/completions` from any OpenAI SDK. Tools run on your server and the final answer comes back; streaming, standard errors and per-conversation memory are supported. Guide: [docs/AGENT_API.md](docs/AGENT_API.md)
 - 🇮🇷 **Iranian exchanges:** **Nobitex, Wallex, Bitpin, Tabdeal and AbanTether** through each exchange's official API: ticker, order book and candles (where the exchange offers them), balances, open orders, and placing and cancelling orders. The price unit of each exchange (Rial on Nobitex, Toman elsewhere) is stated to the model. Guide: [docs/EXCHANGES.md](docs/EXCHANGES.md)
 - 📈 **International exchanges:** **Binance, Bybit, OKX, KuCoin and Kraken** through each exchange's official API, with the same seven tools: ticker and 24h statistics, order book, candles, balances, open orders, place order and cancel order. Market data works without a key. **Trading is off by default**: placing and cancelling orders is refused until you turn on “allow trading” for that exchange, and placing an order without `confirm=true` only returns a preview. Guide: [docs/EXCHANGES.md](docs/EXCHANGES.md)
 - 🧭 **First-run installer:** welcome, company or project details (name, website, logo), service selection (one by one or “select all”) and the dashboard password; an “Install & profile” section in the dashboard to edit the details and enable more services later.
@@ -517,6 +562,50 @@ claude mcp add --transport http diba-bridge http://127.0.0.1:3790/mcp --header "
   }
 }
 ```
+
+---
+
+### Diba Assistant API (OpenAI-compatible)
+
+Besides MCP, the Diba assistant itself speaks the OpenAI API. Anything that works with OpenAI (the official SDKs, LangChain, n8n, Open WebUI, ...) can talk to it by changing the base URL and key. The assistant runs its tools on your server and returns the final answer.
+
+| Setting | Value |
+|---|---|
+| Base URL | `http://127.0.0.1:3790/v1` |
+| API key | the MCP token (dashboard page "Connect to AI") |
+| Model | `diba-agent`, or `diba-agent:<DibaRouter model id>` |
+
+Requirement: DibaRouter must be connected in the dashboard.
+
+```bash
+curl -s http://127.0.0.1:3790/v1/chat/completions \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"diba-agent","messages":[{"role":"user","content":"What is the BTC price on Binance and Kraken?"}]}'
+```
+
+```js
+import OpenAI from "openai";
+
+const client = new OpenAI({ baseURL: "http://127.0.0.1:3790/v1", apiKey: "<YOUR_TOKEN>" });
+const stream = await client.chat.completions.create({
+  model: "diba-agent",
+  messages: [{ role: "user", content: "Which services are ready?" }],
+  stream: true,
+});
+for await (const chunk of stream) process.stdout.write(chunk.choices[0]?.delta?.content ?? "");
+```
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /v1/models` | Lists the models (`diba-agent`) |
+| `POST /v1/chat/completions` | Chat with the assistant; SSE streaming with `"stream": true` |
+
+- **Conversations and confirmations:** send a separate key per end user or thread in the `X-Conversation-Id` header (or the `user` field) so memory and pending send confirmations stay apart.
+- **Safety:** the dashboard assistant's rules apply: messages are sent only after confirmation, trades need the exchange's "allow trading" switch and an explicit confirmation, and tokens and internal ids are never returned.
+- **Errors** use the OpenAI error shape (`401 invalid_api_key`, `404 model_not_found`, `503 model_not_configured`, ...).
+
+Full reference with every field, streaming, errors and integrations: [docs/AGENT_API.md](docs/AGENT_API.md)
 
 ---
 
