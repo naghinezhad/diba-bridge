@@ -5404,6 +5404,8 @@ async function pageConnect(main) {
   const c = await api("connection");
   const base = location.origin + location.pathname.replace(/[^/]*$/, "");
   const url = base + "mcp";
+  const agentApi = base + "v1";
+  const agentNote = "دستیار دیبا با همین توکن یک API سازگار با OpenAI می‌دهد: مدل diba-agent ابزارها را روی همین سرور اجرا می‌کند و پاسخ نهایی را برمی‌گرداند. برای کار کردنش باید دیبا روتر در تب «دیبا روتر» وصل باشد.";
   const snippets = {
     "Claude Code": { lang: "bash", code: `claude mcp add --transport http diba-mcp ${url} \\\n  --header "Authorization: Bearer ${c.token}"` },
     "Cursor / کلاینت‌های JSON": { lang: "json", code: JSON.stringify({ mcpServers: { "diba-mcp": { url, headers: { Authorization: `Bearer ${c.token}` } } } }, null, 2) },
@@ -5415,6 +5417,21 @@ async function pageConnect(main) {
     "اسکریپت Express / Node.js": {
       lang: "js",
       code: `import express from "express";\nimport { createDibaMcp } from "diba-mcp";\n\nconst app = express();\nconst dibaMcp = createDibaMcp({ dataDir: "./data/diba-mcp" });\n\n// اتصال داشبورد و اندپوینت MCP به پروژه اکسپرس شما\napp.use("/diba-mcp", dibaMcp.router());\n\n// یا فراخوانی مستقیم بدون هوش مصنوعی:\nawait dibaMcp.engine.callTool("bale_client_send_message", { text: "سفارش جدید ثبت شد" }, "dashboard");`,
+    },
+    "API دستیار (Python)": {
+      lang: "python",
+      code: `from openai import OpenAI\n\nclient = OpenAI(base_url="${agentApi}", api_key="${c.token}")\n\nanswer = client.chat.completions.create(\n    model="diba-agent",\n    messages=[{"role": "user", "content": "قیمت بیت‌کوین در نوبیتکس و والکس چقدر است؟"}],\n)\nprint(answer.choices[0].message.content)`,
+      note: agentNote,
+    },
+    "API دستیار (Node.js)": {
+      lang: "js",
+      code: `import OpenAI from "openai";\n\nconst client = new OpenAI({ baseURL: "${agentApi}", apiKey: "${c.token}" });\n\nconst stream = await client.chat.completions.create({\n  model: "diba-agent",\n  messages: [{ role: "user", content: "کدام سرویس‌ها آماده‌اند؟" }],\n  stream: true,\n});\nfor await (const chunk of stream) process.stdout.write(chunk.choices[0]?.delta?.content ?? "");`,
+      note: agentNote,
+    },
+    "API دستیار (curl)": {
+      lang: "bash",
+      code: `curl -s ${agentApi}/chat/completions \\\n  -H "Authorization: Bearer ${c.token}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"model":"diba-agent","messages":[{"role":"user","content":"کدام سرویس‌ها آماده‌اند؟"}]}'`,
+      note: agentNote,
     },
     "تست دستی با curl": {
       lang: "bash",
