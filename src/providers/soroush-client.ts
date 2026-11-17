@@ -1,13 +1,3 @@
-/**
- * سروش‌پلاس با حساب کاربری (self client).
- *
- * سروش‌پلاس روی MTProto (نسخه‌ی تلگرام) کار می‌کند. کتابخانه‌ی `sroosh`
- * همان پیاده‌سازی GramJS است که برای سرورهای سروش پیکربندی شده:
- *   im-server.splus.ir، لایه ۱۸۲، API ID مخصوص سروش
- *
- * ورود با شماره/کد و رمز دومرحله‌ای انجام می‌شود و نشست به شکل StringSession
- * در config ذخیره می‌شود. این پروتکل خصوصی است و سروش می‌تواند تغییرش دهد.
- */
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -29,11 +19,9 @@ import {
 const nodeRequire = createRequire(import.meta.url);
 const { NewMessage } = nodeRequire("sroosh/events") as any;
 const { StringSession } = nodeRequire("sroosh/sessions") as any;
-// این namespace در نسخه‌ی type کتابخانه کامل نیست ولی در runtime موجود است
 const ApiAuth: any = (Api as any).auth;
 
 export const SOROUSH_CLIENT_ID = "soroush_client";
-/** API ID/hash عمومی کلاینت سروش‌پلاس (همان مقادیر مستندات SrooshJS) */
 const DEFAULT_API_ID = 1030400;
 const DEFAULT_API_HASH = "6edb16cf88714a4e9a805e928c39c937";
 const MAX_QUEUE = 500;
@@ -54,7 +42,6 @@ export function normalizeSoroushPhone(raw: string): string {
   return s;
 }
 
-/** API ID/hash ثابت کلاینت سروش؛ کاربر لازم نیست وارد کند */
 function apiCredentials(): { apiId: number; apiHash: string } {
   return { apiId: DEFAULT_API_ID, apiHash: DEFAULT_API_HASH };
 }
@@ -174,7 +161,6 @@ function storePending(client: SrooshClient, phone: string, phoneCodeHash: string
   return tx;
 }
 
-/** نشانی سرویس را از نشست ذخیره‌شده/تنظیمات می‌سازد */
 function createClient(ctx: ProviderContext, session: string): SrooshClient {
   const { apiId, apiHash } = apiCredentials();
   return new SrooshClient(new StringSession(session), apiId, apiHash, {
@@ -353,7 +339,6 @@ async function loadTitleIndex(m: ManagedClient): Promise<void> {
       });
     }
   } catch {
-    // عنوان‌ها اختیاری‌اند
   }
 }
 
@@ -374,7 +359,6 @@ function createManaged(ctx: ProviderContext, session: string): ManagedClient {
       const incoming = toIncoming(m, event);
       if (incoming) pushMessage(m, incoming);
     } catch {
-      // پیام بدشکل نباید حلقه را متوقف کند
     }
   }, new NewMessage({}));
   return m;
@@ -452,7 +436,6 @@ async function resolveTitles(m: ManagedClient, messages: IncomingMessage[]): Pro
         const type = entity?.className === "User" ? "private" : entity?.className === "Channel" ? "channel" : entity?.className === "Chat" ? "group" : "unknown";
         if (title) m.titles.set(chatId, { title, type });
       } catch {
-        // عنوان اختیاری است
       }
     }),
   );

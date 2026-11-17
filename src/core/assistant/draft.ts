@@ -1,7 +1,3 @@
-/**
- * ساخت پیش‌نویس پیام با مدل، همراه با کنترل کیفیت و زبان.
- * این ماژول چیزی ارسال نمی‌کند؛ فقط متن پیشنهادی را برمی‌گرداند.
- */
 import { dibaRouterChat, type DibaRouterConfig } from "../dibarouter.js";
 import type { DibaMcpEngine } from "../engine.js";
 import { publicTitle } from "../memory.js";
@@ -108,7 +104,6 @@ export async function buildDraft(
         quality = checkMessageQuality(text, { allowLinks, firstContact });
       }
     } catch {
-      // از متن قبلی استفاده می‌کنیم
     }
   }
   if (!text) return { ok: false, text: "", reason: "متن پیام ساخته نشد؛ لطفاً خودِ متن یا منظورت را بگو." };

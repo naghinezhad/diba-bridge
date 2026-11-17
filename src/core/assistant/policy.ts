@@ -1,8 +1,3 @@
-/**
- * سیاست‌های ارسال دستیار: کدام سرویس‌ها ارسال دارند، چه چتی گروه حساب می‌شود
- * و چه متنی کیفیت لازم برای ارسال را دارد. ارسال واقعی در engine انجام می‌شود.
- */
-
 export interface MessageQuality {
   ok: boolean;
   score: number;
@@ -10,7 +5,6 @@ export interface MessageQuality {
   warnings: string[];
 }
 
-/** ابزار ارسال متن هر سرویس؛ سرویسی که اینجا نیست فقط‌خواندنی است. */
 export const SEND_TOOLS: Record<string, string> = {
   bale_client: "bale_client_send_message",
   eitaa_client: "eitaa_client_send_message",
@@ -28,10 +22,6 @@ export function isGroupLike(type: string): boolean {
   return !["private", "user", "dm", "direct", "unknown", ""].includes(String(type ?? "").toLowerCase());
 }
 
-/**
- * ارزیابی کیفیت پیام برای کاهش ریسک بن و حفظ کیفیت.
- * این تابع عمداً سخت‌گیر است؛ مدل در صورت رد شدن، متن را بازنویسی می‌کند.
- */
 export function checkMessageQuality(
   text: string,
   opts: { allowLinks?: boolean; firstContact?: boolean } = {},
@@ -45,7 +35,6 @@ export function checkMessageQuality(
   if (clean.length > 1500) reasons.push("متن پیام بیش از حد بلند است (حداکثر ۱۵۰۰ کاراکتر).");
   if (!/[\p{L}\p{N}]/u.test(clean)) reasons.push("پیام باید حداقل یک حرف یا عدد داشته باشد.");
   if (/(.)\1{7,}/u.test(clean)) reasons.push("کاراکترهای تکراری زیاد در متن هست.");
-  // «\b» برای حروف فارسی کار نمی‌کند؛ مرز کلمه را با فاصله تشخیص می‌دهیم
   if (/(?:^|\s)(\S+)(?:\s+\1){3,}(?=\s|$)/iu.test(clean)) reasons.push("یک عبارت چند بار پشت‌سرهم تکرار شده است.");
   const upper = clean.replace(/[^A-Za-z]/g, "");
   if (upper.length >= 20 && upper === upper.toUpperCase()) {

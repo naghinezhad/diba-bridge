@@ -141,7 +141,6 @@ describe("recipient resolution & quality", () => {
       assert.match(group.error!, /گروه|کانال/);
       assert.equal(s.sends(), 0);
 
-      // با شناسه‌ی گروه و اجازه‌ی صریح
       const groupAllowed = await s.engine.sendToRecipient({
         recipient: "گروه تست",
         text: "سلام به همه، جلسه فردا ساعت ۱۰ برگزار می‌شود.",

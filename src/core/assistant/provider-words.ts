@@ -1,7 +1,3 @@
-/**
- * واژه‌هایی که کاربر برای اشاره به هر سرویس به کار می‌برد («تلگرام»، «واتساپ»، «tg»).
- * یک منبع واحد برای تشخیص نیت، انتخاب سرویس و پیدا کردن مخاطب.
- */
 import type { DibaMcpEngine } from "../engine.js";
 import { providerLabel } from "../memory.js";
 import type { ProviderWord } from "./intent.js";
@@ -32,7 +28,6 @@ export function providerWords(engine: DibaMcpEngine): ProviderWord[] {
   }));
 }
 
-/** «تلگرام»، «telegram» یا «telegram_client» → شناسه‌ی سرویس */
 export function normalizeProviderId(engine: DibaMcpEngine, value?: string): string | undefined {
   const raw = cleanText(value ?? "").toLowerCase();
   if (!raw) return undefined;
@@ -42,7 +37,6 @@ export function normalizeProviderId(engine: DibaMcpEngine, value?: string): stri
   }));
   const exact = all.find((entry) => entry.words.includes(raw));
   if (exact) return exact.id;
-  // واژه‌های خیلی کوتاه («x»، «wa»، «tg») فقط با تطبیق کامل پذیرفته می‌شوند
   return all.find((entry) => entry.words.some((word) => word.length >= 3 && raw.includes(word)))?.id;
 }
 

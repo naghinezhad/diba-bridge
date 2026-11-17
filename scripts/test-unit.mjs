@@ -1,9 +1,3 @@
-/**
- * اجرای تست‌های واحد به‌صورت مستقل از shell.
- * چرا؟ `node --test "test/unit/**\/*.test.ts"` به glob شل و نسخه‌ی Node وابسته است
- * (روی Windows/cmd باز نمی‌شود و در Node ۲۰ کلاً پیدا نمی‌کند). اینجا فایل‌ها
- * با fs خوانده و صریح به اجراکننده‌ی تست داده می‌شوند.
- */
 import { spawnSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";

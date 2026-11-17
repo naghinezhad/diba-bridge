@@ -38,21 +38,12 @@ interface PendingLogin {
 const pending = new Map<string, PendingLogin>();
 let current: { session: string; ig: IgApiClient } | undefined;
 
-/** درخواست‌های ورود نیمه‌کاره بعد از این مدت منقضی می‌شوند */
 const PENDING_TTL_MS = 10 * 60_000;
 
-/**
- * کتابخانه‌ی instagram-private-api از سال ۲۰۲۴ به‌روزرسانی نشده و نسخه‌ی
- * کلاینتش (222.0.0.13.114) قدیمی است. این مقادیر از کلاینت به‌روزِ
- * instagrapi (نسخه‌ی ۴۴۹) گرفته شده‌اند تا هدرها و User-Agent به‌روز باشند.
- * توجه: اینستاگرام ممکن است ورود با رمز را مستقل از نسخه با needs_upgrade
- * ببندد؛ در آن حالت از ورود با کوکی استفاده کنید.
- */
 const CLIENT_VERSION = {
   appVersion: "449.0.0.52.84",
   appVersionCode: "1079242191",
   bloksVersionId: "799db3e387d7a21a19c72918b8698b6cd28a1516ade363792c100ed45a0f9f0b",
-  /** پروفایل دستگاه Pixel 8 Pro / Android 14 مثل instagrapi */
   deviceString: "34/14; 480dpi; 1344x2992; Google/google; Pixel 8 Pro; husky; husky",
 } as const;
 
@@ -63,7 +54,6 @@ function applyClientVersion(ig: IgApiClient) {
   constants.BLOKS_VERSION_ID = CLIENT_VERSION.bloksVersionId;
 }
 
-/** دستگاه تازه با پروفایل به‌روز؛ seed همان نام کاربری است تا هویت دستگاه ثابت بماند. */
 function generateDevice(ig: IgApiClient, seed: string) {
   ig.state.generateDevice(seed);
   ig.state.deviceString = CLIENT_VERSION.deviceString;
@@ -77,11 +67,6 @@ function normalizeUsername(raw: string): string {
   return String(raw ?? "").trim().replace(/^@+/, "");
 }
 
-/**
- * پروکسی مؤثر برای اینستاگرام: اول فیلد اختصاصی همین سرویس، بعد پراکسی‌های
- * عمومی برنامه. پراکسی SOCKS5 که در تنظیمات داشبورد ذخیره می‌شود در
- * process.env.SOCKS_PROXY قرار می‌گیرد؛ قبلاً اینجا نادیده گرفته می‌شد.
- */
 function currentProxy(ctx: ProviderContext): string {
   const fromField = ctx.config.proxyUrl?.trim();
   if (fromField) return dockerizeLocalProxy(fromField);
@@ -111,11 +96,6 @@ function normalizeProxy(raw: string): string {
   return value;
 }
 
-/**
- * کتابخانه‌ی instagram-private-api پراکسی HTTP را با گزینه‌ی proxy درخواست
- * انجام می‌دهد، اما socks را نمی‌شناسد. برای socks یک Agent تزریق می‌کنیم و
- * proxyUrl را خالی می‌گذاریم تا request از Agent استفاده کند.
- */
 function applyProxy(ig: IgApiClient, ctx: ProviderContext) {
   const raw = currentProxy(ctx);
   if (!raw) return;
@@ -128,7 +108,6 @@ function applyProxy(ig: IgApiClient, ctx: ProviderContext) {
   ig.state.proxyUrl = proxy;
 }
 
-/** کلاینت تازه با پراکسی و مهلت درخواست؛ تا درخواست‌های بی‌پاسخ بی‌نهایت منتظر نمانند. */
 function createClient(ctx: ProviderContext): IgApiClient {
   const proxy = currentProxy(ctx);
   const client = new InstagrapiClient({ proxy: proxy || undefined });
@@ -257,7 +236,6 @@ async function serializeSession(ig: IgApiClient): Promise<string> {
 
 function sessionIdFromRaw(raw: string): string | undefined {
   if (!raw.startsWith("{")) return raw || undefined;
-  // Session‌های قدیمی به‌صورت JSON ذخیره شده‌اند؛ sessionid داخل cookie jar آن‌هاست.
   const match = raw.match(/"key"\s*:\s*"sessionid"\s*,\s*"value"\s*:\s*"([^"]+)"/);
   if (match?.[1]) return match[1];
   const fallback = raw.match(/sessionid=([^;\s"]+)/);
@@ -303,7 +281,6 @@ function userSummary(u: any) {
   };
 }
 
-/** ورودی کوکی را از JSON آرایه/آبجکت، هدر Cookie یا رشته‌ی sessionid تنها می‌خواند. */
 function parseCookieInput(raw: string): Record<string, string> {
   const text = String(raw ?? "").trim();
   if (!text) throw new ProviderError("کوکی یا شناسه‌ی نشست (sessionid) را وارد کنید.");
@@ -332,7 +309,6 @@ function parseCookieInput(raw: string): Record<string, string> {
       else for (const [key, value] of Object.entries(parsed)) if (typeof value === "string") add(key, value);
     }
   } else if (!text.includes("=") && /^[A-Za-z0-9%_.:\-]+$/.test(text)) {
-    // فقط مقدار sessionid کپی شده است
     add("sessionid", text);
   } else {
     for (const part of text.replace(/^cookie:\s*/i, "").split(/[;\n]+/)) {
@@ -347,7 +323,6 @@ function parseCookieInput(raw: string): Record<string, string> {
   return out;
 }
 
-/** کوکی را در jar نشست اینستاگرام می‌گذارد تا درخواست‌های بعدی از آن استفاده کنند. */
 async function setCookie(ig: IgApiClient, name: string, value: string): Promise<void> {
   const cookie = `${name}=${value}; Domain=.instagram.com; Path=/; Secure`;
   await new Promise<void>((resolve, reject) => {
@@ -358,7 +333,6 @@ async function setCookie(ig: IgApiClient, name: string, value: string): Promise<
   });
 }
 
-/** اینستاگرام زمان دایرکت را میکروثانیه می‌دهد؛ به ISO تبدیل می‌کند. */
 function epochToIso(value: unknown): string | undefined {
   const numeric = Number(value ?? 0);
   if (!Number.isFinite(numeric) || numeric <= 0) return undefined;
@@ -367,7 +341,6 @@ function epochToIso(value: unknown): string | undefined {
   return Number.isFinite(date.getTime()) ? date.toISOString() : undefined;
 }
 
-/** یک گفتگوی دایرکت را به شکل یکسان با بقیه‌ی سرویس‌ها خلاصه می‌کند. */
 function threadSummary(thread: any) {
   const others = (thread?.users ?? []).filter((user: any) => !user?.is_self);
   const name =
@@ -448,7 +421,6 @@ const instagramAuth: ProviderAuthDef = {
   },
   async start(_ctx, rawUsername, save) {
     const username = normalizeUsername(rawUsername);
-    // قاعده‌ی اینستاگرام: حداکثر ۳۰ کاراکتر، بدون نقطه در ابتدا/انتها و بدون نقطه‌ی تکراری
     if (!/^(?!\.)(?!.*\.\.)(?!.*\.$)[A-Za-z0-9._]{1,30}$/.test(username)) {
       throw new ProviderError("نام کاربری اینستاگرام معتبر نیست.");
     }
@@ -474,7 +446,6 @@ const instagramAuth: ProviderAuthDef = {
 
     try {
       await ig.simulate.preLoginFlow().catch(() => {});
-      // اگر جریان مقدماتی نیمه‌کاره ماند، کلید رمزنگاری رمز را مستقیم بگیر
       if (!ig.state.passwordEncryptionPubKey) await ig.launcher.preLoginSync().catch(() => {});
       const user = await ig.account.login(state.username, String(password));
       const session = await serializeSession(ig);
@@ -497,7 +468,6 @@ const instagramAuth: ProviderAuthDef = {
             err,
           );
         }
-        // ترتیب: TOTP ← واتس‌اپ ← پیامک
         const verificationMethod = info.totp_two_factor_on ? "0" : info.whatsapp_two_factor_on ? "3" : "1";
         pending.set(transactionHash, {
           username: state.username,
@@ -551,12 +521,10 @@ const instagramAuth: ProviderAuthDef = {
           verificationMethod: state.twoFactor.verificationMethod,
           trustThisDevice: "1",
         });
-        // twoFactorLogin بدنه‌ی کامل را برمی‌گرداند، نه خود کاربر
         user = res?.logged_in_user ?? res;
       } else if (state.checkpoint) {
         const res: any = await state.ig.challenge.sendSecurityCode(cleanCode);
         user = res?.logged_in_user;
-        // بعضی پاسخ‌های checkpoint کاربر را برنمی‌گردانند؛ از خود نشست می‌خوانیم
         if (!user) user = await state.ig.account.currentUser().catch(() => undefined);
       } else {
         throw new ProviderError("مرحله‌ی کد برای این درخواست فعال نیست.");
@@ -575,7 +543,6 @@ const instagramAuth: ProviderAuthDef = {
     } catch (err) {
       if (err instanceof ProviderError) throw err;
       if (err instanceof IgChallengeWrongCodeError) {
-        // درخواست را نگه می‌داریم تا کاربر بتواند کد تازه را وارد کند
         throw new ProviderError("کد تأیید اشتباه یا منقضی است؛ کد جدید را وارد کنید.", err);
       }
       throw friendlyError(err, "تأیید کد اینستاگرام");

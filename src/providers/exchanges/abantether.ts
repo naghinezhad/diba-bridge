@@ -1,11 +1,3 @@
-/**
- * آبان‌تتر — API رسمی (https://docs.abantether.ir).
- * آبان‌تتر بازار خرید و فروش مستقیم (OTC) است، نه دفتر سفارش: قیمت خرید و قیمت فروش جدا اعلام
- * می‌شود و دفتر سفارش و کندل ندارد. قیمت بازارهای تومانی به تومان است.
- *
- * مقدار سفارش در آبان‌تتر برای خرید به واحد ارز مقابل (تومان یا تتر) و برای فروش به واحد خودِ
- * رمزارز است؛ همین در توضیح ابزار ثبت سفارش به مدل گفته می‌شود.
- */
 import type { ProviderContext } from "../../core/types.js";
 import { ProviderError } from "../../core/types.js";
 import { baseOf, credentials, defineExchange, exchangeFetch, query, splitByQuote, trimDecimal, type ExchangeAdapter } from "./common.js";
@@ -13,10 +5,8 @@ import { baseOf, credentials, defineExchange, exchangeFetch, query, splitByQuote
 const NAME = "آبان‌تتر";
 const BASE = "https://api.abantether.ir";
 const QUOTES = ["IRT", "TMN", "USDT"];
-/** وضعیت‌هایی که سفارش هنوز بسته نشده است */
 const OPEN_STATUSES = new Set(["new", "processing", "fee_calculated", "accounting_blocked", "open"]);
 
-/** نماد آبان‌تتر: «BTCIRT» یا «BTCUSDT» */
 function toSymbol(input: string): string {
   const parts = splitByQuote(input, QUOTES);
   if (!parts) return input.trim().toUpperCase();
@@ -65,7 +55,6 @@ const adapter: ExchangeAdapter = {
 
   async balances(ctx) {
     const rows: any[] = (await call(ctx, "/api/v1/accounting/balances?type=spot", { auth: true })) ?? [];
-    // آبان‌تتر مقدار بلوکه‌ی صفر را گاهی «-0.000» می‌دهد
     const clean = (v: unknown) => (Number(v) === 0 ? "0" : trimDecimal(v));
     return rows.map((b) => ({ asset: String(b.symbol ?? b.asset?.symbol), free: clean(b.available ?? b.balance), locked: clean(b.blocked) }));
   },
@@ -81,7 +70,6 @@ const adapter: ExchangeAdapter = {
         side: o.side === "sell" ? "sell" : "buy",
         type: String(o.type ?? ""),
         price: String(o.price ?? ""),
-        // خرید به واحد ارز مقابل ثبت می‌شود و فروش به واحد رمزارز
         quantity: String(o.side === "sell" ? o.volume?.base : o.volume?.quote),
         filled: String(o.side === "sell" ? o.filled_volume?.base : o.filled_volume?.quote),
         status: String(o.status ?? ""),

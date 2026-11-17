@@ -1,14 +1,8 @@
-/**
- * اعتبارسنجی مشخصات سازمان/پروژه که در نصب اولیه و صفحه‌ی «نصب و مشخصات» گرفته می‌شود.
- * هر چیزی که اینجا رد شود هرگز در config.json ذخیره نمی‌شود.
- */
-
 export interface ProfileInput {
   ownerName: string;
   orgName: string;
   description: string;
   website: string;
-  /** رشته‌ی خالی یعنی «بدون لوگو» */
   logo: string;
 }
 
@@ -17,11 +11,9 @@ export const PROFILE_LIMITS = {
   orgName: 80,
   description: 300,
   website: 200,
-  /** حجم فایل لوگو پس از decode */
   logoBytes: 300 * 1024,
 } as const;
 
-/** فقط تصویر بیت‌مپ؛ SVG می‌تواند اسکریپت و ارجاع بیرونی داشته باشد و پذیرفته نمی‌شود */
 const LOGO_TYPES: Record<string, (b: Buffer) => boolean> = {
   "image/png": (b) => b.length > 8 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
   "image/jpeg": (b) => b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
@@ -36,7 +28,6 @@ export class ProfileError extends Error {
   }
 }
 
-/** کاراکترهای کنترلی و فاصله‌های تکراری حذف می‌شوند تا متن در هر جایی امن و یک‌خطی نمایش داده شود */
 function cleanText(value: unknown, multiline = false): string {
   const text = typeof value === "string" ? value : "";
   const stripped = multiline
@@ -82,15 +73,10 @@ export function normalizeLogo(value: unknown): string {
   if (bytes.length > PROFILE_LIMITS.logoBytes) {
     throw new ProfileError(`حجم لوگو نباید بیشتر از ${Math.round(PROFILE_LIMITS.logoBytes / 1024)} کیلوبایت باشد`, "logo");
   }
-  // نوع اعلام‌شده باید با محتوای واقعی فایل یکی باشد
   if (!check(bytes)) throw new ProfileError("محتوای فایل با قالب تصویر هم‌خوانی ندارد", "logo");
   return `data:${type};base64,${bytes.toString("base64")}`;
 }
 
-/**
- * ورودی خام را به مشخصات قابل ذخیره تبدیل می‌کند.
- * `logo` فقط وقتی بررسی می‌شود که در بدنه آمده باشد؛ نبودنش یعنی «لوگوی فعلی بماند».
- */
 export function normalizeProfile(body: unknown): Omit<ProfileInput, "logo"> & { logo?: string } {
   const b = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
   const orgName = text(b.orgName, "orgName", "نام شرکت یا پروژه");

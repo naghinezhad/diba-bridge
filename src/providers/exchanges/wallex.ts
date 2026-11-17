@@ -1,4 +1,3 @@
-/** والکس — API رسمی، بازار spot (https://developers.wallex.ir). قیمت بازارهای تومانی به تومان است. */
 import type { ProviderContext } from "../../core/types.js";
 import { ProviderError } from "../../core/types.js";
 import { baseOf, credentials, decimalMinus, defineExchange, exchangeFetch, query, splitByQuote, trimDecimal, type CandleInterval, type ExchangeAdapter } from "./common.js";
@@ -6,17 +5,14 @@ import { baseOf, credentials, decimalMinus, defineExchange, exchangeFetch, query
 const NAME = "والکس";
 const BASE = "https://api.wallex.ir";
 const QUOTES = ["TMN", "IRT", "USDT"];
-/** والکس فقط همین سه بازه را واقعاً می‌دهد؛ بقیه را به یکی از این‌ها برمی‌گرداند */
 const RESOLUTIONS: Partial<Record<CandleInterval, [string, number]>> = { "1m": ["1", 60], "1h": ["60", 3600], "1d": ["1D", 86_400] };
 
-/** نماد والکس: «BTCTMN» یا «BTCUSDT»؛ IRT همان TMN است */
 function toSymbol(input: string): string {
   const parts = splitByQuote(input, QUOTES);
   if (!parts) return input.trim().toUpperCase();
   return `${parts[0]}${parts[1] === "IRT" ? "TMN" : parts[1]}`;
 }
 
-/** پاسخ والکس: { success, message, result }؛ دلیل خطای اعتبارسنجی داخل result است */
 function unwrap(data: any) {
   if (data?.success === false) {
     const details = data.result && typeof data.result === "object" ? Object.values(data.result).flat().join(" ") : "";
@@ -25,7 +21,6 @@ function unwrap(data: any) {
   return data?.result;
 }
 
-/** والکس خطای اعتبارسنجی را با HTTP 4xx و همین قالب می‌دهد؛ متن کاملش از بدنه‌ی خطا درمی‌آید */
 async function call(ctx: ProviderContext, path: string, init: { method?: "GET" | "POST" | "DELETE"; body?: string; auth?: boolean } = {}) {
   const headers: Record<string, string> = {};
   if (init.auth) headers["X-API-Key"] = credentials(ctx, NAME, false, "none").apiKey;
@@ -91,7 +86,6 @@ const adapter: ExchangeAdapter = {
 
   async balances(ctx) {
     const balances: Record<string, any> = (await call(ctx, "/v1/account/balances", { auth: true }))?.balances ?? {};
-    // value کل موجودی است و locked بخشی از آن که در سفارش‌ها درگیر است
     return Object.values(balances).map((b) => ({ asset: String(b.asset), free: decimalMinus(b.value, b.locked), locked: trimDecimal(b.locked ?? "0") }));
   },
 
@@ -122,7 +116,6 @@ const adapter: ExchangeAdapter = {
         ...(order.price ? { price: order.price } : {}),
       }),
     });
-    // شناسه‌ی سفارش در والکس همان clientOrderId است و لغو هم با همان انجام می‌شود
     return { id: String(raw?.clientOrderId ?? ""), raw };
   },
 

@@ -1,14 +1,3 @@
-/**
- * پیدا کردن مخاطب به‌صورت لایه‌ای.
- *
- * ترتیب دقیقاً همان چیزی است که کاربر انتظار دارد:
- *   ۱) چت‌های اخیر (صندوق + فهرست زنده‌ی خود سرویس)
- *   ۲) مخاطبین/دفترچه‌ی سرویس (و جستجوی مستقیم نام/شماره)
- *   ۳) حافظه‌ی دستیار (کسانی که قبلاً پیام گرفته‌اند)
- *
- * تطبیق نام با کلید آوایی انجام می‌شود، پس «عماد» و «Emad» یکی هستند.
- * همه‌ی فراخوانی‌های شبکه‌ای کوتاه‌مدت کش می‌شوند تا هر پیام چند صد درخواست نسازد.
- */
 import type { DibaMcpEngine } from "../engine.js";
 import { cleanText, matchName, looksLikePhone } from "./name-match.js";
 import { canSendWith, isGroupLike } from "./policy.js";
@@ -40,7 +29,6 @@ export interface Resolution {
   fallback: boolean;
   sources: CandidateSource[];
   note?: string;
-  /** توضیح کوتاه وقتی مخاطب با اطمینان مشخص نشده است */
   reason?: string;
 }
 
@@ -76,10 +64,6 @@ const CHAT_CACHE_MS = 60_000;
 const CONTACT_CACHE_MS = 120_000;
 const TOOL_TIMEOUT_MS = 8_000;
 
-/**
- * کش‌ها به ازای هر موتور نگه داشته می‌شوند (نه سراسری)، تا دو نمونه‌ی موتور
- * — مثلاً در تست‌ها یا چند حساب — فهرست چت یکدیگر را نبینند.
- */
 interface ResolverCaches {
   chats: Map<string, { at: number; items: RawCandidate[] }>;
   contacts: Map<string, { at: number; items: RawCandidate[] }>;
@@ -97,7 +81,6 @@ function cachesOf(engine: DibaMcpEngine): ResolverCaches {
   return caches;
 }
 
-/** پاک کردن کش مخاطبین یک موتور (بعد از ورود/خروج حساب یا برای جستجوی تازه) */
 export function clearResolverCache(engine: DibaMcpEngine, provider?: string): void {
   const caches = cachesOf(engine);
   if (!provider) {
@@ -163,12 +146,9 @@ function withTimeout<T>(promise: Promise<T>, ms = TOOL_TIMEOUT_MS): Promise<T> {
   });
 }
 
-// ---------------- پیدا کردن نام واقعی چت‌های بی‌نام ----------------
-/** در کش نام، مقدار خالی یعنی «جستجو شد و نامی نبود» تا هر بار دوباره پرسیده نشود */
 const NAME_CACHE_MS = 10 * 60_000;
 const NAME_LOOKUP_LIMIT = 10;
 
-/** از خروجی get_chat یک نام واقعی بیرون می‌کشد (تودرتو هم می‌گردد). */
 function nameFromPayload(payload: unknown, chatId: string, depth = 0): string | undefined {
   if (!payload || typeof payload !== "object" || depth > 2) return undefined;
   const record = payload as Record<string, unknown>;
@@ -202,10 +182,6 @@ function nameFromPayload(payload: unknown, chatId: string, depth = 0): string | 
   return undefined;
 }
 
-/**
- * چت‌های بی‌نام (شناسه‌ی عددی یا JID) را با get_chat همان سرویس نام‌دار می‌کند.
- * برای حفظ سرعت، حداکثر ۱۰ مورد و با کش ۱۰ دقیقه‌ای.
- */
 async function enrichNames(
   engine: DibaMcpEngine,
   providerId: string,
@@ -234,7 +210,6 @@ async function enrichNames(
           const result = await withTimeout(engine.callTool(tool.name, { chat_id: item.chatId }, "dashboard"));
           if (result.ok) name = nameFromPayload(result.result, item.chatId);
         } catch {
-          // نام‌خوانی اختیاری است؛ به گزینه‌های بعدی می‌رویم
         }
       }
       if (!name && item.username) name = item.username;
@@ -244,7 +219,6 @@ async function enrichNames(
   );
 }
 
-/** نام واقعی چت‌های بی‌نام را برای نمایش در داشبورد/فهرست‌ها پر می‌کند. */
 export async function enrichChatTitles<T extends { provider: string; chatId: string; title?: string; username?: string }>(
   engine: DibaMcpEngine,
   chats: T[],
@@ -320,7 +294,6 @@ async function serviceContacts(engine: DibaMcpEngine, providerId: string, query:
       items.push(...list);
       if (!usesQuery) contactCache.set(cacheKey, { at: Date.now(), items: list });
     } catch {
-      // این لایه اختیاری است؛ شکستش نباید جستجو را متوقف کند
     }
   }
   return items;
@@ -341,7 +314,6 @@ function memoryCandidates(engine: DibaMcpEngine, provider?: string): RawCandidat
     }));
 }
 
-/** جستجوی مستقیم نام/شماره در خود سرویس (مثل واتس‌اپ) */
 async function directSearch(engine: DibaMcpEngine, providerId: string, query: string): Promise<RawCandidate[]> {
   const provider = engine.provider(providerId);
   if (!provider) return [];
@@ -357,7 +329,6 @@ async function directSearch(engine: DibaMcpEngine, providerId: string, query: st
       }
     }
   } catch {
-    // اختیاری
   }
   return items;
 }
@@ -378,7 +349,6 @@ function dedupe(items: RawCandidate[]): RawCandidate[] {
       map.set(key, item);
       continue;
     }
-    // عنوان واقعی بر عنوان عددی/خالی اولویت دارد
     const title =
       isPlaceholderTitle(previous.title, previous.chatId) && !isPlaceholderTitle(item.title, item.chatId)
         ? item.title
@@ -405,7 +375,6 @@ function scoreOf(candidate: RawCandidate, query: string, allowGroup: boolean): {
   const match = matchName(query, [candidate.title, candidate.username]);
   let score = match.score;
   let reason = match.reason;
-  // شماره یا شناسه‌ی عددی (حداقل ۶ رقم) که در شناسه/عنوان چت هست، تطبیق قطعی حساب می‌شود
   const digits = cleanText(query).replace(/\D/g, "");
   if (digits.length >= 6) {
     const haystack = `${candidate.chatId} ${candidate.title}`.replace(/\D/g, "");
@@ -428,7 +397,6 @@ function scoreOf(candidate: RawCandidate, query: string, allowGroup: boolean): {
   return { score: Math.max(0, Math.min(100, score)), reason };
 }
 
-/** فهرست چت‌های یک سرویس (صندوق + فهرست زنده)، تازه‌ترین اول، با نام واقعی. */
 export async function listChatCandidates(engine: DibaMcpEngine, providerId: string): Promise<ResolvedCandidate[]> {
   const live = await liveChats(engine, providerId);
   const merged = dedupe([...fromInbox(engine, providerId), ...live]);
@@ -441,11 +409,8 @@ export async function listChatCandidates(engine: DibaMcpEngine, providerId: stri
 export interface ResolveOptions {
   provider?: string;
   allowGroup?: boolean;
-  /** حداکثر تعداد گزینه‌های برگشتی (پیش‌فرض ۸) */
   limit?: number;
-  /** فقط سرویس‌هایی که ابزار ارسال متن دارند */
   sendableOnly?: boolean;
-  /** کش فهرست چت/مخاطب را نادیده بگیر و از سرویس تازه بخوان */
   force?: boolean;
 }
 
@@ -497,7 +462,6 @@ export async function resolveRecipient(
       .sort((a, b) => b.score - a.score || timeValue(b.lastAt) - timeValue(a.lastAt));
 
   let scored = rank();
-  // فقط وقتی تطبیق قطعی نیست، نام چت‌های بی‌نام را از سرویس می‌خوانیم (برای سرعت ارسال)
   if (!scored.length || (scored[0]?.score ?? 0) < 88) {
     const grouped = new Map<string, RawCandidate[]>();
     for (const candidate of scoped) {

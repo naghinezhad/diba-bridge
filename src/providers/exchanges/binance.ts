@@ -1,11 +1,9 @@
-/** بایننس — Spot REST API (https://developers.binance.com/docs/binance-spot-api-docs/rest-api) */
 import type { ProviderContext } from "../../core/types.js";
 import { baseOf, credentials, defineExchange, exchangeFetch, hmacHex, query, splitSymbol, type CandleInterval, type ExchangeAdapter } from "./common.js";
 
 const NAME = "بایننس";
 const BASE = "https://api.binance.com";
 
-/** امضای بایننس: HMAC-SHA256 روی همان رشته‌ی پرس‌وجو، به شکل hex */
 export function binanceSign(secret: string, queryString: string): string {
   return hmacHex("sha256", secret, queryString);
 }

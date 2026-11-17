@@ -1,6 +1,3 @@
-// Diba Bridge (دیبا پل) — داشبورد مدیریت پیام‌رسان‌های هوشمند | دیباچین
-// استانداردهای سیستم طراحی دیباچین (dibachain-design-system.md)
-
 const $app = document.getElementById("app");
 const state = {
   providers: [],
@@ -46,7 +43,6 @@ try {
   if (typeof prefs.full === "boolean") state.agent.full = prefs.full;
   state.agent.messages = loadAgentHistory();
 } catch { /* ignore */ }
-// در صفحه‌ی باریک پنل دستیار شناور است و روی محتوا می‌افتد؛ آنجا بسته شروع می‌شود و با دکمه‌اش باز می‌شود
 if (window.matchMedia("(max-width: 1200px)").matches) {
   state.agent.open = false;
   state.agent.full = false;
@@ -87,7 +83,6 @@ function toast(msg, isErr = false) {
   setTimeout(() => el.remove(), isErr ? 6000 : 3200);
 }
 
-/** مودال محلی داشبورد؛ به‌جای confirm/alert مرورگر. */
 function openModal({
   title = "تأیید عملیات",
   message = "",
@@ -334,7 +329,6 @@ async function api(path, opts = {}) {
   if (res.status === 401 && !path.startsWith("auth/")) { boot(); throw new AuthError(); }
   if (!res.ok) {
     const err = new Error(data.error || `خطای ${res.status}`);
-    // سرور نام فیلد ایرادناک را می‌فرستد تا فرم آن را علامت بزند
     if (data.field) err.field = data.field;
     err.status = res.status;
     throw err;
@@ -374,7 +368,6 @@ const icons = {
   tools: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>',
 };
-// کلید منو با شناسه‌ی صفحه یکی است
 icons.triggers = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
 icons.settings = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.17.37.38.7.6 1 .3.3.7.4 1.1.4H21v4h-.09a1.7 1.7 0 0 0-1.51.6z"/></svg>';
 icons.dibarouter = icons.router;
@@ -385,7 +378,6 @@ icons.posts = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 
 const pages = [
   { id: "overview", title: "نمای کلی" },
-  // سه دسته‌ی سرویس: شبکه‌های اجتماعی، سرویس‌های مالی و ابزارها
   { id: "providers", title: "شبکه‌های اجتماعی", submenu: true },
   { id: "banking", title: "سرویس‌های مالی", submenu: true },
   { id: "services", title: "ابزارها" },
@@ -399,27 +391,17 @@ const pages = [
   { id: "settings", title: "تنظیمات" },
 ];
 
-// دسته و منطقه‌ی هر سرویس از سرور می‌آید (category و region در تعریف provider)
-// اگر سرور هنوز نسخه‌ی قدیمی باشد و region را نفرستد، همین فهرست‌ها ملاک است تا دسته‌بندی به‌هم نریزد
 const legacyIranianPlatforms = new Set(["bale", "eitaa", "rubika", "soroush", "blubank"]);
 const legacyBankingProviders = new Set(["blubank"]);
-// وردپرس و ابزارهای مدیریت محتوا هرگز نباید در دسته‌ی شبکه‌های اجتماعی بیفتند؛
-// حتی اگر سرور قدیمی category را نفرستد.
 const legacyToolProviders = new Set(["wordpress"]);
 const isBankingProvider = (p) => p?.category === "banking" || (!p?.region && legacyBankingProviders.has(p?.id));
 const isIranianProvider = (p) =>
   p?.region ? p.region === "iran" : legacyIranianPlatforms.has(String(p?.id ?? "").replace(/_client$/, ""));
-// بانک، صرافی و درگاه پرداخت همه «مالی» هستند
 const isFinanceProvider = (p) => isBankingProvider(p) || p?.category === "payment";
-// پیام‌رسان‌ها و شبکه‌های اجتماعی؛ سرور قدیمی که category نمی‌فرستد هم همین‌جا می‌افتد
 const isSocialProvider = (p) => !isFinanceProvider(p) && !legacyToolProviders.has(p?.id) && (!p?.category || p.category === "messenger");
-/** صفحه‌ای که هر سرویس در آن مدیریت می‌شود: شبکه‌های اجتماعی، سرویس‌های مالی یا ابزارها */
 const providerSection = (p) => (isFinanceProvider(p) ? "banking" : isSocialProvider(p) ? "providers" : "services");
 const providerHref = (p) => `#/${providerSection(p)}?open=${encodeURIComponent(p.id)}`;
 
-/**
- * راهنمای اتصال هر سرویس با حساب کاربری.
- */
 const providerTutorials = {
   bale: {
     client: [
@@ -520,7 +502,6 @@ const providerTutorials = {
   },
 };
 
-// راهنمای اتصال صرافی‌ها یک شکل است؛ فقط نام و محل ساخت کلید فرق می‌کند
 for (const [key, name, where, passphrase] of [
   ["binance", "بایننس", "Binance ← Account ← API Management", false],
   ["bybit", "بای‌بیت", "Bybit ← Account ← API", false],
@@ -540,7 +521,6 @@ for (const [key, name, where, passphrase] of [
   };
 }
 
-// صرافی‌های ایرانی: هر کدام کلید و داده‌ی عمومی خودش را دارد
 for (const [key, name, market, credentials, unit] of [
   ["nobitex", "نوبیتکس", "قیمت، دفتر سفارش و کندل‌های", "توکن API را در فیلد اول بگذارید. اگر «کلید API» جدید نوبیتکس را ساخته‌اید، کلید عمومی را در فیلد اول و کلید خصوصی را در فیلد دوم وارد کنید", "قیمت بازارهای تومانی نوبیتکس به ریال است، نه تومان؛ قیمت سفارش را هم به ریال بدهید."],
   ["wallex", "والکس", "قیمت، دفتر سفارش و کندل‌های", "کلید API را در همین فرم وارد کنید", "قیمت بازارهای تومانی والکس به تومان است."],
@@ -687,7 +667,6 @@ function parseProvider(p) {
   return { platformKey };
 }
 
-/** لوگوی رسمی پلتفرم به‌جای حرف/گلیف */
 function providerLogo(p) {
   const key = p?.key || (p?.id ? parseProvider(p).platformKey : "");
   const meta = platformMeta[key];
@@ -715,7 +694,6 @@ function groupProviders(providers) {
       });
     }
     const item = map.get(platformKey);
-    // هر پلتفرم فقط یک اتصال دارد: حساب کاربری (یا API رسمی، مثل لینکدین)
     if (!item.provider) item.provider = p;
   }
   return Array.from(map.values());
@@ -786,14 +764,12 @@ function renderAuth() {
   });
 }
 
-// ---------------------------------------------------------------- installer (نصب اولیه و مشخصات)
 const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 const LOGO_MAX_BYTES = 300 * 1024;
 const LOGO_MAX_SIDE = 512;
 const logoPlaceholder = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-4 3.5 2.5L16 12l4 4"/></svg>';
 const dataUrlBytes = (url) => Math.floor(((url.split(",")[1] || "").replace(/=+$/, "").length * 3) / 4);
 
-/** فایل لوگو را می‌خواند و اگر بزرگ باشد در مرورگر کوچک می‌کند؛ سرور دوباره همه‌چیز را بررسی می‌کند */
 async function readLogoFile(file) {
   if (!LOGO_TYPES.includes(file.type)) throw new Error("قالب لوگو باید PNG، JPG، WebP یا GIF باشد");
   if (file.size > 8 * 1024 * 1024) throw new Error("فایل لوگو خیلی بزرگ است (حداکثر ۸ مگابایت)");
@@ -844,7 +820,6 @@ function profileFieldsHtml(p, idp = "pf") {
     </div>`;
 }
 
-/** model.logo همیشه لوگوی فعلی فرم است (رشته‌ی خالی = بدون لوگو) */
 function bindProfileFields(root, model, onError) {
   const preview = root.querySelector("[data-logo-preview]");
   const removeBtn = root.querySelector("[data-logo-remove]");
@@ -921,7 +896,6 @@ function servicePickerHtml(services, selected) {
       </fieldset>`).join("")}`;
 }
 
-/** selected یک Set است که با تغییر تیک‌ها به‌روز می‌شود */
 function bindServicePicker(root, services, selected, onChange = () => {}) {
   const boxes = () => [...root.querySelectorAll("[data-svc]")];
   const sync = () => {
@@ -955,19 +929,12 @@ function bindServicePicker(root, services, selected, onChange = () => {}) {
   sync();
 }
 
-/**
- * نصب‌کننده‌ی تمام‌صفحه: خوش‌آمد ← مشخصات ← سرویس‌ها ← (رمز عبور) ← مرور و پایان.
- *   setup=true    اولین اجرا؛ هنوز رمز ادمین ساخته نشده و رمز در همین نصب انتخاب می‌شود.
- *   firstRun=true رمز از قبل هست (مثلاً از ADMIN_PASSWORD) ولی نصب اولیه کامل نشده است.
- *   هر دو false   از داخل داشبورد دوباره باز شده و می‌شود آن را بست.
- */
 async function renderInstaller({ firstRun = true, setup = false } = {}) {
   clearInterval(state.timer);
   let data;
   try { data = await api(setup ? "auth/setup-info" : "install"); }
   catch (e) {
     if (e instanceof AuthError) return;
-    // راه‌اندازی در همین فاصله در جای دیگری انجام شده است
     if (setup) return renderAuth();
     $app.innerHTML = `<div class="boot"><div class="err-box">${esc(e.message || "بارگذاری نصب‌کننده ناموفق بود")}</div></div>`;
     return;
@@ -985,7 +952,6 @@ async function renderInstaller({ firstRun = true, setup = false } = {}) {
     profile: { ...data.profile },
     logo: data.profile.logo || "",
     selected: new Set(data.services.filter((s) => s.enabled).map((s) => s.id)),
-    // فقط در حافظه‌ی همین صفحه می‌ماند و جایی ذخیره نمی‌شود
     password: "",
     password2: "",
   };
@@ -1074,7 +1040,6 @@ async function renderInstaller({ firstRun = true, setup = false } = {}) {
     if (key === "profile") bindProfileFields($app.querySelector("[data-profile-form]"), model, setErr);
     if (key === "services") bindServicePicker($app.querySelector("[data-service-picker]"), data.services, model.selected);
 
-    /** مقادیر مرحله‌ی فعلی را در model نگه می‌دارد تا با رفت‌وبرگشت بین مراحل از دست نروند */
     const capture = () => {
       if (key === "profile") model.profile = { ...model.profile, ...collectProfile($app.querySelector("[data-profile-form]"), model) };
       if (key === "password") {
@@ -1082,7 +1047,6 @@ async function renderInstaller({ firstRun = true, setup = false } = {}) {
         model.password2 = field("password2").value;
       }
     };
-    /** پیام خطای مرحله‌ی فعلی، یا رشته‌ی خالی اگر همه‌چیز درست است */
     const problem = () => {
       if (key === "profile" && model.profile.orgName.length < 2) { field("orgName").focus(); return "نام شرکت یا پروژه را وارد کنید"; }
       if (key === "password") {
@@ -1115,7 +1079,6 @@ async function renderInstaller({ firstRun = true, setup = false } = {}) {
         boot();
       } catch (ex) {
         if (ex instanceof AuthError) return;
-        // خطای کد یا رمز به مرحله‌ی رمز عبور برمی‌گردد، خطای مشخصات به مرحله‌ی مشخصات
         const target = /رمز/.test(ex.message) && setup ? "password" : /سایت|لوگو|نام|توضیح/.test(ex.message) ? "profile" : "";
         if (target) go(stepIndex(target), ex.message);
         else setErr(ex.message);
@@ -1125,7 +1088,6 @@ async function renderInstaller({ firstRun = true, setup = false } = {}) {
   draw();
 }
 
-/** صفحه‌ی «نصب و مشخصات» داخل داشبورد: ویرایش مشخصات و افزودن/حذف سرویس‌ها پس از نصب */
 async function pageInstall(main) {
   const data = await api("install");
   const model = { logo: data.profile.logo || "" };
@@ -1208,7 +1170,6 @@ async function pageInstall(main) {
   });
 }
 
-/** نام و لوگوی سازمان را در سربرگ کناری می‌نشاند؛ بدون مشخصات، برند دیباپل می‌ماند */
 function applyBrand() {
   const p = state.profile || {};
   const logo = document.querySelector(".side .brand-logo");
@@ -1330,7 +1291,6 @@ async function refreshAgentConfig() {
       el.classList.toggle("is-off", !c.configured);
     }
   } catch {
-    // وضعیت اتصال اختیاری است
   }
 }
 
@@ -1340,7 +1300,6 @@ function initAgent() {
   }
   renderAgentMessages();
   refreshAgentConfig();
-  // اگر حافظه‌ی محلی خالی است، تاریخچه‌ی سرور را برای همین دستگاه بارگذاری کن
   if (state.agent.messages.length <= 1) {
     api("agent/history?limit=40&conversationId=dashboard")
       .then((r) => {
@@ -1364,7 +1323,6 @@ function initAgent() {
   const stopBtn = document.getElementById("agent-stop");
   if (!dock || !panel || !form) return;
 
-  /** توقف پاسخ در جریان: هم درخواست مرورگر و هم کار سرور لغو می‌شود */
   const stopRun = () => {
     if (!state.agent.busy) return;
     state.agent.abort?.abort();
@@ -1576,7 +1534,6 @@ function renderShell() {
           if (!p.submenu) {
             return `<a href="#/${p.id}" data-page="${p.id}">${icons[p.id]}<span>${p.title}</span></a>`;
           }
-          // هر گروه فقط دو دسته دارد: ایرانی و خارجی
           return `<div class="nav-group" data-group="${p.id}">
             <a href="#/${p.id}" data-page="${p.id}" class="nav-parent" title="${p.title}">${icons[p.id]}<span>${p.title}</span>${icons.chevron}</a>
             <div class="nav-sub">
@@ -1596,7 +1553,6 @@ function renderShell() {
   </div>`;
   applyBrand();
   document.getElementById("logout").onclick = async () => { await api("auth/logout", { body: {} }); boot(); };
-  // باز و بسته کردن زیرمنوها؛ در نمای موبایل زیرمنو پنهان است و لینک مستقیم به صفحه می‌رود
   document.querySelectorAll(".nav-parent").forEach((navParent) => {
     navParent.addEventListener("click", (e) => {
       if (window.matchMedia("(max-width: 768px)").matches) return;
@@ -1607,11 +1563,10 @@ function renderShell() {
   initAgent();
 }
 
-// شنونده‌های صفحه‌ای که به #main وصل شده‌اند با هر بار رندر آزاد می‌شوند
 let pageDispose = null;
 function disposePage() {
   if (!pageDispose) return;
-  try { pageDispose(); } catch { /* نادیده */ }
+  try { pageDispose(); } catch { }
   pageDispose = null;
 }
 
@@ -1628,7 +1583,6 @@ async function render() {
     if (active) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   });
-  // زیرمنوی همان گروهی باز می‌ماند که صفحه‌اش باز است
   document.querySelectorAll(".nav-group").forEach((group) => {
     group.classList.toggle("open", group.dataset.group === page);
   });
@@ -1657,13 +1611,11 @@ async function pageOverview(main) {
   const o = await api("overview");
   const verEl = document.getElementById("ver");
   if (verEl) verEl.textContent = `نسخه ${o.version}`;
-  // فقط سرویس‌هایی که کاربر روشن کرده شمرده و نمایش داده می‌شوند؛ بقیه یک خط خلاصه دارند
   const active = o.providers.filter((p) => p.enabled);
   const inactive = o.providers.length - active.length;
   const ready = active.filter((p) => p.ready).length;
   const readinessPct = active.length ? Math.round((ready / active.length) * 100) : 0;
   const notReady = active.length - ready;
-  // آماده‌ها بالا می‌آیند؛ بیشتر از این تعداد پشت «نمایش همه» می‌ماند
   const OV_VISIBLE = 8;
   const sorted = [...active].sort((a, b) => Number(b.ready) - Number(a.ready));
   const provCard = (p, hidden) => `
@@ -2360,12 +2312,10 @@ async function pagePosts(main) {
 
 async function pageProviders(main, q, section = "providers") {
   state.providers = await api("providers");
-  // «ابزارها» زیرمنوی ایرانی/خارجی ندارد
   const region = section === "services" ? "" : q.get("region") === "iran" ? "iran" : q.get("region") === "other" ? "other" : "";
   const focus = q.get("focus");
   const open = q.get("open");
 
-  // لینک قدیمی یا دستی به سرویسی که در بخش دیگر است → همان سرویس در بخش درست باز می‌شود
   const target = open ? state.providers.find((p) => p.id === open) : null;
   if (target && providerSection(target) !== section) {
     location.replace(providerHref(target));
@@ -2728,7 +2678,6 @@ async function pageProviders(main, q, section = "providers") {
           return;
         }
         if (r.result.step !== "done") {
-          // مثلاً کد تازه فرستاده شده یا مرحله هنوز تمام نشده است
           if (r.result.transactionHash) state.authTx[authId] = r.result.transactionHash;
           if (r.result.hint && authBox.querySelector("[data-auth-code-hint]")) authBox.querySelector("[data-auth-code-hint]").textContent = r.result.hint;
           authBox.querySelector("[data-auth-code]")?.focus();
@@ -3677,7 +3626,6 @@ const trgActionHint = {
 };
 const trgChatTypeFa = { "*": "همه", private: "خصوصی", group: "گروه", channel: "کانال" };
 
-// نمونه‌های آماده برای «ساخت اتوماسیون جدید» — با کلیک، فرم از همین داده پر می‌شود
 const trgSamples = [
   {
     id: "sample-welcome",
@@ -3889,7 +3837,6 @@ async function pageTriggers(main, q) {
   let mode = q?.get("new") === "1" ? "create" : "list"; // list | create | edit
   let draft = null;
 
-  // شنونده‌های این صفحه با خروج از آن آزاد می‌شوند تا کلیک‌ها دوباره اجرا نشوند
   const ac = new AbortController();
   pageDispose = () => ac.abort();
   const on = { signal: ac.signal };
@@ -4028,7 +3975,6 @@ async function pageTriggers(main, q) {
     updatePreview();
   };
 
-  // پیش‌نمایش زنده‌ی قانون از روی همان فرم
   const updatePreview = () => {
     const box = main.querySelector("#trg-preview");
     const form = main.querySelector("#trg-form");
@@ -4037,7 +3983,6 @@ async function pageTriggers(main, q) {
     const ev = String(fd.get("event") || "incoming_message");
     const act = String(fd.get("actionType") || "reply_template");
     const keywords = String(fd.get("contains") || "").trim();
-    // نوع اقدام ممکن است دکمه‌ی رادیویی باشد؛ FormData همان مقدار انتخاب‌شده را می‌دهد
     const cond =
       ev === "incoming_message"
         ? `وقتی پیام ورودی در «${String(fd.get("provider") || "*").trim() || "*"}» (${trgChatTypeFa[String(fd.get("chatType") || "*")] || "همه"})${keywords ? ` شامل (${keywords})` : ""} برسد`
@@ -4407,7 +4352,6 @@ async function pageTriggers(main, q) {
     const errBox = main.querySelector("#trg-form-err");
     const showFormErr = (msg, field) => {
       if (errBox) { errBox.textContent = msg; errBox.hidden = false; errBox.scrollIntoView({ block: "nearest" }); }
-      // نام فیلد سرور مثل action.template است؛ به input متناظر نگاشت می‌شود
       const byName = { name: "name", description: "description", contains: "contains" };
       const sel = field && (byName[field] ? `[name="${byName[field]}"]` : field.startsWith("action.") || field.startsWith("match.") ? `[name="${field.split(".").pop()}"]` : null);
       const el = sel && main.querySelector(sel);
@@ -4526,7 +4470,6 @@ async function pageSettings(main) {
   document.getElementById("save-settings").addEventListener("click", () => saveSettings(false));
   document.getElementById("save-runtime").addEventListener("click", () => saveSettings(true));
 
-  // ---- فهرست پروکسی
   const pxTable = document.getElementById("px-table");
   const pxStatus = document.getElementById("px-status");
   const pxAuto = document.getElementById("px-auto");
@@ -4567,7 +4510,6 @@ async function pageSettings(main) {
     try {
       const r = btn ? await busy(btn, fn) : await fn();
       drawProxies(r);
-      // پروکسی فعال برنامه ممکن است عوض شده باشد؛ فرم بالای صفحه هم همان را نشان دهد
       const fresh = await api("settings");
       Object.assign(s, fresh);
       proxyType = fresh.proxyType;
@@ -4630,7 +4572,6 @@ async function pageSettings(main) {
 }
 
 // ---------------------------------------------------------------- logs
-/** صفحه‌بندی گزارش‌ها: شماره‌ی صفحه‌ی جاری، بازه و تعداد هر صفحه */
 function logPagerHtml() {
   const page = state.logPage;
   const size = state.logPageSize;
@@ -4712,10 +4653,6 @@ async function pageLogs(main) {
     pager.innerHTML = logPagerHtml();
     pager.hidden = state.logTotal === 0;
   };
-  /**
-   * صفحه‌ی جاری را از سرور می‌گیرد (فیلترها سمت سرور اعمال می‌شوند تا شمارش و
-   * شماره‌ی صفحه‌ها درست باشد). silent برای به‌روزرسانی خودکار است.
-   */
   const load = async (silent = false) => {
     const f = state.logFilter;
     const qs = new URLSearchParams({ page: String(state.logPage), pageSize: String(state.logPageSize) });
@@ -4724,7 +4661,6 @@ async function pageLogs(main) {
     try {
       const r = await api(`logs?${qs.toString()}`);
       if (Array.isArray(r)) {
-        // پاسخ قدیمی (بدون صفحه‌بندی)
         state.logs = r;
         state.logTotal = r.length;
         state.logTotalPages = Math.max(1, Math.ceil(r.length / state.logPageSize));
@@ -4742,7 +4678,6 @@ async function pageLogs(main) {
   };
   await load();
   state.timer = setInterval(() => {
-    // در صفحه‌های قدیمی محتوا را جابه‌جا نکن؛ به‌روزرسانی خودکار فقط برای صفحه‌ی اول
     if (!openId && state.logPage === 1 && document.body.contains(list)) load(true);
   }, 5000);
 
@@ -4847,7 +4782,6 @@ const DR_MODELS_TTL = 10 * 60 * 1000;
 const DR_DEFAULT_MODEL = "dibachain/diba-router-free";
 let drModelsCache = { at: 0, models: [] };
 
-/** فهرست مدل‌های چت/بینایی دیبا روتر را می‌گیرد (پاسخ در حافظه کش می‌شود) */
 async function drLoadModels(force = false) {
   if (!force && drModelsCache.models.length && Date.now() - drModelsCache.at < DR_MODELS_TTL) return drModelsCache.models;
   const r = await api("dibarouter/models");
@@ -4858,7 +4792,6 @@ async function drLoadModels(force = false) {
 
 const DR_DIGITS_FA = "۰۱۲۳۴۵۶۷۸۹";
 const DR_DIGITS_AR = "٠١٢٣٤٥٦٧٨٩";
-// جستجو را با فارسی/عربی و ارقام یکسان می‌کند تا «ي» و «ی» و «۳» و «3» یکی باشند
 const drNorm = (value) =>
   String(value ?? "")
     .toLowerCase()
@@ -4878,10 +4811,6 @@ const drMonogram = (id) => (drProvider(id).match(/[a-z0-9]/i)?.[0] || "?").toUpp
 const drIsVision = (m) => String(m?.category ?? "").toLowerCase() === "vision";
 const drRank = (m) => (m.id === DR_DEFAULT_MODEL ? 0 : m.is_free ? 1 : 2);
 
-/**
- * انتخابگر مدل با جستجو و فیلتر — دکمه‌ی trigger + پنل listbox.
- * مقدار انتخاب‌شده در input[type=hidden] نگه داشته می‌شود تا فرم مثل قبل بخواندش.
- */
 function initDibaModelPicker(field, opts = {}) {
   const root = field.querySelector(".dr-picker");
   const hidden = field.querySelector('input[type="hidden"]');
@@ -5170,7 +5099,6 @@ function initDibaModelPicker(field, opts = {}) {
     if (!loaded && !loading && !error) loadModels();
   }
 
-  /** پنل را در فضای آزاد بالا/پایین دکمه جا می‌دهد */
   function fitPanel() {
     if (!open) return;
     const rect = trigger.getBoundingClientRect();
@@ -5561,10 +5489,8 @@ async function boot() {
   let s;
   try { s = await api("auth/status"); }
   catch { $app.innerHTML = `<div class="boot"><div class="err-box">امکان اتصال به سرور diba-mcp وجود ندارد. از روشن بودن سرور اطمینان حاصل کرده و صفحه را تازه کنید.</div></div>`; return; }
-  // اولین اجرا: رمز عبور هم داخل همان نصب‌کننده انتخاب می‌شود
   if (!s.authenticated) return s.needsSetup ? renderInstaller({ setup: true }) : renderAuth();
   state.profile = s.profile || null;
-  // تا نصب اولیه کامل نشود داشبورد باز نمی‌شود
   if (s.needsInstall) return renderInstaller({ firstRun: true });
   renderShell();
   const verEl = document.getElementById("ver");

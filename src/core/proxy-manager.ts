@@ -1,7 +1,3 @@
-/**
- * مدیریت فهرست پروکسی: افزودن و حذف، سنجش دوره‌ای و فعال کردن سریع‌ترین.
- * خودِ الگوریتم امتیازدهی و انتخاب در proxy-pool.ts است؛ این کلاس آن را به ذخیره‌سازی و شبکه وصل می‌کند.
- */
 import {
   chooseProxy,
   DEFAULT_PROBE,
@@ -27,19 +23,15 @@ export interface ProxyPoolHost {
 export interface ProxyManagerOptions {
   store: ProxyPoolHost;
   probe: ProbeFn;
-  /** پروکسی انتخاب‌شده را برای کل برنامه فعال می‌کند */
   apply: (settings: { proxyType: AppProxyType; proxyUrl: string }) => void;
   probeOptions?: Partial<ProbeOptions>;
-  /** فاصله‌ی سنجش خودکار (میلی‌ثانیه) */
   intervalMs?: number;
 }
 
 export class ProxyPoolError extends Error {}
 
-/** نمای امن یک پروکسی برای داشبورد */
 export interface ProxyView {
   id: string;
-  /** نشانی با رمز پنهان‌شده */
   url: string;
   kind: ProxyEntry["kind"];
   enabled: boolean;
@@ -68,7 +60,6 @@ export class ProxyManager {
 
   constructor(private opts: ProxyManagerOptions) {}
 
-  /** نمای امن برای داشبورد: رمز پروکسی‌ها پنهان است */
   describe(): ProxyPoolView {
     const pool = this.opts.store.proxyPool();
     const entries = pool.entries.map((p) => {
@@ -89,12 +80,10 @@ export class ProxyManager {
         lastError: p.stats.lastError ?? null,
       };
     });
-    // سریع‌ترین‌ها بالا، سنجیده‌نشده‌ها و ازکارافتاده‌ها پایین
     entries.sort((a, b) => (a.score ?? Infinity) - (b.score ?? Infinity));
     return { auto: pool.auto, activeId: pool.activeId ?? null, entries, limit: PROXY_POOL_LIMIT, testing: Boolean(this.running) };
   }
 
-  /** متن چندخطی را اضافه می‌کند؛ پروکسی تکراری دوباره ساخته نمی‌شود */
   add(text: string) {
     const { entries, invalid } = parseProxyList(text);
     const pool = this.opts.store.proxyPool();
@@ -131,7 +120,6 @@ export class ProxyManager {
     this.opts.store.saveProxyPool(pool);
   }
 
-  /** فعال کردن دستی یک پروکسی؛ انتخاب خودکار را خاموش می‌کند تا انتخاب کاربر عوض نشود */
   activate(id: string) {
     const pool = this.opts.store.proxyPool();
     const entry = pool.entries.find((p) => p.id === id);
@@ -150,9 +138,7 @@ export class ProxyManager {
     this.schedule();
   }
 
-  /** همه‌ی پروکسی‌های روشن را می‌سنجد؛ با روشن بودن انتخاب خودکار، سریع‌ترین را فعال می‌کند */
   test() {
-    // دو سنجش هم‌زمان نتیجه‌ی همدیگر را خراب می‌کنند؛ درخواست دوم منتظر همان اولی می‌ماند
     this.running ??= this.runTest().finally(() => {
       this.running = undefined;
     });
@@ -162,7 +148,6 @@ export class ProxyManager {
   private async runTest(): Promise<ProxyPoolView & { switched: { id: string; reason: string } | null }> {
     const snapshot = this.opts.store.proxyPool();
     const probed = await probePool(snapshot.entries, this.opts.probe, { ...DEFAULT_PROBE, ...this.opts.probeOptions });
-    // در فاصله‌ی سنجش ممکن است فهرست عوض شده باشد؛ فقط آمار پروکسی‌های موجود به‌روز می‌شود
     const pool = this.opts.store.proxyPool();
     const stats = new Map(probed.map((p) => [p.id, p.stats]));
     for (const entry of pool.entries) {
@@ -187,7 +172,6 @@ export class ProxyManager {
     this.opts.apply({ proxyType: entry.kind, proxyUrl: entry.url });
   }
 
-  /** پروکسی فعالِ حذف‌شده یا خاموش‌شده دیگر نباید استفاده شود */
   private deactivate(pool: ProxyPoolStored) {
     pool.activeId = undefined;
     const fallback = pool.auto ? pool.entries.find((p) => p.id === chooseProxy(pool.entries).id) : undefined;
@@ -195,7 +179,6 @@ export class ProxyManager {
     else this.opts.apply({ proxyType: "none", proxyUrl: "" });
   }
 
-  /** سنجش دوره‌ای را مطابق وضعیت فعلی روشن یا خاموش می‌کند */
   schedule() {
     clearInterval(this.timer);
     this.timer = undefined;
@@ -204,7 +187,6 @@ export class ProxyManager {
     this.timer = setInterval(() => {
       this.test().catch((err: unknown) => console.error("[diba-mcp] سنجش پروکسی‌ها ناموفق بود", err));
     }, this.opts.intervalMs ?? 5 * 60_000);
-    // سنجش پس‌زمینه نباید جلوی خاموش شدن برنامه را بگیرد
     this.timer.unref();
   }
 

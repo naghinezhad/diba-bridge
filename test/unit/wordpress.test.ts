@@ -20,7 +20,6 @@ interface Recorded {
 type Reply = { status?: number; headers?: Record<string, string>; json?: unknown; text?: string };
 type Handler = (req: Recorded) => Reply | undefined;
 
-/** سرور آزمایشی که نقش سایت وردپرس را بازی می‌کند */
 class MockSite {
   server!: Server;
   base = "";
@@ -75,7 +74,6 @@ const tool = (name: string) => {
   return t!;
 };
 
-/** مثل موتور: اول ورودی را با zod بررسی می‌کند، بعد هندلر را صدا می‌زند */
 async function call(name: string, args: Record<string, unknown>, config: Record<string, string>): Promise<any> {
   const t = tool(name);
   const parsed = z.object(t.input).parse(args);
@@ -87,7 +85,6 @@ const KEY = { connectorKey: "dbk_test_key" };
 
 describe("wordpress provider — تعریف", () => {
   test("ثبت شده و فیلدها و نام ابزارها درست است", () => {
-    // ثبت در فهرست سرویس‌ها (بدون بارگذاری بقیه‌ی سرویس‌های سنگین، متن فایل بررسی می‌شود)
     const index = readFileSync(new URL("../../src/providers/index.ts", import.meta.url), "utf8");
     assert.ok(index.includes('import { wordpress } from "./wordpress.js";'));
     assert.match(index.slice(index.indexOf("builtinProviders")), /^\s*wordpress,\r?$/m);
@@ -105,7 +102,6 @@ describe("wordpress provider — تعریف", () => {
     for (const t of wordpress.tools) {
       assert.match(t.name, /^wordpress_[a-z_]+$/);
       assert.ok(t.title.length > 0 && t.description.length > 0);
-      // هر ورودی باید به JSON Schema تبدیل شود (برای MCP)
       assert.doesNotThrow(() => z.toJSONSchema(z.object(t.input)), `${t.name} schema`);
     }
     for (const required of [
@@ -143,7 +139,6 @@ describe("wordpress provider — تعریف", () => {
       assert.ok(!t.annotations?.readOnlyHint);
     }
     assert.ok(destructive("wordpress_search_replace_content"));
-    // ابزار عمومی می‌تواند بنویسد؛ نباید فقط‌خواندنی باشد
     assert.equal(tool("wordpress_rest_request").annotations?.readOnlyHint, false);
     assert.ok(destructive("wordpress_rest_request"));
   });
@@ -211,7 +206,6 @@ describe("wordpress provider — درخواست‌ها", () => {
         };
       }
     });
-    // اسلش انتهایی و /wp-admin باید حذف شوند
     const out = await call("wordpress_list_posts", { search: "تست", page: 2, categories: [3, 4] }, { ...cfg, siteUrl: `${site.base}/wp-admin/` });
     assert.equal(site.requests.length, 1);
     const req = site.requests[0];
@@ -251,7 +245,6 @@ describe("wordpress provider — درخواست‌ها", () => {
       assert.equal(plain.requests[1].query.get("context"), "edit");
       assert.ok(plain.requests[1].headers.authorization?.startsWith("Basic "));
 
-      // بار دوم مستقیم با همان شکل
       await call("wordpress_get_me", {}, config);
       assert.equal(plain.requests.length, 3);
       assert.equal(plain.requests[2].query.get("rest_route"), "/wp/v2/users/me");
@@ -306,18 +299,15 @@ describe("wordpress provider — درخواست‌ها", () => {
     await assert.rejects(call("wordpress_wc_list_products", {}, cfg), /Diba Bridge Connector/);
     assert.equal(site.requests.length, 0, "no request without a connector key");
 
-    // کلید هست ولی افزونه روی سایت نیست
     await assert.rejects(call("wordpress_flush_cache", {}, { ...cfg, ...KEY }), /روی این سایت پیدا نشد/);
     assert.equal(site.requests[0].path, "/wp-json/diba-bridge/v1/cache/flush");
     assert.equal(site.requests[0].headers["x-diba-bridge-key"], "dbk_test_key");
     assert.equal(site.requests[0].headers.authorization, undefined, "basic credentials are not sent to connector routes");
 
-    // افزونه هست ولی ووکامرس/سئو فعال نیست (پاسخ نشان افزونه را دارد)
     site.reset(() => ({ status: 404, headers: { "X-Diba-Bridge-Connector": "1.0.0" }, json: { code: "rest_no_route", message: "No route", data: { status: 404 } } }));
     await assert.rejects(call("wordpress_wc_list_products", {}, { ...cfg, ...KEY }), /ووکامرس روی این سایت فعال نیست/);
     await assert.rejects(call("wordpress_get_seo_meta", { id: 5 }, { ...cfg, ...KEY }), /Yoast SEO یا Rank Math/);
 
-    // خطاهای خود افزونه (مثلاً بخش غیرفعال) همان‌طور منتقل می‌شوند
     site.reset(() => ({ status: 403, headers: { "X-Diba-Bridge-Connector": "1.0.0" }, json: { code: "diba_bridge_scope_disabled", message: "دسترسی «tools» در تنظیمات افزونه‌ی Diba Bridge غیرفعال است.", data: { status: 403 } } }));
     await assert.rejects(call("wordpress_list_cron", {}, { ...cfg, ...KEY }), /غیرفعال است.*\[diba_bridge_scope_disabled\]/);
   });
@@ -342,10 +332,8 @@ describe("wordpress provider — درخواست‌ها", () => {
     assert.equal(out.total, 1);
     assert.deepEqual(out.items[0], { id: 3, name: "اخبار", slug: "news", taxonomy: "category", count: 4 });
 
-    // مسیر ناموجود داخل proxy (پاسخ نشان افزونه را دارد) خطای عادی وردپرس است
     site.reset(() => ({ status: 404, headers: { "X-Diba-Bridge-Connector": "1.0.0" }, json: { code: "rest_no_route", message: "No route", data: { status: 404 } } }));
     await assert.rejects(call("wordpress_get_settings", {}, { siteUrl: site.base, ...KEY }), (e: any) => e instanceof WordPressError && e.code === "rest_no_route");
-    // خود proxy نیست → افزونه نصب نیست
     site.reset(() => undefined);
     await assert.rejects(call("wordpress_get_settings", {}, { siteUrl: site.base, ...KEY }), /روی این سایت پیدا نشد/);
   });
@@ -386,7 +374,6 @@ describe("wordpress provider — درخواست‌ها", () => {
     assert.deepEqual(site.requests[0].json, { title: "سلام", content: "<b>متن</b>", categories: [2], featured_media: 55, meta: { subtitle: "x" }, genres: [8], status: "draft" });
     assert.match(String(site.requests[0].headers["content-type"]), /application\/json/);
 
-    // زمان‌بندی بدون تاریخ رد می‌شود، بدون تماس شبکه
     const before = site.requests.length;
     await assert.rejects(call("wordpress_update_post", { id: 100, status: "future" }, cfg), /تاریخ انتشار/);
     await assert.rejects(call("wordpress_update_post", { id: 100 }, cfg), /هیچ فیلدی/);
@@ -435,7 +422,6 @@ describe("wordpress provider — درخواست‌ها", () => {
 
     await call("wordpress_list_posts", { type: "book" }, cfg);
     assert.deepEqual(site.requests.map((r) => r.path), ["/wp-json/wp/v2/types/book", "/wp-json/wp/v2/books"]);
-    // بار دوم از حافظه
     await call("wordpress_list_posts", { type: "book" }, cfg);
     assert.equal(site.requests.length, 3);
     assert.equal(site.requests[2].path, "/wp-json/wp/v2/books");
@@ -443,7 +429,6 @@ describe("wordpress provider — درخواست‌ها", () => {
     await call("wordpress_list_posts", { type: "product" }, cfg);
     assert.equal(site.requests.at(-1)!.path, "/wp-json/custom/v1/product");
 
-    // انواع داخلی بدون پرس‌وجوی اضافه
     const n = site.requests.length;
     await call("wordpress_list_posts", { type: "page" }, cfg);
     await call("wordpress_list_terms", { taxonomy: "post_tag" }, cfg);
@@ -487,7 +472,6 @@ describe("wordpress provider — درخواست‌ها", () => {
     assert.ok(req.body.includes(png), "file bytes are in the multipart body");
     assert.ok(req.body.toString("latin1").includes('name="post"'));
 
-    // مسیر محلی سرور پذیرفته نمی‌شود
     await assert.rejects(call("wordpress_upload_media", { source: "C:\\secret\\file.txt" }, cfg), /مسیر محلی سرور مجاز نیست/);
     await assert.rejects(call("wordpress_upload_media", { source: "/etc/passwd" }, cfg), /مسیر محلی سرور مجاز نیست/);
     await assert.rejects(call("wordpress_upload_media", {}, cfg), /فایلی برای آپلود داده نشده/);
@@ -509,7 +493,6 @@ describe("wordpress provider — درخواست‌ها", () => {
     assert.deepEqual(put.data, { id: 1, title: "t" });
     assert.deepEqual(site.requests[1].json, { title: "t" });
 
-    // مسیر افزونه با کلید افزونه می‌رود، نه با Basic
     await call("wordpress_rest_request", { path: "/diba-bridge/v1/stats" }, { ...cfg, ...KEY });
     assert.equal(site.requests[2].headers["x-diba-bridge-key"], "dbk_test_key");
     assert.equal(site.requests[2].headers.authorization, undefined);

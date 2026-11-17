@@ -32,9 +32,7 @@ describe("مشخصات سازمان — اعتبارسنجی", () => {
   test("لوگو: فقط تصویر بیت‌مپ واقعی و کوچک‌تر از سقف", () => {
     assert.equal(normalizeLogo(""), "");
     assert.equal(normalizeLogo(png()), png());
-    // SVG می‌تواند اسکریپت داشته باشد
     assert.throws(() => normalizeLogo(`data:image/svg+xml;base64,${Buffer.from("<svg onload=alert(1)/>").toString("base64")}`), ProfileError);
-    // نوع اعلام‌شده با محتوا نمی‌خواند
     assert.throws(() => normalizeLogo(`data:image/png;base64,${Buffer.from("<html><script>1</script>").toString("base64")}`), ProfileError);
     assert.throws(() => normalizeLogo("https://example.com/logo.png"), ProfileError);
     assert.throws(() => normalizeLogo(`data:text/html;base64,${Buffer.from("<b>x</b>").toString("base64")}`), ProfileError);
@@ -60,7 +58,6 @@ describe("مشخصات سازمان — ذخیره‌سازی", () => {
     assert.equal(reopened.profile().logo, png());
     assert.ok(!Number.isNaN(Date.parse(reopened.profile().installedAt)));
 
-    // رشته‌ی خالی فیلد را حذف می‌کند و فیلدِ نیامده دست نمی‌خورد
     reopened.updateProfile({ logo: "", website: "" });
     assert.equal(reopened.profile().logo, "");
     assert.equal(reopened.profile().orgName, "فروشگاه آسمان");

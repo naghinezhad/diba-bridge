@@ -21,13 +21,6 @@ import { whatsapp } from "./whatsapp.js";
 import { wordpress } from "./wordpress.js";
 import { x } from "./x.js";
 
-/**
- * فهرست همه‌ی سرویس‌ها.
- * همه‌ی پیام‌رسان‌ها با «حساب کاربری» وصل می‌شوند؛ اتصال با ربات/Bot API حذف شده است.
- * برای اضافه کردن سرویس جدید (زرین‌پال، کاوه‌نگار، نشان، ...):
- *   ۱. یک فایل در همین پوشه بسازید که ProviderDef برگرداند
- *   ۲. اینجا به آرایه اضافه‌اش کنید
- */
 export const builtinProviders: ProviderDef[] = [
   baleClient,
   blubank,
@@ -39,13 +32,11 @@ export const builtinProviders: ProviderDef[] = [
   linkedinProvider,
   whatsapp,
   x,
-  // صرافی‌های ایرانی (API رسمی؛ معامله به‌طور پیش‌فرض خاموش است)
   nobitex,
   wallex,
   bitpin,
   tabdeal,
   abantether,
-  // صرافی‌های خارجی (API رسمی؛ معامله به‌طور پیش‌فرض خاموش است)
   binance,
   bybit,
   okx,

@@ -1,15 +1,3 @@
-/**
- * وردپرس — مدیریت کامل سایت از طریق REST API.
- *
- * دو روش اتصال (حداقل یکی لازم است):
- *   ۱. Application Password خود وردپرس (HTTP Basic روی /wp-json/wp/v2)
- *   ۲. افزونه‌ی همراه «Diba Bridge Connector» با کلید اختصاصی (هدر X-Diba-Bridge-Key
- *      روی /wp-json/diba-bridge/v1) — برای ابزارهای پیشرفته و ووکامرس لازم است.
- *
- * اگر فقط کلید افزونه ثبت شده باشد، ابزارهای REST هسته از مسیر proxy افزونه رد می‌شوند.
- * مسیرهای افزونه باید دقیقاً با wordpress-plugin/diba-bridge-connector هماهنگ بمانند
- * (جدول کامل در docs/WORDPRESS.md).
- */
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { loadMedia, mediaField } from "../core/media.js";
@@ -32,13 +20,11 @@ const MSG_CONNECTOR_MISSING =
 const MSG_WC_INACTIVE = "ووکامرس روی این سایت فعال نیست؛ ابزارهای فروشگاهی فقط با ووکامرس فعال کار می‌کنند.";
 const MSG_SEO_INACTIVE = "هیچ افزونه‌ی سئوی پشتیبانی‌شده‌ای (Yoast SEO یا Rank Math) روی این سایت فعال نیست.";
 
-/** خطای برگشتی از وردپرس همراه با کد و وضعیت HTTP */
 export class WordPressError extends ProviderError {
   constructor(
     message: string,
     public readonly status: number,
     public readonly code: string | undefined,
-    /** آیا پاسخ از خود افزونه‌ی اتصال آمده است؟ */
     public readonly fromConnector: boolean,
     details?: unknown,
   ) {
@@ -53,7 +39,6 @@ interface SendOptions {
   method?: string;
   query?: Query;
   body?: unknown;
-  /** بدنه‌ی خام (آپلود فایل) به‌جای JSON */
   raw?: { body: any; headers?: Record<string, string> };
   headers?: Record<string, string>;
   timeoutMs?: number;
@@ -66,9 +51,6 @@ interface WpResponse {
   totalPages?: number;
 }
 
-// ---------------------------------------------------------------- آدرس و کوئری
-
-/** آدرس سایت را تمیز می‌کند: بدون اسلش انتهایی، بدون /wp-json یا /wp-admin */
 export function siteBase(ctx: ProviderContext): string {
   let raw = String(ctx.config.siteUrl || "").trim();
   if (!raw) throw new ProviderError("آدرس سایت وردپرس ثبت نشده است.");
@@ -85,7 +67,6 @@ export function siteBase(ctx: ProviderContext): string {
   return `${u.origin}${path}`;
 }
 
-/** مقادیر کوئری را به رشته تبدیل می‌کند (آرایه → فهرست با ویرگول، شیء → k[sub]) */
 export function flatQuery(query: Query | undefined): Record<string, string> {
   const out: Record<string, string> = {};
   if (!query) return out;
@@ -104,7 +85,6 @@ export function flatQuery(query: Query | undefined): Record<string, string> {
   return out;
 }
 
-/** آدرس نهایی REST؛ mode=query برای سایت‌های بدون پیوند یکتای زیبا (?rest_route=) */
 export function buildRestUrl(base: string, route: string, query: Query | undefined, mode: "pretty" | "query"): string {
   const qs = new URLSearchParams(flatQuery(query)).toString();
   if (mode === "pretty") return `${base}/wp-json${route}${qs ? `?${qs}` : ""}`;
@@ -112,10 +92,6 @@ export function buildRestUrl(base: string, route: string, query: Query | undefin
   return `${base}/?rest_route=${r}${qs ? `&${qs}` : ""}`;
 }
 
-/**
- * مسیر ابزار عمومی را بررسی می‌کند: فقط مسیر نسبی زیر /wp-json،
- * بدون آدرس کامل، میزبان دیگر، «..»، کوئری یا کاراکتر رمزشده.
- */
 export function normalizeRestPath(input: string): string {
   let p = String(input ?? "").trim();
   const bad = () => new ProviderError("مسیر نامعتبر است؛ فقط مسیر نسبی زیر /wp-json مجاز است (مثلاً /wp/v2/posts).");
@@ -127,8 +103,6 @@ export function normalizeRestPath(input: string): string {
   return p;
 }
 
-// ---------------------------------------------------------------- احراز هویت
-
 function basicHeader(ctx: ProviderContext): string | undefined {
   const user = String(ctx.config.username || "").trim();
   const pass = String(ctx.config.appPassword || "").trim();
@@ -139,8 +113,6 @@ function basicHeader(ctx: ProviderContext): string | undefined {
 function connectorKey(ctx: ProviderContext): string | undefined {
   return String(ctx.config.connectorKey || "").trim() || undefined;
 }
-
-// ---------------------------------------------------------------- متن
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", hellip: "…", ndash: "–", mdash: "—", laquo: "«", raquo: "»" };
 
@@ -154,7 +126,6 @@ function decodeEntities(s: string): string {
   });
 }
 
-/** HTML را به متن ساده تبدیل و در صورت نیاز کوتاه می‌کند */
 export function stripHtml(html: unknown, max = 0): string {
   const text = decodeEntities(
     String(html ?? "")
@@ -170,13 +141,11 @@ export function stripHtml(html: unknown, max = 0): string {
   return max > 0 && text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
 }
 
-/** فیلدهای {raw, rendered} وردپرس را به رشته تبدیل می‌کند */
 function rendered(v: any): string {
   if (v && typeof v === "object") return String(v.raw ?? v.rendered ?? "");
   return v === undefined || v === null ? "" : String(v);
 }
 
-/** کلیدهای خالی را حذف می‌کند تا خروجی جمع‌وجور بماند */
 function compact<T extends Record<string, unknown>>(obj: T): Partial<T> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
@@ -187,9 +156,6 @@ function compact<T extends Record<string, unknown>>(obj: T): Partial<T> {
   return out as Partial<T>;
 }
 
-// ---------------------------------------------------------------- لایه‌ی HTTP
-
-/** برای هر سایت یادمان می‌ماند کدام شکل آدرس جواب می‌دهد */
 const restMode = new Map<string, "pretty" | "query">();
 
 const HINTS: Record<string, string> = {
@@ -280,20 +246,17 @@ async function attempt(base: string, route: string, opts: SendOptions, mode: "pr
       isJson = false;
     }
   } else if (res.status === 204 || res.ok) {
-    // پاسخ خالی موفق (مثلاً 204)
     json = null;
     isJson = (res.headers.get("content-type") ?? "").includes("json") || res.status === 204;
   }
   return { res, text, json, isJson };
 }
 
-/** یک درخواست به REST سایت؛ در صورت نیاز خودکار به ?rest_route= برمی‌گردد */
 async function send(ctx: ProviderContext, route: string, opts: SendOptions = {}): Promise<WpResponse> {
   const base = siteBase(ctx);
   const known = restMode.get(base);
   let a = await attempt(base, route, opts, known ?? "pretty");
   if (!known) {
-    // 404/200 غیر JSON یعنی /wp-json اصلاً به وردپرس نرسیده (پیوند یکتای ساده)؛ درخواست اجرا نشده و تکرارش امن است
     if (!a.isJson && (a.res.status === 404 || a.res.status === 200)) {
       const b = await attempt(base, route, opts, "query");
       if (b.isJson) {
@@ -332,7 +295,6 @@ function connectorNotFound(path: string, err: WordPressError): ProviderError {
   return new ProviderError(MSG_CONNECTOR_MISSING, err.details);
 }
 
-/** درخواست به مسیرهای اختصاصی افزونه‌ی اتصال */
 async function connector(ctx: ProviderContext, path: string, opts: SendOptions = {}): Promise<WpResponse> {
   const key = connectorKey(ctx);
   if (!key) throw new ProviderError(MSG_NEED_CONNECTOR);
@@ -344,10 +306,6 @@ async function connector(ctx: ProviderContext, path: string, opts: SendOptions =
   }
 }
 
-/**
- * درخواست به REST هسته‌ی وردپرس: با Application Password مستقیم،
- * و اگر فقط کلید افزونه هست از مسیر proxy افزونه.
- */
 async function core(ctx: ProviderContext, route: string, opts: SendOptions = {}): Promise<WpResponse> {
   const basic = basicHeader(ctx);
   if (basic) return send(ctx, route, { ...opts, headers: { ...(opts.headers ?? {}), authorization: basic } });
@@ -379,8 +337,6 @@ function paged(r: WpResponse, items: unknown[], a: { page?: number; per_page?: n
     items,
   }) as Record<string, unknown>;
 }
-
-// ---------------------------------------------------------------- نوع محتوا و طبقه‌بندی
 
 const routeCache = new Map<string, string>();
 
@@ -419,8 +375,6 @@ async function resolveRoute(ctx: ProviderContext, kind: "types" | "taxonomies", 
 
 const typeRoute = (ctx: ProviderContext, type?: string) => resolveRoute(ctx, "types", type || "post", BUILTIN_TYPES);
 const taxRoute = (ctx: ProviderContext, taxonomy?: string) => resolveRoute(ctx, "taxonomies", taxonomy || "category", BUILTIN_TAX);
-
-// ---------------------------------------------------------------- شکل‌دهی خروجی
 
 const POST_LIST_FIELDS = "id,date,modified,slug,status,type,link,title,excerpt,author,featured_media,categories,tags,parent,sticky";
 
@@ -547,8 +501,6 @@ function menuItemOut(i: any) {
   });
 }
 
-// ---------------------------------------------------------------- ورودی‌های مشترک
-
 const READ = { readOnlyHint: true, openWorldHint: true } as const;
 const WRITE = { openWorldHint: true } as const;
 const DESTRUCTIVE = { destructiveHint: true, openWorldHint: true } as const;
@@ -620,14 +572,11 @@ const productWriteShape = {
   weight: zPrice.optional(),
 };
 
-/** فقط کلیدهای مقداردار را نگه می‌دارد */
 function defined(a: Record<string, unknown>, skip: string[] = []): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(a)) if (v !== undefined && !skip.includes(k)) out[k] = v;
   return out;
 }
-
-// ---------------------------------------------------------------- تست و اطلاعات سایت
 
 async function siteIndex(ctx: ProviderContext): Promise<any> {
   return (await core(ctx, "/", { query: { _fields: "name,description,url,home,gmt_offset,timezone_string,namespaces" } })).data ?? {};
@@ -665,7 +614,6 @@ async function siteInfo(ctx: ProviderContext) {
     const info = (await connector(ctx, "/site-info")).data ?? {};
     return { ...info, auth: { application_password: basic, connector: true } };
   }
-  // بدون افزونه: فقط همان چیزی که REST هسته می‌دهد
   const index = await siteIndex(ctx);
   const namespaces: string[] = Array.isArray(index.namespaces) ? index.namespaces : [];
   const soft = async <T>(fn: () => Promise<T>): Promise<T | undefined> => {
@@ -698,8 +646,6 @@ async function siteInfo(ctx: ProviderContext) {
   });
 }
 
-// ---------------------------------------------------------------- تعریف سرویس
-
 export const wordpress: ProviderDef = {
   id: "wordpress",
   name: "WordPress",
@@ -718,7 +664,6 @@ export const wordpress: ProviderDef = {
   ],
   test: (ctx) => testConnection(ctx),
   tools: [
-    // ============================================================ سایت
     defineTool({
       name: "wordpress_get_site_info",
       title: "اطلاعات سایت وردپرس",
@@ -758,7 +703,6 @@ export const wordpress: ProviderDef = {
       },
     }),
 
-    // ============================================================ محتوا
     defineTool({
       name: "wordpress_list_post_types",
       title: "انواع محتوا",
@@ -898,7 +842,6 @@ export const wordpress: ProviderDef = {
       },
     }),
 
-    // ============================================================ طبقه‌بندی‌ها
     defineTool({
       name: "wordpress_list_taxonomies",
       title: "طبقه‌بندی‌ها",
@@ -995,7 +938,6 @@ export const wordpress: ProviderDef = {
       },
     }),
 
-    // ============================================================ رسانه
     defineTool({
       name: "wordpress_list_media",
       title: "کتابخانه‌ی رسانه",
@@ -1044,7 +986,6 @@ export const wordpress: ProviderDef = {
           throw new ProviderError("منبع فایل باید لینک http(s) یا data URL باشد؛ خواندن مسیر محلی سرور مجاز نیست.");
         }
         const media = await loadMedia(source, { filename: a.filename });
-        // نام فایل در هدر باید ASCII باشد
         const ext = (media.filename.match(/\.([A-Za-z0-9]{1,8})$/) ?? [])[1];
         const stem = media.filename
           .replace(/\.[A-Za-z0-9]{1,8}$/, "")
@@ -1102,7 +1043,6 @@ export const wordpress: ProviderDef = {
       },
     }),
 
-    // ============================================================ دیدگاه‌ها
     defineTool({
       name: "wordpress_list_comments",
       title: "فهرست دیدگاه‌ها",
@@ -1169,7 +1109,6 @@ export const wordpress: ProviderDef = {
       },
     }),
 
-    // ============================================================ کاربران
     defineTool({
       name: "wordpress_get_me",
       title: "کاربر متصل",
@@ -1266,7 +1205,6 @@ export const wordpress: ProviderDef = {
       },
     }),
 
-    // ============================================================ افزونه‌ها و پوسته‌ها
     defineTool({
       name: "wordpress_list_plugins",
       title: "فهرست افزونه‌ها",
@@ -1344,7 +1282,6 @@ export const wordpress: ProviderDef = {
       handler: async (a, ctx) => (await connector(ctx, "/themes/activate", { method: "POST", body: { stylesheet: a.stylesheet } })).data,
     }),
 
-    // ============================================================ فهرست‌ها (منو)
     defineTool({
       name: "wordpress_list_menus",
       title: "فهرست‌های سایت",
@@ -1357,7 +1294,6 @@ export const wordpress: ProviderDef = {
           const items = (Array.isArray(data) ? data : []).map((m: any) => compact({ id: m.id, name: decodeEntities(String(m.name ?? "")), slug: m.slug, description: m.description, locations: m.locations, count: m.count }));
           return { count: items.length, items };
         } catch (err) {
-          // وردپرس قدیمی‌تر مسیر منو ندارد؛ از افزونه بخوان
           if (err instanceof WordPressError && err.code === "rest_no_route" && connectorKey(ctx)) return (await connector(ctx, "/menus")).data;
           throw err;
         }
@@ -1436,7 +1372,6 @@ export const wordpress: ProviderDef = {
       },
     }),
 
-    // ============================================================ ابزارهای پیشرفته (فقط با افزونه)
     defineTool({
       name: "wordpress_get_options",
       title: "خواندن گزینه‌ها",
@@ -1581,7 +1516,6 @@ export const wordpress: ProviderDef = {
       handler: async (a, ctx) => (await connector(ctx, "/activity-log", { query: { status: a.status, page: a.page, per_page: a.per_page ?? 20 } })).data,
     }),
 
-    // ============================================================ ووکامرس (فقط با افزونه و ووکامرس فعال)
     defineTool({
       name: "wordpress_wc_list_products",
       title: "محصولات ووکامرس",
@@ -1730,7 +1664,6 @@ export const wordpress: ProviderDef = {
       handler: async (a, ctx) => (await connector(ctx, "/wc/reports/sales", { query: a, timeoutMs: UPLOAD_TIMEOUT_MS })).data,
     }),
 
-    // ============================================================ درخواست عمومی
     defineTool({
       name: "wordpress_rest_request",
       title: "درخواست REST دلخواه",
@@ -1741,7 +1674,6 @@ export const wordpress: ProviderDef = {
         query: z.record(z.string(), z.any()).optional(),
         body: z.record(z.string(), z.any()).optional().describe("JSON body for POST/PUT/PATCH"),
       },
-      // این ابزار می‌تواند بنویسد و حذف کند؛ پس فقط‌خواندنی علامت نمی‌خورد
       annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
       handler: async (a, ctx) => {
         const method = a.method ?? "GET";

@@ -70,7 +70,6 @@ describe("اعتبارسنجی تریگر", () => {
     rejects({ ...base, event: "tool_error", action: { type: "reply_template", template: "x" } }, "action.type");
     rejects({ ...base, event: "tool_called", action: { type: "ai_reply" } }, "action.type");
     const t = normalizeTrigger({ ...base, event: "tool_error", match: { toolName: "*_send_*", provider: "bale_client", contains: "سلام" }, action: { type: "forward", targetProvider: "bale_client" } });
-    // شرط‌های پیام ورودی برای رویداد ابزار معنا ندارند و پاک می‌شوند
     assert.deepEqual(t.match, { provider: "*", chatType: "*", contains: "", toolName: "*_send_*" });
     rejects({ ...base, event: "tool_error", match: { toolName: "a;b" }, action: { type: "forward", targetProvider: "bale_client" } }, "match.toolName");
     assert.ok(normalizeTrigger({ ...base, event: "manual", action: { type: "reply_template", template: "x" } }));
@@ -80,7 +79,6 @@ describe("اعتبارسنجی تریگر", () => {
     let waitingForUrl = 0;
     for (const preset of defaultTriggers()) {
       if (preset.action.type === "webhook" && !preset.action.webhookUrl) {
-        // آدرس را کاربر هنگام ویرایش وارد می‌کند؛ تنها ایراد همین فیلد است
         rejects(preset, "action.webhookUrl");
         assert.doesNotThrow(() => normalizeTrigger({ ...preset, action: { ...preset.action, webhookUrl: "https://example.com/hook" } }), `نمونه‌ی ${preset.id}`);
         waitingForUrl++;
@@ -107,7 +105,6 @@ describe("TriggerEngine.replace", () => {
       assert.deepEqual(after.action, { type: "webhook", webhookUrl: "https://example.com/hook" });
       assert.equal(after.enabled, false);
       assert.equal(engine.replace("missing", input), undefined);
-      // روی دیسک هم همین است
       assert.deepEqual(new TriggerEngine(dir, host as any).list().triggers.find((t) => t.id === before.id)?.action, after.action);
     } finally {
       rmSync(dir, { recursive: true, force: true });

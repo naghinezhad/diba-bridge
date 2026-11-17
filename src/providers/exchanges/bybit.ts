@@ -1,4 +1,3 @@
-/** بای‌بیت — V5 API، بازار spot (https://bybit-exchange.github.io/docs/v5/intro) */
 import type { ProviderContext } from "../../core/types.js";
 import { ProviderError } from "../../core/types.js";
 import { baseOf, credentials, defineExchange, exchangeFetch, hmacHex, query, splitSymbol, type CandleInterval, type ExchangeAdapter } from "./common.js";
@@ -8,12 +7,10 @@ const BASE = "https://api.bybit.com";
 const RECV_WINDOW = "5000";
 const INTERVALS: Record<CandleInterval, string> = { "1m": "1", "5m": "5", "15m": "15", "1h": "60", "4h": "240", "1d": "D", "1w": "W" };
 
-/** امضای بای‌بیت: HMAC-SHA256 روی «timestamp + apiKey + recvWindow + payload»، به شکل hex */
 export function bybitSign(secret: string, timestamp: string, apiKey: string, recvWindow: string, payload: string): string {
   return hmacHex("sha256", secret, `${timestamp}${apiKey}${recvWindow}${payload}`);
 }
 
-/** بای‌بیت خطا را هم با HTTP 200 برمی‌گرداند؛ retCode غیر صفر یعنی خطا */
 function unwrap(data: any) {
   if (data?.retCode !== 0) throw new ProviderError(`${NAME}: ${data?.retMsg || "خطای ناشناخته"}`, data);
   return data.result;
@@ -65,7 +62,6 @@ const adapter: ExchangeAdapter = {
       high24h: t.highPrice24h,
       low24h: t.lowPrice24h,
       volume24h: t.volume24h,
-      // بای‌بیت نسبت می‌دهد (0.0123)؛ به درصد تبدیل می‌شود
       changePercent24h: t.price24hPcnt === undefined ? undefined : String(Number((Number(t.price24hPcnt) * 100).toFixed(4))),
     };
   },
@@ -108,7 +104,6 @@ const adapter: ExchangeAdapter = {
       orderType: order.type === "market" ? "Market" : "Limit",
       qty: order.quantity,
       price: order.price,
-      // بدون این، مقدار خرید market به واحد ارز نقل‌قول تفسیر می‌شود
       marketUnit: order.type === "market" ? "baseCoin" : undefined,
     });
     return { id: String(raw.orderId), raw };

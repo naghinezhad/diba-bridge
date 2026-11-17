@@ -7,7 +7,6 @@ import { DibaMcpEngine } from "../../src/core/engine.ts";
 import type { ProviderDef } from "../../src/core/types.ts";
 import { builtinProviders } from "../../src/providers/index.ts";
 
-/** منطقه و دسته‌ای که داشبورد برای چیدن تب‌ها و زیرمنوی ایرانی/خارجی به آن تکیه می‌کند */
 const EXPECTED: Record<string, { category: string; region: string }> = {
   bale_client: { category: "messenger", region: "iran" },
   eitaa_client: { category: "messenger", region: "iran" },
@@ -61,7 +60,6 @@ describe("دسته و منطقه‌ی سرویس‌ها", () => {
     assert.deepEqual(described, [
       { id: "bank_ir", category: "banking", region: "iran", unofficial: true },
       { id: "bank_intl", category: "banking", region: "international", unofficial: false },
-      // بدون منطقه‌ی صریح، سرویس «خارجی» حساب می‌شود
       { id: "no_region", category: "utility", region: "international", unofficial: false },
     ]);
   });

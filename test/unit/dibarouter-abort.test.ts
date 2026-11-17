@@ -1,7 +1,3 @@
-/**
- * توقف دستیار: لغو AbortSignal باید جریان SSE دیبا روتر را ببندد و
- * حلقه‌ی خواندن را با خطای لغو تمام کند (نه با پاسخ نیمه‌کاره).
- */
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -41,7 +37,6 @@ describe("dibaRouterChat cancellation", () => {
 
       await assert.rejects(pending, (err: any) => err?.name === "AbortError" || /abort/i.test(String(err?.message)));
       assert.ok(deltas >= 2, "پاسخ باید قبل از توقف شروع شده باشد");
-      // بستن سوکت سمت سرور کمی بعد از لغو انجام می‌شود
       const end = Date.now() + 1500;
       while (!upstreamClosed && Date.now() < end) await new Promise((r) => setTimeout(r, 15));
       assert.equal(upstreamClosed, true, "اتصال به دیبا روتر باید بسته شود");
@@ -52,7 +47,6 @@ describe("dibaRouterChat cancellation", () => {
 
   test("abort before the first byte rejects without waiting for the model", async () => {
     const server = createServer(() => {
-      // هیچ پاسخی نمی‌دهد؛ منتظر لغو می‌مانیم
     });
     await new Promise<void>((ok) => server.listen(0, "127.0.0.1", ok));
     const port = (server.address() as AddressInfo).port;

@@ -1,14 +1,3 @@
-/**
- * روبیکا با حساب کاربری (self client).
- *
- * روبیکا API عمومی برای کلاینت کاربر ندارد. این سرویس از کتابخانه‌ی `rubjs`
- * استفاده می‌کند که همان پروتکل کلاینت وب/اندروید را پیاده می‌کند:
- *   - ورود با شماره + کد (و در صورت نیاز رمز دومرحله‌ای)
- *   - تبادل کلید RSA/AES و ذخیره‌ی نشست
- *   - دریافت پیام با WebSocket
- *
- * هشدار: پروتکل خصوصی است و روبیکا می‌تواند آن را تغییر دهد.
- */
 import { createCipheriv, randomBytes } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -30,19 +19,11 @@ import {
 
 export const RUBIKA_CLIENT_ID = "rubika_client";
 
-/**
- * rubjs's high-level sendCode hides the server's status (it returns undefined for
- * every non-OK response). We use its low-level Network + Crypto so the user sees
- * INVALID_INPUT / TOO_REQUESTS / NOT_SUPPORTED_API_VERSION instead of
- * "پاسخ نامشخص". The path is resolved from the installed package, so this keeps
- * working with npm, npx and Docker.
- */
 const nodeRequire = createRequire(import.meta.url);
 const rubjsRoot = dirname(dirname(nodeRequire.resolve("rubjs")));
 const RubikaNetwork = nodeRequire(join(rubjsRoot, "lib", "clients", "network_login.js")).default;
 const RubikaCrypto = nodeRequire(join(rubjsRoot, "lib", "core", "client", "crypto.js")).default;
 
-/** نسخه‌ی فعلی کلاینت وب روبیکا (rubjs روی 4.4.9 قدیمی است) */
 const RUBIKA_WEB_APP_VERSION = "4.4.34";
 const originalNetworkSend = RubikaNetwork.prototype.send;
 RubikaNetwork.prototype.send = function patchedSend(this: any, ...args: any[]) {
@@ -50,7 +31,6 @@ RubikaNetwork.prototype.send = function patchedSend(this: any, ...args: any[]) {
   return originalNetworkSend.apply(this, args);
 };
 
-/** همان کلیدی که SessionManager در rubjs برای رمز کردن فایل نشست استفاده می‌کند */
 const SESSION_SECRET = "12345678901234567890123456789012";
 const MAX_QUEUE = 500;
 const CONNECT_TIMEOUT_MS = 45_000;
@@ -110,7 +90,6 @@ function encryptSession(session: RubikaSessionData): { iv: string; enData: strin
   return { iv: iv.toString("hex"), enData };
 }
 
-/** همان decode_auth در rubjs؛ برای بازسازی نشست بدون خواندن فایل */
 function decodeAuth(auth: string): string {
   let out = "";
   const lower = "abcdefghijklmnopqrstuvwxyz";
@@ -196,11 +175,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 // ---------------------------------------------------------------- client
 
-/**
- * Client در rubjs در constructor خودش start() را صدا می‌زند و اگر نشست نباشد
- * از ترمینال شماره/کد می‌پرسد. برای سرور این رفتار خطرناک است؛ start امن را
- * override می‌کنیم تا فقط نشست ذخیره‌شده را بخواند و در صورت خطا متوقف شود.
- */
 class SafeRubikaClient extends RubikaClient {
   declare startPromise: Promise<void>;
   declare startError?: Error;
@@ -265,7 +239,6 @@ async function closeClient(client: SafeRubikaClient): Promise<void> {
     network.ws?.close();
     network.ws = undefined;
   } catch {
-    // از قبل بسته شده
   }
 }
 
@@ -346,7 +319,6 @@ async function fetchChats(client: SafeRubikaClient): Promise<any> {
     const first: any = await client.getChats("");
     if (first && Array.isArray(first.chats)) return first;
   } catch {
-    // بعضی نسخه‌ها start_id خالی را قبول نمی‌کنند
   }
   return await client.getChats("0");
 }
@@ -361,7 +333,6 @@ async function loadChatIndex(m: ManagedClient): Promise<void> {
       m.titles.set(guid, { title: titleOfChat(chat), type: chatTypeOfGuid(guid) });
     }
   } catch {
-    // عنوان اختیاری است؛ بعداً با get_chats دوباره پر می‌شود
   }
 }
 
@@ -382,7 +353,6 @@ function createManaged(session: RubikaSessionData, raw: string): ManagedClient {
       const incoming = toIncoming(m, ctx);
       if (incoming) pushMessage(m, incoming);
     } catch {
-      // یک update بدشکل نباید دریافت را متوقف کند
     }
   });
   return m;
@@ -475,7 +445,6 @@ async function resolveTitles(m: ManagedClient, messages: IncomingMessage[]): Pro
         }
         if (title) m.titles.set(chatId, { title: String(title), type: chatTypeOfGuid(chatId) });
       } catch {
-        // عنوان اختیاری است
       }
     }),
   );
@@ -549,16 +518,11 @@ function rubikaStatusMessage(status: unknown, detail: unknown): string {
   return `روبیکا درخواست را رد کرد: ${String(status ?? "UNKNOWN")}${detail ? ` (${String(detail)})` : ""}`;
 }
 
-/**
- * نسخه‌ی خام sendCode. برخلاف LoginClient.sendCode، وضعیت واقعی سرور را
- * برمی‌گرداند و خطای INVALID_INPUT را پنهان نمی‌کند.
- */
 async function rawSendCode(phone: string, passKey?: string): Promise<any> {
   const network = new RubikaNetwork();
   const auth = RubikaCrypto.secret(32);
   const key = Buffer.from(RubikaCrypto.passphrase(auth), "utf8");
   const input: Record<string, unknown> = { phone_number: phone, send_type: "SMS" };
-  // کلاینت وب در درخواست اول اصلاً pass_key نمی‌فرستد (نه null)
   if (passKey !== undefined && passKey !== "") input.pass_key = passKey;
 
   const response = await network.send(

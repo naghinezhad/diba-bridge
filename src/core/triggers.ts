@@ -1,9 +1,3 @@
-/**
- * موتور تریگرها و اتوماسیون (Social + MCP + DibaRouter AI + Webhook).
- *
- * تریگرهای پیش‌فرض کاربردی در اولین اجرا در data/triggers.json ساخته می‌شوند
- * و کاربر می‌تواند آن‌ها را با یک کلیک روشن/خاموش، ویرایش، تست یا اضافه کند.
- */
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { compactToolResult } from "./context.js";
@@ -57,12 +51,10 @@ export interface TriggerLog {
   ok: boolean;
   detail: string;
   at: string;
-  /** گزارش نمونه‌ی اولیه؛ فقط برای نشان دادن ظاهر صفحه ساخته می‌شود */
   demo?: boolean;
 }
 
 interface TriggersFile {
-  /** نسخه‌ی کتابخانه‌ی نمونه‌ها؛ با بالا رفتن، نمونه‌های تازه اضافه می‌شوند */
   seedVersion?: number;
   triggers: TriggerDef[];
   logs: TriggerLog[];
@@ -80,22 +72,10 @@ export interface TriggerHost {
 
 const MAX_LOGS = 150;
 
-/** نسخه‌ی کتابخانه‌ی نمونه؛ با تغییر آن، نمونه‌های تازه به نصب‌های موجود اضافه می‌شوند */
 export const TRIGGER_SEED_VERSION = 4;
 
-/**
- * کتابخانه‌ی نمونه‌های آماده‌ی اتوماسیون (۳۷ قانون).
- *
- * این‌ها فقط «نمونه‌ی قابل ویرایش» هستند: همه خاموش شروع می‌شوند تا هیچ پیامی
- * بدون تصمیم صاحب حساب ارسال نشود. کاربر از صفحه‌ی تریگرها هرکدام را می‌خواهد
- * روشن، ویرایش، تست یا حذف می‌کند.
- *
- * متغیرهای قابل استفاده در قالب‌ها: {{sender}} {{username}} {{text}} {{provider}}
- * {{chatId}} {{chatTitle}} {{toolName}} {{error}} {{args}} {{ms}}
- */
 export function defaultTriggers(): TriggerDef[] {
   return [
-    // ---------------------------------------------------------------- پیام‌رسان‌ها
     {
       id: "social-welcome",
       name: "خوش‌آمدگویی /start و سلام",
@@ -262,7 +242,6 @@ export function defaultTriggers(): TriggerDef[] {
       },
     },
 
-    // ---------------------------------------------------------------- هوش مصنوعی
     {
       id: "ai-assistant-default",
       name: "دستیار هوشمند پیش‌فرض",
@@ -399,7 +378,6 @@ export function defaultTriggers(): TriggerDef[] {
       },
     },
 
-    // ---------------------------------------------------------------- فوروارد بین سرویس‌ها
     {
       id: "forward-urgent-alert",
       name: "فوروارد پیام‌های فوری به مدیر",
@@ -521,7 +499,6 @@ export function defaultTriggers(): TriggerDef[] {
       },
     },
 
-    // ---------------------------------------------------------------- MCP و ابزارها
     {
       id: "mcp-tool-error-alert",
       name: "هشدار خطای ابزارهای MCP",
@@ -610,7 +587,6 @@ export function defaultTriggers(): TriggerDef[] {
       },
     },
 
-    // ---------------------------------------------------------------- وبهوک
     {
       id: "webhook-incoming-all",
       name: "وبهوک همه‌ی پیام‌ها (n8n / Make)",
@@ -691,7 +667,6 @@ interface DemoLogSeed {
   minutesAgo: number;
 }
 
-/** گزارش‌های نمونه‌ی اولیه تا صفحه‌ی تریگرها در نگاه اول خالی و بی‌روح نباشد */
 const DEMO_LOG_SEEDS: DemoLogSeed[] = [
   { triggerId: "social-welcome", ok: true, detail: "پاسخ خوش‌آمدگویی به bale_client:10427631 ارسال شد", minutesAgo: 6 },
   { triggerId: "social-pricing-faq", ok: true, detail: "تعرفه‌ها به instagram:8812043 ارسال شد", minutesAgo: 15 },
@@ -782,7 +757,6 @@ export class TriggerEngine {
       }
     }
 
-    // نصب تازه: کل کتابخانه‌ی نمونه به همراه گزارش‌های نمونه
     if (!this.data.triggers.length) {
       this.data.triggers = defaultTriggers();
       this.data.logs = demoLogs();
@@ -792,7 +766,6 @@ export class TriggerEngine {
       return;
     }
 
-    // نصب قدیمی: نمونه‌های تازه اضافه می‌شوند، تنظیمات کاربر دست‌نخورده می‌ماند
     if ((this.data.seedVersion ?? 1) < TRIGGER_SEED_VERSION) {
       const added = this.mergeDefaults();
       if (!this.data.logs.length) {
@@ -804,7 +777,6 @@ export class TriggerEngine {
     }
   }
 
-  /** نمونه‌های جامانده را اضافه می‌کند و تعداد افزوده‌شده‌ها را برمی‌گرداند */
   private mergeDefaults(): number {
     const existing = new Set(this.data.triggers.map((t) => t.id));
     let added = 0;
@@ -817,7 +789,6 @@ export class TriggerEngine {
     return added;
   }
 
-  /** آمار اجرا (تعداد، آخرین اجرا و آخرین خطا) را از گزارش‌های نمونه می‌سازد */
   private applyDemoStats() {
     const stats = new Map<string, { count: number; last: string; error?: string }>();
     for (const log of this.data.logs) {
@@ -881,10 +852,6 @@ export class TriggerEngine {
     return this.data.triggers[idx];
   }
 
-  /**
-   * محتوای تریگر را کامل جایگزین می‌کند (شرط و اقدام ادغام نمی‌شوند)،
-   * ولی شناسه، نمونه بودن و آمار اجرا می‌ماند.
-   */
   replace(id: string, input: Pick<TriggerDef, "name" | "description" | "category" | "enabled" | "event" | "match" | "action">): TriggerDef | undefined {
     const idx = this.data.triggers.findIndex((t) => t.id === id);
     if (idx < 0) return undefined;
@@ -1017,7 +984,6 @@ export class TriggerEngine {
     return this.execute(t, sampleVars, { test: true });
   }
 
-  /** اجرای دستی یک اتوماسیون، مستقل از فعال/غیرفعال بودن آن. */
   async runManual(id: string, input: Record<string, string> = {}): Promise<{ ok: boolean; detail: string }> {
     const t = this.data.triggers.find((x) => x.id === id);
     if (!t) return { ok: false, detail: "تریگر پیدا نشد" };

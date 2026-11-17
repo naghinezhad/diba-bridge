@@ -22,7 +22,6 @@ COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/vendor ./vendor
 COPY --chown=node:node package.json ./
 COPY --chown=node:node public ./public
-# پوشه‌ی داده با مالکیت کاربر node (volume همین مالکیت را می‌گیرد)
 RUN mkdir -p /app/data && chown node:node /app/data
 USER node
 VOLUME ["/app/data"]

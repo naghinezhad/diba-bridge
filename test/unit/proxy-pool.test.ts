@@ -73,7 +73,6 @@ describe("امتیازدهی پروکسی", () => {
     assert.ok(Number.isFinite(proxyScore(dead)), "یک دور خطا هنوز فرصت دوباره دارد");
     dead = updateStats(dead, [fail(), fail()]);
     assert.equal(proxyScore(dead), Infinity);
-    // با یک سنجش موفق دوباره زنده می‌شود
     assert.ok(Number.isFinite(proxyScore(updateStats(dead, [ok(120)]))));
     const pool = [entry("dead", dead), entry("off", { ewmaMs: 10, checks: 1 }, false), entry("fast", { ewmaMs: 90, checks: 1 }), entry("slow", { ewmaMs: 300, checks: 1 })];
     assert.deepEqual(rankProxies(pool).map((p) => p.id), ["fast", "slow"]);
@@ -141,12 +140,10 @@ describe("سنجش و مدیریت فهرست", () => {
     assert.deepEqual(result.entries.map((e) => [e.url, e.active, e.alive]), [
       ["http://fast.example:8080", true, true],
       ["http://slow.example:8080", false, true],
-      // هیچ نمونه‌ی موفقی ندارد، پس رتبه نمی‌گیرد
       ["http://down.example:8080", false, false],
     ]);
     assert.equal(result.entries[2].successRate, 0);
 
-    // پروکسی فعال از کار می‌افتد → دور بعد جایگزین می‌شود
     speeds["http://fast.example:8080"] = null;
     await m.test();
     const after = await m.test();

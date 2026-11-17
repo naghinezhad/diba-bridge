@@ -75,7 +75,6 @@ describe("intent parsing", () => {
     assert.equal(parsed.action, "send");
     assert.equal(parsed.person, "سروش");
     assert.deepEqual(parsed.providerHints, []);
-    // املای کاربر (نیم‌فاصله) در متن پیام حفظ می‌شود
   assert.equal(parsed.message, "فردا می‌بینمت");
   assert.equal(parseRequest("به عماد پیام بده که ساعت ۵ می‌آیم.", providers).message, "ساعت ۵ می‌آیم");
 
@@ -88,7 +87,6 @@ describe("intent parsing", () => {
     const parsed = parseRequest("send John a message that wait for me, ignore the rest", providers);
     assert.equal(parsed.action, "send");
     assert.deepEqual(parsed.providerHints, []);
-    // پسوند کوتاه فارسی همچنان پذیرفته می‌شود
     assert.deepEqual(parseRequest("به عماد توی تلگرامش پیام بده که سلام", providers).providerHints, ["telegram_client"]);
   });
 });

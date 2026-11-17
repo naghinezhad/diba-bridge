@@ -1,4 +1,3 @@
-/** کوکوین — Spot REST API (https://www.kucoin.com/docs/rest/) */
 import { randomUUID } from "node:crypto";
 import type { ProviderContext } from "../../core/types.js";
 import { ProviderError } from "../../core/types.js";
@@ -9,17 +8,14 @@ const BASE = "https://api.kucoin.com";
 const INTERVALS: Record<CandleInterval, string> = { "1m": "1min", "5m": "5min", "15m": "15min", "1h": "1hour", "4h": "4hour", "1d": "1day", "1w": "1week" };
 const SECONDS: Record<CandleInterval, number> = { "1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400, "1w": 604800 };
 
-/** امضای کوکوین: Base64(HMAC-SHA256) روی «timestamp + METHOD + مسیر با پرس‌وجو + بدنه» */
 export function kucoinSign(secret: string, timestamp: string, method: string, endpoint: string, body = ""): string {
   return hmacBase64("sha256", secret, `${timestamp}${method.toUpperCase()}${endpoint}${body}`);
 }
 
-/** در نسخه‌ی ۲ کلیدها، خود Passphrase هم با رمز API امضا می‌شود */
 export function kucoinPassphrase(secret: string, passphrase: string): string {
   return hmacBase64("sha256", secret, passphrase);
 }
 
-/** کوکوین خطا را با code غیر "200000" برمی‌گرداند */
 function unwrap(data: any) {
   if (String(data?.code) !== "200000") throw new ProviderError(`${NAME}: ${data?.msg || "خطای ناشناخته"}`, data);
   return data.data;
@@ -74,7 +70,6 @@ const adapter: ExchangeAdapter = {
       high24h: t.high,
       low24h: t.low,
       volume24h: t.vol,
-      // کوکوین نسبت می‌دهد (0.0123)؛ به درصد تبدیل می‌شود
       changePercent24h: t.changeRate === undefined || t.changeRate === null ? undefined : String(Number((Number(t.changeRate) * 100).toFixed(4))),
     };
   },
@@ -86,10 +81,8 @@ const adapter: ExchangeAdapter = {
   },
 
   async candles(ctx, symbol, interval, limit) {
-    // این اندپوینت limit ندارد؛ بازه‌ی زمانی به اندازه‌ی همان تعداد کندل خواسته می‌شود
     const endAt = Math.floor(Date.now() / 1000);
     const rows: string[][] = (await pub(ctx, "/api/v1/market/candles", { symbol, type: INTERVALS[interval], startAt: endAt - SECONDS[interval] * (limit + 1), endAt })) ?? [];
-    // ترتیب ستون‌های کوکوین: زمان، باز، بسته، بالا، پایین، حجم
     return rows.slice(0, limit).map((r) => ({ time: new Date(Number(r[0]) * 1000).toISOString(), open: r[1], close: r[2], high: r[3], low: r[4], volume: r[5] }));
   },
 
@@ -114,7 +107,6 @@ const adapter: ExchangeAdapter = {
   },
 
   async placeOrder(ctx, order) {
-    // clientOid یکتا جلوی ثبت دوباره‌ی همان سفارش در تلاش مجدد را می‌گیرد
     const raw = await signed(ctx, "POST", "/api/v1/orders", { clientOid: randomUUID(), side: order.side, symbol: order.symbol, type: order.type, size: order.quantity, price: order.price });
     return { id: String(raw?.orderId ?? ""), raw };
   },

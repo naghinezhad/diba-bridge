@@ -1,14 +1,3 @@
-/**
- * نوبیتکس — API رسمی (https://apidocs.nobitex.ir).
- *
- * دو روش احراز هویت پشتیبانی می‌شود:
- *   ۱. توکن ساده: فقط «API Key» پر می‌شود و با هدر `Authorization: Token <token>` می‌رود.
- *   ۲. کلید API جدید: «API Key» کلید عمومی و «API Secret» کلید خصوصی Ed25519 است و هر درخواست
- *      با `Nobitex-Key`، `Nobitex-Timestamp` و `Nobitex-Signature` امضا می‌شود.
- *
- * واحد قیمت: نوبیتکس در آمار بازار، دفتر سفارش و سفارش‌ها بازار ریالی را به «ریال» می‌دهد ولی
- * کندل‌ها را به «تومان». این‌جا کندل‌های بازار ریالی هم ضرب در ۱۰ می‌شوند تا همه‌چیز ریال باشد.
- */
 import { createPrivateKey, sign } from "node:crypto";
 import type { ProviderContext } from "../../core/types.js";
 import { ProviderError } from "../../core/types.js";
@@ -16,10 +5,8 @@ import { baseOf, credentials, defineExchange, exchangeFetch, query, splitByQuote
 
 const NAME = "نوبیتکس";
 const BASE = "https://apiv2.nobitex.ir";
-// نوبیتکس از کلاینت‌های خودکار می‌خواهد خودشان را با همین قالب معرفی کنند
 const USER_AGENT = "TraderBot/DibaBridge-5.0.0";
 const QUOTES = ["IRT", "RLS", "USDT"];
-/** نوبیتکس کندل هفتگی ندارد */
 const RESOLUTIONS: Partial<Record<CandleInterval, [string, number]>> = {
   "1m": ["1", 60],
   "5m": ["5", 300],
@@ -29,13 +16,8 @@ const RESOLUTIONS: Partial<Record<CandleInterval, [string, number]>> = {
   "1d": ["D", 86_400],
 };
 
-/** پیشوند PKCS#8 برای کلید خصوصی Ed25519؛ ۳۲ بایت seed پس از آن می‌آید */
 const ED25519_PKCS8_PREFIX = Buffer.from("302e020100300506032b657004220420", "hex");
 
-/**
- * امضای نوبیتکس: Ed25519 روی «timestamp + METHOD + مسیر کامل با query + بدنه‌ی خام»،
- * به شکل Base64 امن برای URL. کلید خصوصی هم Base64 امن برای URL است.
- */
 export function nobitexSign(privateKey: string, timestamp: string, method: string, pathWithQuery: string, body = ""): string {
   const seed = Buffer.from(privateKey.trim(), "base64url").subarray(0, 32);
   if (seed.length !== 32) throw new ProviderError(`${NAME}: کلید خصوصی API معتبر نیست (باید کلید Ed25519 به شکل Base64 باشد).`);
@@ -44,14 +26,12 @@ export function nobitexSign(privateKey: string, timestamp: string, method: strin
   return signature.toString("base64").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
-/** نماد یکدست این فایل: «BTCIRT» یا «BTCUSDT» */
 function toSymbol(input: string): string {
   const parts = splitByQuote(input, QUOTES);
   if (!parts) return input.trim().toUpperCase();
   return `${parts[0]}${parts[1] === "RLS" ? "IRT" : parts[1]}`;
 }
 
-/** ارز مبدأ و مقصد به شکلی که endpointهای آمار و سفارش می‌خواهند: btc / rls */
 function currencies(symbol: string): { src: string; dst: string; rial: boolean } {
   const parts = splitByQuote(symbol, QUOTES);
   if (!parts) throw new ProviderError(`${NAME}: نماد ${symbol} شناخته نشد. نمونه: BTCIRT یا BTCUSDT.`);
@@ -59,7 +39,6 @@ function currencies(symbol: string): { src: string; dst: string; rial: boolean }
   return { src: parts[0].toLowerCase(), dst: rial ? "rls" : "usdt", rial };
 }
 
-/** نوبیتکس خطا را هم گاهی با HTTP 200 و status=failed برمی‌گرداند */
 function unwrap(data: any) {
   if (data?.status && data.status !== "ok") throw new ProviderError(`${NAME}: ${data.message || data.code || "خطای ناشناخته"}`, data);
   return data;
@@ -123,7 +102,6 @@ const adapter: ExchangeAdapter = {
     const book = await pub(ctx, `/v3/orderbook/${encodeURIComponent(symbol)}`);
     let bids: [string, string][] = book.bids ?? [];
     let asks: [string, string][] = book.asks ?? [];
-    // نسخه‌های قدیمی این API نام دو طرف را برعکس می‌دادند؛ خرید همیشه باید ارزان‌تر از فروش باشد
     if (bids.length && asks.length && Number(bids[0][0]) > Number(asks[0][0])) [bids, asks] = [asks, bids];
     return { symbol, bids: bids.slice(0, depth), asks: asks.slice(0, depth) };
   },
@@ -137,7 +115,6 @@ const adapter: ExchangeAdapter = {
     });
     if (data?.s === "no_data") return [];
     if (data?.s !== "ok") throw new ProviderError(`${NAME}: ${data?.errmsg || "کندل‌ها خوانده نشد"}`, data);
-    // کندل بازار ریالی به تومان می‌آید؛ برای یکدستی با بقیه‌ی ابزارها به ریال تبدیل می‌شود
     const factor = currencies(symbol).rial ? 10 : 1;
     const price = (v: unknown) => String(Number((Number(v) * factor).toFixed(8)));
     const times: number[] = data.t ?? [];

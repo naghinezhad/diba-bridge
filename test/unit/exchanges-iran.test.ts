@@ -33,10 +33,8 @@ describe("صرافی‌های ایرانی — ساختار", () => {
     const full = ["get_ticker", "get_orderbook", "get_candles", "get_balances", "get_open_orders", "place_order", "cancel_order"];
     assert.deepEqual(names(nobitex), full);
     assert.deepEqual(names(wallex), full);
-    // بیت‌پین و تبدیل کندل عمومی ندارند
     assert.deepEqual(names(bitpin), full.filter((n) => n !== "get_candles"));
     assert.deepEqual(names(tabdeal), full.filter((n) => n !== "get_candles"));
-    // آبان‌تتر بازار مستقیم است: دفتر سفارش و کندل ندارد
     assert.deepEqual(names(abantether), ["get_ticker", "get_balances", "get_open_orders", "place_order", "cancel_order"]);
   });
 
@@ -68,7 +66,6 @@ describe("صرافی‌های ایرانی — ساختار", () => {
 });
 
 describe("صرافی‌های ایرانی — امضا", () => {
-  // کلید خصوصی Ed25519 آزمایشی (۳۲ بایت) به شکل Base64 امن برای URL، همان قالبی که نوبیتکس می‌دهد
   const seed = Buffer.alloc(32, 7);
   const privateKey = seed.toString("base64url");
   const publicKey = createPublicKey(createPrivateKey({ key: Buffer.concat([Buffer.from("302e020100300506032b657004220420", "hex"), seed]), format: "der", type: "pkcs8" }));
@@ -91,11 +88,9 @@ describe("صرافی‌های ایرانی — امضا", () => {
     let server: Server;
     let base = "";
     const seen: { method: string; url: string; path: string; headers: IncomingMessage["headers"]; body: string }[] = [];
-    /** پاسخ هر مسیر؛ کلید = «METHOD pathname» یا فقط pathname. مقدار تابع باشد، با درخواست صدا زده می‌شود */
     const replies: Record<string, unknown> = {
       // Nobitex
       "/market/stats": { status: "ok", stats: { "btc-rls": { latest: "174900000000", bestBuy: "174899999790", bestSell: "174900000000", dayHigh: "177656699990", dayLow: "173000000000", volumeSrc: "9.06", dayChange: "0.31" } } },
-      // نام دو طرف عمداً برعکس داده شده تا اصلاح خودکارش آزمایش شود
       "/v3/orderbook/BTCIRT": { status: "ok", bids: [["175000000000", "1"], ["175100000000", "2"]], asks: [["174900000000", "3"], ["174800000000", "4"]] },
       "/market/udf/history": { s: "ok", t: [1700000000, 1700003600], o: [17490000000, 17500000000], h: [17510000000, 17520000000], l: [17480000000, 17490000000], c: [17500000000, 17515000000.5], v: [0.5, 0.25] },
       "/users/wallets/list": { status: "ok", wallets: [{ currency: "rls", balance: "1000", blockedBalance: "250", activeBalance: "750" }, { currency: "btc", balance: "0", blockedBalance: "0", activeBalance: "0" }] },

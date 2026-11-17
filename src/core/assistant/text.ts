@@ -1,11 +1,3 @@
-/**
- * ابزارهای متنی مشترک دستیار: برچسب‌ها، اعداد فارسی و تشخیص پاسخ‌های کوتاه
- * («بله»، «لغو»، «دومی»). هر دو مسیر دستیار (ابزار MCP و گفتگوی داشبورد)
- * از همین‌جا استفاده می‌کنند تا رفتارشان یکی بماند.
- *
- * نکته: «\b» در جاوااسکریپت فقط برای حروف لاتین کار می‌کند؛ برای فارسی مرز کلمه
- * را با فاصله/ابتدا/انتها تشخیص می‌دهیم.
- */
 import { cleanText } from "./name-match.js";
 
 const FA_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
@@ -32,7 +24,6 @@ export function typeLabel(type: string): string {
   return "چت";
 }
 
-/** متن کوتاه بدون علائم نگارشی، برای مقایسه با پاسخ‌های ثابت */
 function shortReply(text: string): string {
   return cleanText(text).replace(/[،,.!?؟؛:]/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
 }
@@ -61,7 +52,6 @@ const ORDINALS: Array<[RegExp, number]> = [
   [/^(?:ششم|ششمی|شش|sixth)$/i, 5],
 ];
 
-/** «۲»، «دومی»، «گزینه ۲»، «همون اولی رو» → اندیس صفرمبنا؛ در غیر این صورت undefined */
 export function selectionIndex(text: string): number | undefined {
   const cleaned = shortReply(text)
     .replace(/^(?:همون|همان|گزینه|مورد|شماره|option|number)\s*/i, "")
@@ -73,7 +63,6 @@ export function selectionIndex(text: string): number | undefined {
   return undefined;
 }
 
-/** آیا متن فقط سلام/تشکر است؟ */
 export function isSmallTalk(text: string): boolean {
   const t = cleanText(text).replace(/[!؟?.،\s]/g, "");
   return /^(?:سلام|درود|سلامعلیکم|وقتبخیر|صبحبخیر|شببخیر|ممنون|مرسی|تشکر|hi|hello|hey|thanks|thankyou|sup)$/iu.test(t);

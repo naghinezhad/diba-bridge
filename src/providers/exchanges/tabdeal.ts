@@ -1,9 +1,3 @@
-/**
- * تبدیل — API رسمی، هم‌شکل با API بایننس (https://docs.tabdeal.org).
- * خواندن‌ها از مسیر `/r/api/v1` و ثبت و لغو سفارش از `/api/v1` می‌روند. درخواست‌های حساب با
- * HMAC-SHA256 روی رشته‌ی پارامترها امضا می‌شوند. قیمت بازارهای تومانی به تومان است.
- * تبدیل آمار ۲۴ساعته و کندل عمومی ندارد؛ قیمت از آخرین معامله و دفتر سفارش ساخته می‌شود.
- */
 import type { ProviderContext } from "../../core/types.js";
 import { ProviderError } from "../../core/types.js";
 import { baseOf, credentials, defineExchange, exchangeFetch, hmacHex, query, splitByQuote, trimDecimal, type ExchangeAdapter } from "./common.js";
@@ -12,12 +6,10 @@ const NAME = "تبدیل";
 const BASE = "https://api1.tabdeal.org";
 const QUOTES = ["IRT", "TMN", "USDT"];
 
-/** امضای تبدیل: HMAC-SHA256 روی همان رشته‌ی پارامترهایی که فرستاده می‌شود، به شکل hex */
 export function tabdealSign(secret: string, queryString: string): string {
   return hmacHex("sha256", secret, queryString);
 }
 
-/** نماد تبدیل: «BTCIRT» یا «BTCUSDT» */
 function toSymbol(input: string): string {
   const parts = splitByQuote(input, QUOTES);
   if (!parts) return input.trim().toUpperCase();

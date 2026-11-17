@@ -1,7 +1,3 @@
-# اجرا (ساخت از روی کد): docker compose up -d --build
-# با HTTPS و دامنه: docker compose --profile https up -d --build
-# راهنمای کامل:    DEPLOY.md
-
 services:
   diba-mcp:
     image: diba-bridge:local
@@ -19,13 +15,10 @@ services:
       DATA_DIR: /app/data
       DOCKER_CONTAINER: "1"
     ports:
-      # پیش‌فرض فقط روی localhost سرور باز است (دسترسی با تونل SSH یا از طریق Caddy).
-      # برای تست سریع با IP عمومی در .env بگذارید: BIND_ADDR=0.0.0.0
       - "${BIND_ADDR:-127.0.0.1}:${PUBLIC_PORT:-3790}:3790"
     volumes:
       - diba-mcp-data:/app/data
     extra_hosts:
-      # برای رسیدن به تونل SOCKS که روی خود سرور اجرا شده
       - "host.docker.internal:host-gateway"
 
   caddy:
@@ -38,7 +31,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      DOMAIN: ${DOMAIN:-}  # در .env تنظیم کنید
+      DOMAIN: ${DOMAIN:-}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data

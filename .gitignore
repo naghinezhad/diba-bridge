@@ -1,18 +1,15 @@
 node_modules/
 dist/
-# کتابخانه‌ی vendor شده به شکل ساخته‌شده نگهداری می‌شود و باید در مخزن باشد
 !vendor/balejs/dist/
 data/
 .env
 *.log
 .eitaa-bridge/
 .tmp/
-# نشست‌های ذخیره‌شده‌ی کلاینت‌ها (اینستاگرام و ...) — هرگز کامیت نشوند
 session.json
 *.session
 .agents/
 skills-lock.json
-# خروجی‌های محلی ابزارها و داده‌ی واقعی حساب‌ها — هرگز کامیت نشوند
 mcp_dump/
 .diba/
 .vscode/

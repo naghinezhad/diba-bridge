@@ -1,10 +1,8 @@
 import type { z } from "zod";
 
-/** یک فیلد تنظیمات برای هر سرویس (توکن، آدرس پایه و ...) */
 export interface ProviderField {
   key: string;
   label: string;
-  /** boolean به شکل کلید روشن/خاموش نمایش داده و با مقدار "true"/"false" ذخیره می‌شود */
   type: "text" | "secret" | "url" | "boolean";
   required?: boolean;
   placeholder?: string;
@@ -19,9 +17,7 @@ export interface ToolAnnotations {
   openWorldHint?: boolean;
 }
 
-/** پیام دریافتی، به شکل یکسان برای همه‌ی پیام‌رسان‌ها */
 export interface IncomingMessage {
-  /** شناسه‌ی یکتا در صندوق: provider:chat:message */
   key: string;
   provider: string;
   chatId: string;
@@ -29,57 +25,38 @@ export interface IncomingMessage {
   chatType: "private" | "group" | "channel" | "unknown";
   messageId: string;
   from?: { id?: string; name?: string; username?: string };
-  /** متن پیام یا کپشن */
   text?: string;
   kind: "text" | "photo" | "file" | "video" | "voice" | "location" | "button" | "other";
-  /** شناسه‌ی دکمه‌ای که کاربر زده (اگر این پیام کلیک دکمه باشد) */
   buttonId?: string;
-  /** زمان پیام (ISO) */
   date: string;
-  /** in = از کاربر به حساب (پیش‌فرض)، out = پیامی که خود حساب فرستاده */
   direction?: "in" | "out";
-  /** برای پیام‌های out: از داشبورد، از طرف مدل، یا از خود حساب کاربری (موبایل/وب) */
   source?: "mcp" | "dashboard" | "account";
-  /** برای عکس/فایل ارسالی از لینک: آدرس لینک (برای پیش‌نمایش) */
   mediaUrl?: string;
 }
 
 export interface PollResult {
   messages: IncomingMessage[];
-  /** نشانگر ادامه برای فراخوانی بعدی (offset) */
   cursor?: string;
 }
 
-/** دریافت پیام‌ها با polling */
 export interface ReceiveDef {
-  /** cursor قبلی را می‌گیرد و پیام‌های جدید را برمی‌گرداند. longPollSec: حداکثر انتظار سرور */
   poll: (ctx: ProviderContext, cursor: string | undefined, longPollSec: number) => Promise<PollResult>;
-  /** فاصله‌ی بین pollهای خالی برای پیام‌رسان‌هایی که long-poll ندارند (میلی‌ثانیه) */
   idleMs?: number;
 }
 
-/** دسترسی ابزارها به صندوق پیام‌ها */
 export interface InboxAccess {
-  /** پیام‌های ذخیره‌شده، جدیدترین اول */
   list: (opts?: { chatId?: string; limit?: number }) => IncomingMessage[];
 }
 
-/** چیزی که هندلر هر ابزار در اختیار دارد */
 export interface ProviderContext {
-  /** مقادیر نهایی تنظیمات (env + فایل + پیش‌فرض) */
   config: Record<string, string>;
-  /** پوشه‌ی داده‌ها برای نشست‌های کلاینت */
   dataDir?: string;
-  /** وقتی «دریافت پیام‌ها» برای این سرویس روشن است */
   inbox?: InboxAccess;
 }
 
 export interface ToolDef<S extends z.ZodRawShape = z.ZodRawShape> {
-  /** نام یکتا، مثل bale_send_message */
   name: string;
-  /** عنوان فارسی برای داشبورد */
   title: string;
-  /** توضیح برای مدل (انگلیسی/فارسی) */
   description: string;
   input: S;
   annotations?: ToolAnnotations;
@@ -92,24 +69,16 @@ export interface AuthUser {
   username?: string;
 }
 
-/**
- * نتیجه‌ی یک قدم از ورود با حساب کاربری.
- * step=code یعنی کد پیامک/بله فرستاده شد؛ password یعنی حساب رمز دومرحله‌ای دارد؛
- * done یعنی نشست ساخته شد و در فیلد sessionField ذخیره می‌شود.
- */
 export interface AuthStep {
   step: "code" | "password" | "done" | "browser";
   transactionHash?: string;
   user?: AuthUser;
   hint?: string;
   warning?: string;
-  /** در انتظار اقدام کاربر در پنجره‌ی مرورگر */
   pending?: boolean;
-  /** QR ورود به شکل data:image/png;base64,... (برای واتس‌اپ) */
   qr?: string;
 }
 
-/** ورود با نشست آماده (کوکی مرورگر) — برای سرویس‌هایی که ورود با رمز ممکن نیست */
 export interface AuthSessionImport {
   title: string;
   hint: string;
@@ -117,7 +86,6 @@ export interface AuthSessionImport {
   run: (ctx: ProviderContext, raw: string, save: (values: Record<string, string>) => void) => Promise<AuthStep>;
 }
 
-/** ورود با پنجره‌ی واقعی مرورگر (برای سایت‌هایی که iframe را مسدود می‌کنند) */
 export interface AuthBrowserLogin {
   title: string;
   hint: string;
@@ -125,30 +93,20 @@ export interface AuthBrowserLogin {
   status: (ctx: ProviderContext, jobId: string, save: (values: Record<string, string>) => void) => Promise<AuthStep>;
 }
 
-/** ورود به حساب کاربری (برای پیام‌رسان‌هایی که API رسمی کلاینت ندارند) */
 export interface ProviderAuthDef {
   title: string;
   description: string;
-  /** فیلد ذخیره‌ی شماره‌ی تلفن */
   phoneField: string;
-  /** فیلد ذخیره‌ی نشست (userId:jwt) */
   sessionField: string;
-  /** اگر false باشد، کد روی گوشی وارد می‌شود و فرم فقط دکمه‌ی بررسی نشان می‌دهد */
   codeInput?: boolean;
-  /** ورود با اسکن QR (واتس‌اپ) */
   qr?: boolean;
-  /** وضعیت/تصویر QR جاری برای تازه‌سازی خودکار در مرورگر */
   getQr?: (ctx: ProviderContext) => Promise<{ qr?: string; ready?: boolean; error?: string }>;
-  /** روش جایگزین: وارد کردن کوکی نشست از مرورگر (مثلاً اینستاگرام) */
   sessionImport?: AuthSessionImport;
-  /** روش جایگزین: باز کردن پنجره‌ی واقعی مرورگر و خواندن خودکار کوکی */
   browserLogin?: AuthBrowserLogin;
-  /** برچسب و راهنمای فیلد نام کاربری/شماره */
   inputLabel?: string;
   inputPlaceholder?: string;
   startLabel?: string;
   passwordHint?: string;
-  /** اگر ورود با نام کاربری و رمز است */
   credentials?: "phone" | "username";
   start: (ctx: ProviderContext, phone: string, save: (values: Record<string, string>) => void) => Promise<AuthStep>;
   verifyCode: (ctx: ProviderContext, transactionHash: string, code: string, save: (values: Record<string, string>) => void) => Promise<AuthStep>;
@@ -158,7 +116,6 @@ export interface ProviderAuthDef {
 
 export type Category = "messenger" | "banking" | "payment" | "sms" | "map" | "utility";
 
-/** خاستگاه سرویس: ایرانی یا خارجی (برای دسته‌بندی در داشبورد) */
 export type Region = "iran" | "international";
 
 export interface ProviderDef {
@@ -166,29 +123,20 @@ export interface ProviderDef {
   name: string;
   nameFa: string;
   category: Category;
-  /** اگر تعیین نشود، سرویس «خارجی» حساب می‌شود */
   region?: Region;
-  /** اتصال از راه API منتشرنشده‌ی اپلیکیشن است، نه API رسمی سرویس */
   unofficial?: boolean;
-  /** رنگ شاخص برای داشبورد */
   color: string;
-  /** حرف نمایشی در آیکن */
   glyph: string;
   description: string;
   docsUrl?: string;
   fields: ProviderField[];
   tools: ToolDef<any>[];
-  /** تست اتصال (معمولاً getMe) */
   test?: (ctx: ProviderContext) => Promise<unknown>;
-  /** ورود با حساب کاربری (کلاینت غیررسمی) */
   auth?: ProviderAuthDef;
-  /** دریافت پیام‌های ورودی (اگر پیام‌رسان پشتیبانی کند) */
   receive?: ReceiveDef;
-  /** کارهای مدیریتی که فقط از داشبورد اجرا می‌شوند (به مدل داده نمی‌شوند) */
   actions?: Record<string, { title: string; run: (ctx: ProviderContext) => Promise<unknown> }>;
 }
 
-/** کمک‌تابع برای اینکه تایپ args داخل handler درست استنتاج شود */
 export function defineTool<S extends z.ZodRawShape>(def: ToolDef<S>): ToolDef<S> {
   return def;
 }

@@ -1,23 +1,3 @@
-/**
- * پایه‌ی مشترک صرافی‌های ارز دیجیتال.
- *
- * هر صرافی فقط یک «adapter» می‌نویسد (نشانی‌ها و امضای خودش) و این فایل از روی آن
- * یک ProviderDef با ابزارهای هم‌شکل می‌سازد:
- *
- *   <id>_get_ticker        قیمت و آمار ۲۴ساعته            (عمومی)
- *   <id>_get_orderbook     دفتر سفارش                      (عمومی)
- *   <id>_get_candles       کندل‌ها                         (عمومی)
- *   <id>_get_balances      موجودی حساب                     (کلید API)
- *   <id>_get_open_orders   سفارش‌های باز                   (کلید API)
- *   <id>_place_order       ثبت سفارش خرید/فروش             (کلید API + مجوز معامله)
- *   <id>_cancel_order      لغو سفارش                       (کلید API + مجوز معامله)
- *
- * صرافی‌هایی که دفتر سفارش، کندل یا لغو سفارش ندارند همان متد را در adapter نمی‌نویسند و
- * ابزارش هم ساخته نمی‌شود.
- *
- * معامله به‌طور پیش‌فرض خاموش است: تا وقتی «اجازه‌ی معامله» در تنظیمات همان صرافی روشن نشود،
- * ثبت و لغو سفارش رد می‌شود. ثبت سفارش بدون confirm فقط پیش‌نمایش برمی‌گرداند.
- */
 import { createHmac } from "node:crypto";
 import { z } from "zod";
 import { netFetch } from "../../core/net.js";
@@ -32,9 +12,7 @@ export interface OrderInput {
   symbol: string;
   side: OrderSide;
   type: OrderType;
-  /** مقدار به واحد ارز پایه (مثلاً BTC در BTC/USDT)، به شکل رشته تا دقت اعشار از دست نرود */
   quantity: string;
-  /** برای سفارش limit الزامی است */
   price?: string;
 }
 
@@ -51,13 +29,11 @@ export interface Ticker {
 
 export interface OrderBook {
   symbol: string;
-  /** [قیمت، مقدار] از بهترین به بدترین */
   bids: [string, string][];
   asks: [string, string][];
 }
 
 export interface Candle {
-  /** زمان شروع کندل (ISO) */
   time: string;
   open: string;
   high: string;
@@ -92,29 +68,16 @@ export interface ExchangeAdapter {
   glyph: string;
   docsUrl: string;
   defaultBase: string;
-  /** نمونه‌ی نماد به شکل خودِ صرافی، برای راهنمای ورودی */
   symbolExample: string;
-  /** این صرافی علاوه بر کلید و رمز، Passphrase هم می‌خواهد */
   needsPassphrase?: boolean;
-  /** خاستگاه صرافی؛ اگر تعیین نشود «خارجی» است */
   region?: Region;
-  /**
-   * وضعیت API Secret: required (پیش‌فرض)، optional (بدون آن هم با توکن ساده کار می‌کند)،
-   * none (این صرافی فقط یک کلید دارد و فیلد Secret نشان داده نمی‌شود)
-   */
   secret?: "required" | "optional" | "none";
-  /** برچسب و راهنمای فیلد Secret، اگر با پیش‌فرض فرق دارد */
   secretLabel?: string;
   secretHelp?: string;
-  /** برچسب فیلد کلید، اگر «API Key» نیست */
   keyLabel?: string;
-  /** متن راهنما برای ساخت کلید */
   keyHelp: string;
-  /** نکته‌ای که مدل باید بداند (مثلاً واحد قیمت)؛ به توضیح ابزارهای قیمت و سفارش اضافه می‌شود */
   note?: string;
-  /** معنی quantity در ثبت سفارش، اگر همیشه «مقدار ارز پایه» نیست */
   quantityHint?: string;
-  /** «BTC/USDT» یا «btc-usdt» را به شکل نماد همان صرافی درمی‌آورد */
   symbol: (input: string) => string;
   ticker: (ctx: ProviderContext, symbol: string) => Promise<Ticker>;
   orderBook?: (ctx: ProviderContext, symbol: string, depth: number) => Promise<OrderBook>;
@@ -124,8 +87,6 @@ export interface ExchangeAdapter {
   placeOrder: (ctx: ProviderContext, order: OrderInput) => Promise<{ id: string; raw: unknown }>;
   cancelOrder?: (ctx: ProviderContext, symbol: string, orderId: string) => Promise<unknown>;
 }
-
-// ---------------------------------------------------------------- کمک‌تابع‌ها
 
 export const hmacHex = (algo: "sha256" | "sha512", key: string | Buffer, data: string | Buffer) => createHmac(algo, key).update(data).digest("hex");
 export const hmacBase64 = (algo: "sha256" | "sha512", key: string | Buffer, data: string | Buffer) => createHmac(algo, key).update(data).digest("base64");
@@ -145,7 +106,6 @@ export function credentials(ctx: ProviderContext, name: string, needsPassphrase 
   return { apiKey, apiSecret, passphrase };
 }
 
-/** پارامترهای خالی حذف می‌شوند تا امضا و درخواست یکی بمانند */
 export function query(params: Record<string, string | number | undefined>): string {
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") q.set(k, String(v));
@@ -158,7 +118,6 @@ export interface ExchangeRequest {
   body?: string;
 }
 
-/** یک درخواست به صرافی؛ خطای شبکه و خطای HTTP به ProviderError فارسی تبدیل می‌شود */
 export async function exchangeFetch(name: string, url: string, init: ExchangeRequest = {}): Promise<any> {
   let res: Awaited<ReturnType<typeof netFetch>>;
   try {
@@ -188,28 +147,21 @@ export async function exchangeFetch(name: string, url: string, init: ExchangeReq
   return data;
 }
 
-/** نماد را به دو بخش پایه و نقل‌قول می‌شکند: «btc/usdt»، «BTC-USDT»، «BTC_USDT» → ["BTC","USDT"] */
 export function splitSymbol(input: string): [string, string] | null {
   const parts = String(input ?? "").trim().toUpperCase().split(/[\/\-_\s:]+/).filter(Boolean);
   return parts.length === 2 ? [parts[0], parts[1]] : null;
 }
 
-/**
- * نماد چسبیده یا جداشده را با فهرست ارزهای نقل‌قولِ همان صرافی می‌شکند:
- * «BTCIRT»، «btc/irt»، «BTC_IRT» → ["BTC","IRT"]. اگر قابل تشخیص نباشد null.
- */
 export function splitByQuote(input: string, quotes: string[]): [string, string] | null {
   const parts = splitSymbol(input);
   if (parts) return parts;
   const s = String(input ?? "").trim().toUpperCase();
-  // نقل‌قول بلندتر اول، تا «USDT» پیش از «DT» یا «T» بررسی شود
   for (const q of [...quotes].sort((a, b) => b.length - a.length)) {
     if (s.length > q.length && s.endsWith(q)) return [s.slice(0, -q.length), q];
   }
   return null;
 }
 
-/** صفرهای اضافه‌ی اعشار را برمی‌دارد: «17400.0000» → «17400»، «0.00150» → «0.0015» */
 export function trimDecimal(value: unknown): string {
   const s = String(value ?? "").trim();
   if (!/^-?\d+\.\d+$/.test(s)) return s;
@@ -217,7 +169,6 @@ export function trimDecimal(value: unknown): string {
   return out === "-0" ? "0" : out;
 }
 
-/** تفریق دو عدد اعشاری رشته‌ای بدون خطای ممیز شناور (تا ۱۸ رقم اعشار) */
 export function decimalMinus(a: unknown, b: unknown): string {
   const scale = (v: unknown) => {
     const m = /^(-?)(\d+)(?:\.(\d+))?$/.exec(String(v ?? "0").trim());
@@ -232,7 +183,6 @@ export function decimalMinus(a: unknown, b: unknown): string {
 }
 
 const zSymbol = (example: string) => z.string().trim().min(3).max(30).regex(/^[A-Za-z0-9\/\-_:]+$/, "نماد نامعتبر است").describe(`Trading pair, e.g. ${example} (BTC/USDT style is also accepted)`);
-/** عدد مثبت به شکل رشته؛ نماد علمی و عدد منفی پذیرفته نمی‌شود */
 const zAmount = z.string().trim().regex(/^(?:\d+\.?\d*|\.\d+)$/, "باید یک عدد مثبت باشد").refine((v) => Number(v) > 0, "باید بزرگ‌تر از صفر باشد");
 
 export function tradingAllowed(ctx: ProviderContext): boolean {
@@ -245,7 +195,6 @@ function requireTrading(ctx: ProviderContext, name: string) {
   }
 }
 
-/** از روی adapter یک سرویس کامل با ابزارهای هم‌شکل می‌سازد */
 export function defineExchange(a: ExchangeAdapter): ProviderDef {
   const fields: ProviderField[] = [
     { key: "apiKey", label: a.keyLabel ?? "API Key", type: "secret", help: a.keyHelp },
@@ -278,7 +227,6 @@ export function defineExchange(a: ExchangeAdapter): ProviderDef {
     description: `صرافی ${a.nameFa} با API رسمی — ${features.join("، ")}`,
     docsUrl: a.docsUrl,
     fields,
-    // داده‌ی بازار عمومی است؛ اگر کلید ثبت شده باشد، خودِ کلید هم با خواندن موجودی آزمایش می‌شود
     test: async (ctx) => {
       const ticker = await a.ticker(ctx, a.symbol(a.symbolExample));
       if (!String(ctx.config.apiKey ?? "").trim()) return { market: "ok", ticker, account: "کلید API ثبت نشده؛ فقط داده‌ی بازار در دسترس است" };

@@ -1,12 +1,3 @@
-/**
- * تشخیص نیت از یک جمله‌ی ساده‌ی فارسی/انگلیسی.
- *
- * هدف: «به عماد داخل تلگرام پیام بده که فردا جلسه داریم» باید بدون هیچ
- * سؤال اضافه‌ای به {action: send, provider: telegram, person: عماد,
- * message: فردا جلسه داریم} تبدیل شود.
- *
- * این ماژول به موتور وابسته نیست؛ فهرست واژه‌های هر سرویس از بیرون داده می‌شود.
- */
 import { cleanText, foldName } from "./name-match.js";
 import { isCancelText, isConfirmText, selectionIndex } from "./text.js";
 
@@ -29,17 +20,12 @@ export interface ProviderWord {
 export interface ParsedRequest {
   action: AssistantAction;
   raw: string;
-  /** شناسه‌ی سرویس‌هایی که در متن صریح آمده‌اند */
   providerHints: string[];
-  /** نام/نام کاربری/شماره‌ی مخاطب */
   person?: string;
-  /** متن یا خواسته‌ی پیام (بعد از «که/that/saying/…») */
   message?: string;
   media?: "photo" | "file" | "video" | "location";
   allowGroup: boolean;
-  /** مخاطب با ضمیر آمده («بهش بگو …»، «tell him …») و باید آخرین مخاطب همین گفتگو باشد */
   refersToLast?: boolean;
-  /** شماره‌ی گزینه در پاسخ به فهرست قبلی */
   selection?: number;
 }
 
@@ -73,7 +59,6 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** عبارت‌های سرویس را از متن حذف می‌کند («داخل تلگرام»، «on WhatsApp»، …) */
 export function stripProviderWords(text: string, providers: ProviderWord[], bare = true): string {
   let out = cleanText(text);
   const words = providers
@@ -87,7 +72,6 @@ export function stripProviderWords(text: string, providers: ProviderWord[], bare
     );
     out = out.replace(pattern, " ");
     if (!bare) continue;
-    // «چت‌های تلگرام»، «پیام‌های تلگرام»
     const bareWord = new RegExp(`(?:^|\\s)${escapeRegExp(word)}(?=[\\s،,.!?؛:»"']|$)`, "giu");
     out = out.replace(bareWord, " ");
   }
@@ -102,8 +86,6 @@ export function detectProviderHints(text: string, providers: ProviderWord[]): st
     for (const word of p.words) {
       const w = foldName(word);
       if (w.length < 2) continue;
-      // کلمه‌ی کامل؛ پسوند کوتاه («تلگرامم»، «واتساپش») فقط برای واژه‌های بلند پذیرفته می‌شود
-      // تا «wa» با «wait» یا «ig» با «ignore» اشتباه گرفته نشود
       const whole = folded.includes(` ${w} `);
       const suffixed = w.length >= 4 && tokens.some((token) => token.startsWith(w) && token.length - w.length <= 2);
       if (whole || suffixed) hits.add(p.id);
@@ -112,10 +94,6 @@ export function detectProviderHints(text: string, providers: ProviderWord[]): st
   return [...hits];
 }
 
-/**
- * «علی در تلگرام» → { name: "علی", provider: "telegram_client" }.
- * اگر کل متن خودش نام یک سرویس باشد («سروش»)، آن را نام شخص حساب می‌کنیم.
- */
 export function splitProviderHint(text: string, providers: ProviderWord[]): { name: string; provider?: string } {
   const stripped = stripProviderWords(text, providers);
   if (!stripped) return { name: cleanText(text) };
@@ -123,7 +101,6 @@ export function splitProviderHint(text: string, providers: ProviderWord[]): { na
   return { name: stripped, provider: hints.length === 1 ? hints[0] : undefined };
 }
 
-/** حذف کلمات پرکننده از ابتدا/انتها */
 function tidyName(value: string): string {
   let out = cleanText(value)
     .replace(/^[\s,،.!؟:؛«»"'“”]+|[\s,،.!؟:؛«»"'“”]+$/g, "")
@@ -135,10 +112,6 @@ function tidyName(value: string): string {
   return out.slice(0, 64);
 }
 
-/**
- * جدا کردن متن پیام از نام.
- * «\b» در جاوااسکریپت برای فارسی کار نمی‌کند، پس با توکن و فاصله کار می‌کنیم.
- */
 function extractMessageTail(text: string): { head: string; tail?: string } {
   const tokens = cleanText(text).split(" ").filter(Boolean);
   const markers = new Set(["که", "that", "saying", "telling"]);
@@ -158,7 +131,6 @@ function extractMessageTail(text: string): { head: string; tail?: string } {
   return { head: cleanText(text) };
 }
 
-/** پاک‌سازی بخش نام: فعل‌ها، حرف اضافه‌ها و حروف تعریف */
 function cleanPersonPart(value: string): string {
   let out = cleanText(value)
     .replace(/(?:پیام|پیامک|مسیج|متن)\s*(?:بده|بفرست|بفرستید|بدید|بدهید)/giu, " ")
@@ -167,7 +139,6 @@ function cleanPersonPart(value: string): string {
     .replace(/(?:^|\s)(?:a|an|the|message|msg|text|to|for|به|برای)(?=\s|$)/giu, " ")
     .replace(/\s+/g, " ")
     .trim();
-  // چند بار تمیزکاری، چون حذف یک کلمه ممکن است کلمه‌ی پرکننده‌ی بعدی را اول خط بیاورد
   out = out.replace(/^(?:a|an|the|to|for|به|برای)\s+/iu, "").trim();
   return out;
 }
@@ -189,17 +160,11 @@ function detectMedia(text: string): ParsedRequest["media"] {
   return undefined;
 }
 
-/**
- * متن پیام را با املای اصلی کاربر برمی‌گرداند.
- * تشخیص نیت روی متن یکسان‌شده انجام می‌شود (بدون نیم‌فاصله، با اعداد لاتین)، اما پیامی که
- * برای مخاطب می‌رود باید همان چیزی باشد که کاربر نوشته: «می‌بینمت»، نه «میبینمت».
- */
 function originalSpelling(raw: string, message: string | undefined): string | undefined {
   if (!message) return message;
   const source = String(raw ?? "").replace(/\s*\n\s*/g, " ").trim();
   const trailing = /[\s.!؟?،,؛:»"'“”]+$/u;
   const target = message.replace(trailing, "");
-  // پیام معمولاً انتهای جمله است؛ از هر مرز کلمه امتحان می‌کنیم کدام دنباله همان پیام است
   for (let i = 0; i < source.length; i++) {
     if (i > 0 && !/\s/.test(source[i - 1])) continue;
     const candidate = source.slice(i).replace(/^[\s:،,«"'“”]+/u, "");
@@ -208,10 +173,6 @@ function originalSpelling(raw: string, message: string | undefined): string | un
   return message;
 }
 
-/**
- * ورودی خام + فهرست سرویس‌ها → نیت.
- * خروجی محافظه‌کارانه است: اگر مطمئن نبود، action=unknown تا دستیار سؤال کند.
- */
 export function parseRequest(raw: string, providers: ProviderWord[] = []): ParsedRequest {
   const text = cleanText(raw);
   const base: ParsedRequest = {
@@ -253,7 +214,6 @@ export function parseRequest(raw: string, providers: ProviderWord[] = []): Parse
   }
 
   if (!SEND_PATTERN.test(text)) {
-    // «عماد» تنها یا «عماد در تلگرام» → جستجوی مخاطب
     const bare = tidyName(withoutProviders);
     if (bare && !isPlaceholder(bare) && bare.split(" ").length <= 4) {
       return { ...base, action: "find", providerHints, person: bare };
@@ -261,7 +221,6 @@ export function parseRequest(raw: string, providers: ProviderWord[] = []): Parse
     return { ...base, action: "unknown", providerHints };
   }
 
-  // «بهش بگو فردا میام»، «براش بنویس که …»، «tell him that …» → مخاطب همان نفر قبلی است
   const pronoun =
     withoutProviders.match(/^(?:بهش|براش|واسش|به‌ش|(?:به|برای|واسه)\s+(?:او|اون|ایشون|ایشان|همون|همان))(?:\s+(.*))?$/u) ??
     withoutProviders.match(/^(?:please\s+)?(?:tell|message|text|dm|ping|send)\s+(?:him|her|them)(?:\s+(.*))?$/iu);
@@ -287,7 +246,6 @@ export function parseRequest(raw: string, providers: ProviderWord[] = []): Parse
     const { head, tail } = extractMessageTail(source);
     let who = "";
     let what = tail;
-    // «به X بگو …» — متن بعد از فعل می‌آید
     const tellMatch = head.match(/^(?:به|برای|to|for)\s+(.+?)\s+(?:بگو|بگویید|بگید|say|tell)\s*(.*)$/iu);
     if (tellMatch) {
       who = tellMatch[1];
@@ -303,7 +261,6 @@ export function parseRequest(raw: string, providers: ProviderWord[] = []): Parse
   let { person, message } = split(withoutProviders);
   let hints = providerHints;
   if (!person && providerHints.length) {
-    // نام شخص با نام یک سرویس یکی است («به سروش پیام بده»): فقط «در/توی + سرویس» را سرویس حساب کن
     const retry = split(stripProviderWords(text, providers, false));
     if (retry.person) {
       person = retry.person;

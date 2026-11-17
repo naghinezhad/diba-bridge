@@ -1,6 +1,3 @@
-/**
- * راه‌اندازهای آماده — هم CLI (diba-mcp) و هم main.ts/stdio.ts/netcheck.ts از این‌ها استفاده می‌کنند.
- */
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import express from "express";
 import type { Server } from "node:http";
@@ -13,11 +10,9 @@ export interface HttpOptions {
   host?: string;
   dataDir?: string;
   trustProxy?: string;
-  /** بنر شروع را چاپ کند (پیش‌فرض true) */
   banner?: boolean;
 }
 
-/** داشبورد + اندپوینت MCP روی HTTP */
 export function startHttp(opts: HttpOptions = {}): Promise<{ url: string; server: Server; dataDir: string }> {
   const port = opts.port ?? 3790;
   const host = opts.host ?? "127.0.0.1";
@@ -48,11 +43,6 @@ export function startHttp(opts: HttpOptions = {}): Promise<{ url: string; server
   });
 }
 
-/**
- * اجرا با stdio (Claude Desktop و ...). هیچ چیزی روی stdout چاپ نمی‌شود.
- * MCP روی stdout پیام JSON-RPC رد و بدل می‌کند؛ برای همین هر لاگ کتابخانه‌ها
- * (مثل pino/Baileys که مستقیم روی stdout می‌نویسند) به stderr هدایت می‌شود.
- */
 export async function startStdio(opts: { dataDir?: string } = {}) {
   const protocolStdout = process.stdout;
   const writeProtocol = protocolStdout.write.bind(protocolStdout);
@@ -74,13 +64,11 @@ export async function startStdio(opts: { dataDir?: string } = {}) {
   console.info = (...args: any[]) => console.error(...args);
   console.debug = (...args: any[]) => console.error(...args);
   const dibaMcp = createDibaMcp({ dataDir: opts.dataDir });
-  // ابزار list_chats و دریافت پیام‌ها در حالت stdio هم کار کنند
   dibaMcp.engine.inbox.start();
   await dibaMcp.createMcpServer().connect(new StdioServerTransport(process.stdin, guardedStdout));
   console.error(`[diba-mcp] stdio آماده است — ${dibaMcp.engine.activeTools().length} ابزار فعال — داده: ${dibaMcp.dataDir}`);
 }
 
-/** چاپ نتیجه‌ی تست دسترسی شبکه؛ خروجی true یعنی همه در دسترس بودند */
 export async function printNetcheck(opts: { dataDir?: string } = {}): Promise<boolean> {
   const { engine } = createDibaMcp({ dataDir: opts.dataDir });
   const r = await runNetcheck(engine);

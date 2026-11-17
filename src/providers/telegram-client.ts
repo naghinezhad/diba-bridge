@@ -1,9 +1,3 @@
-/**
- * تلگرام با حساب کاربری (MTProto) — کلاینت رسمی GramJS.
- *
- * تلگرام با حساب کاربری و ورود با شماره/کد.
- * نشست به شکل StringSession در تنظیمات سرور ذخیره می‌شود.
- */
 import { createRequire } from "node:module";
 import { Api, TelegramClient } from "telegram";
 import { z } from "zod";

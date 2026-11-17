@@ -1,7 +1,3 @@
-/**
- * اتصال OpenAI-compatible به DibaRouter (https://dibarouter.ir/docs).
- * همه‌ی درخواست‌ها از سمت سرور انجام می‌شود تا کلید API به مرورگر نرسد.
- */
 import { describeNetError, netFetch, netFetchDirect, proxyMode } from "./net.js";
 import { DIBAROUTER_DEFAULT_BASE, DIBAROUTER_DEFAULT_MODEL, type DibaRouterStored } from "./store.js";
 
@@ -49,10 +45,6 @@ export class DibaRouterError extends Error {
   }
 }
 
-/**
- * نشانی پایه را یکدست می‌کند. اشتباه‌های رایج هنگام وارد کردن نشانی تحمل می‌شوند:
- * «https://dibarouter.ir»، «…/api»، یا نشانی کامل «…/chat/completions».
- */
 export function normalizeBaseUrl(raw: string | undefined): string {
   let value = String(raw || DIBAROUTER_DEFAULT_BASE).trim().replace(/\/+$/, "");
   value = value.replace(/\/(?:chat\/completions|completions|models)$/i, "").replace(/\/+$/, "");
@@ -63,7 +55,6 @@ export function normalizeBaseUrl(raw: string | undefined): string {
       value = url.toString().replace(/\/+$/, "");
     }
   } catch {
-    // نشانی نامعتبر همان‌طور می‌ماند تا خطای اتصال علت را نشان دهد
   }
   return value;
 }
@@ -82,15 +73,9 @@ function headers(config: DibaRouterConfig): Record<string, string> {
 }
 
 type Route = "proxy" | "direct";
-/** مسیری که آخرین بار برای هر مبدأ جواب داده، تا هر درخواست دوباره مسیر خراب را امتحان نکند */
 const workingRoute = new Map<string, { route: Route; at: number }>();
 const ROUTE_MEMORY_MS = 5 * 60_000;
 
-/**
- * ترتیب مسیرها برای رسیدن به دیبا روتر.
- * پراکسی برنامه برای پیام‌رسان‌ها تنظیم می‌شود و ممکن است به دیبا روتر نرسد (یا برعکس)،
- * پس اگر پراکسی فعال است هر دو مسیر امتحان می‌شوند. با DIBAROUTER_ROUTE=direct|proxy می‌شود یکی را اجبار کرد.
- */
 function routesFor(origin: string): Route[] {
   if (proxyMode().type === "direct") return ["direct"];
   const forced = String(process.env.DIBAROUTER_ROUTE ?? "").toLowerCase();
@@ -110,13 +95,11 @@ async function drFetch(config: DibaRouterConfig, path: string, init: any = {}, t
   }
   const routes = routesFor(origin);
   const method = String(init.method ?? "GET").toUpperCase();
-  // خواندن (GET) بی‌خطر است و در قطعی لحظه‌ای یک بار دیگر امتحان می‌شود
   const attempts: Route[] = method === "GET" && routes.length === 1 ? [routes[0], routes[0]] : routes;
 
   let lastError: any;
   for (const route of attempts) {
     const timeout = AbortSignal.timeout(timeoutMs);
-    // لغو کاربر (توقف دستیار) هم باید درخواست به دیبا روتر را ببندد
     const signal = init.signal ? AbortSignal.any([timeout, init.signal as AbortSignal]) : timeout;
     try {
       const res = await (route === "direct" ? netFetchDirect : netFetch)(url, {
@@ -135,7 +118,6 @@ async function drFetch(config: DibaRouterConfig, path: string, init: any = {}, t
   throw new DibaRouterError(`دسترسی به دیبا روتر برقرار نشد: ${describeNetError(lastError)}${tried}`, 502);
 }
 
-/** بدنه‌ی پاسخ را JSON می‌خواند؛ اگر JSON نبود (صفحه‌ی HTML، نشانی اشتباه) خطای قابل‌فهم می‌دهد */
 async function readJson(res: any): Promise<any> {
   const text = await res.text();
   try {
@@ -154,7 +136,6 @@ async function readError(res: any): Promise<string> {
   try {
     data = text ? JSON.parse(text) : {};
   } catch {
-    // پاسخ خطا HTML یا متن ساده بود
     if (res.status === 404) return "این مسیر در دیبا روتر پیدا نشد (HTTP 404). آدرس پایه را بررسی کنید؛ نشانی رسمی: https://dibarouter.ir/api/v1";
     return `HTTP ${res.status}`;
   }
@@ -177,7 +158,6 @@ export async function dibaRouterModels(config: DibaRouterConfig): Promise<DibaRo
   const res = await drFetch(config, "/models", { method: "GET" }, 30_000);
   if (!res.ok) throw new DibaRouterError(await readError(res), res.status);
   const data: any = await readJson(res);
-  // قالب OpenAI ({ data: [...] })، آرایه‌ی ساده یا { models: [...] }
   const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : Array.isArray(data?.models) ? data.models : [];
   return list
     .filter((m: any) => {
@@ -192,7 +172,6 @@ export async function dibaRouterModels(config: DibaRouterConfig): Promise<DibaRo
       category: String(m.category ?? "chat"),
       context_length: Number(m.context_length ?? m.top_provider?.context_length ?? m.context_window) || 0,
       is_free: Boolean(m.is_free),
-      // در پاسخ دیبا روتر قابلیت‌ها در supported_parameters می‌آید، نه در supports_tools
       supports_tools: Array.isArray(m.supported_parameters)
         ? m.supported_parameters.includes("tools")
         : Boolean(m.supports_tools),
@@ -209,7 +188,6 @@ export async function dibaRouterChat(
     tools?: DibaRouterTool[];
     toolChoice?: DibaRouterToolChoice;
     onDelta?: (delta: string) => void;
-    /** لغو پاسخ در جریان (دکمه‌ی توقف دستیار) */
     signal?: AbortSignal;
   } = {},
 ): Promise<{ reply: string; model: string; routedModel?: string; cost?: number; toolCalls?: DibaRouterToolCall[]; finishReason?: string }> {

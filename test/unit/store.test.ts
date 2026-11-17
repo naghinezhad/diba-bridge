@@ -22,7 +22,6 @@ describe("ConfigStore", () => {
     const s = new ConfigStore(d, {});
     assert.match(s.mcpToken, /^dmcp_/);
     assert.ok(s.sessionSecret.length >= 32);
-    // ویندوز حالت فایل POSIX ندارد؛ مجوز ۶۰۰ فقط روی لینوکس/مک قابل بررسی است
     if (process.platform !== "win32") assert.equal(statSync(join(d, "config.json")).mode & 0o777, 0o600);
   });
 
@@ -30,7 +29,7 @@ describe("ConfigStore", () => {
     const d = dir();
     new ConfigStore(d, {}).update("bale_client", { enabled: true, values: { session: "  abc:def  " } });
     const s2 = new ConfigStore(d, {});
-    assert.equal(s2.resolve(baleClient).values.session, "abc:def"); // trim شده
+    assert.equal(s2.resolve(baleClient).values.session, "abc:def");
     assert.equal(s2.isReady(baleClient), true);
   });
 

@@ -44,7 +44,6 @@ describe("instagram provider", () => {
       const resolved = engine.store.resolve(instagram);
       assert.equal(resolved.values.username, "Test.User_1");
 
-      // ورود جایگزین با کوکی: ورودی نامعتبر بدون تماس شبکه رد می‌شود
       assert.ok(engine.describeProviders()[0].auth?.sessionImport?.title);
       const noCookie = await engine.authImport("instagram", "");
       assert.equal(noCookie.ok, false);

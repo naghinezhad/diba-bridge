@@ -1,6 +1,5 @@
 name: CI
 
-# فقط تست: روی push به main و pull requestهایی که به main باز می‌شوند.
 on:
   push:
     branches: [main]
@@ -31,7 +30,6 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
-  # بررسی نحوی افزونه‌ی همراه وردپرس روی قدیمی‌ترین و جدیدترین PHP پشتیبانی‌شده
   wordpress-plugin:
     runs-on: ubuntu-latest
     strategy:

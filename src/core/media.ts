@@ -1,15 +1,3 @@
-/**
- * رسانه (عکس/فایل) برای ارسال در پیام‌رسان‌ها.
- *
- * ورودی هر ابزار رسانه‌ای می‌تواند یکی از این‌ها باشد:
- *   - لینک عمومی       https://example.com/a.jpg  ← سرور دانلودش می‌کند و خودش آپلود می‌کند
- *   - data URL          data:image/png;name=a.png;base64,...  ← انتخاب فایل از دستگاه در داشبورد
- *   - شناسه‌ی فایل      file_id قبلی همان پیام‌رسان  ← بدون آپلود دوباره
- *
- * دانلود لینک‌ها از آدرس‌های داخلی (localhost، شبکه‌ی خصوصی، metadata ابری) مسدود است تا
- * یک مدل یا پیام فریبنده نتواند فایل‌های داخلی سرور را به یک چت بفرستد.
- * برای اجازه: ALLOW_PRIVATE_MEDIA_URLS=true
- */
 import { lookup } from "node:dns/promises";
 import { z } from "zod";
 import { isIP } from "node:net";
@@ -29,7 +17,6 @@ export function configureMedia(env: NodeJS.ProcessEnv = process.env) {
   allowPrivate = env.ALLOW_PRIVATE_MEDIA_URLS === "true" || env.ALLOW_PRIVATE_MEDIA_URLS === "1";
 }
 
-/** آیا این مقدار باید آپلود شود (لینک یا فایل) یا یک file_id است؟ */
 export function isUploadable(value: string): boolean {
   return /^https?:\/\//i.test(value) || /^data:/i.test(value);
 }
@@ -75,7 +62,6 @@ function fromDataUrl(value: string, max: number): Media {
   return { blob: new Blob([buf], { type: mime }), filename: withExtension(name, mime), mime };
 }
 
-// ---------- جلوگیری از دانلود آدرس‌های داخلی ----------
 function privateIPv4(ip: string) {
   const [a, b] = ip.split(".").map(Number);
   return (
@@ -88,7 +74,6 @@ function privateIPv4(ip: string) {
     a >= 224
   );
 }
-/** دو گروه hex آخر IPv6 را به IPv4 تبدیل می‌کند (::ffff:7f00:1 → 127.0.0.1) */
 function embeddedIPv4(hi: string, lo: string) {
   const a = parseInt(hi, 16), b = parseInt(lo, 16);
   return `${a >> 8}.${a & 255}.${b >> 8}.${b & 255}`;
@@ -97,13 +82,12 @@ function embeddedIPv4(hi: string, lo: string) {
 function privateIP(ip: string): boolean {
   if (isIP(ip) === 4) return privateIPv4(ip);
   const v6 = ip.toLowerCase();
-  // IPv4-mapped / NAT64 به هر دو شکل: ::ffff:127.0.0.1 و ::ffff:7f00:1
   const dotted = v6.match(/^(?:::ffff:|64:ff9b::)(\d+\.\d+\.\d+\.\d+)$/);
   if (dotted) return privateIPv4(dotted[1]);
   const hex = v6.match(/^(?:::ffff:|64:ff9b::)([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
   if (hex) return privateIPv4(embeddedIPv4(hex[1], hex[2]));
   return (
-    v6.startsWith("::") || // ::، ::1 و آدرس‌های قدیمی IPv4-compatible
+    v6.startsWith("::") ||
     /^f[cd]/.test(v6) || // unique local
     /^fe[89ab]/.test(v6) || // link-local
     v6.startsWith("ff") // multicast
@@ -122,7 +106,6 @@ async function assertPublicUrl(url: URL) {
     try {
       addrs = (await lookup(host, { all: true })).map((a) => a.address);
     } catch {
-      // DNS محلی جواب نداد (مثلاً پشت پراکسی)؛ تصمیم با خود درخواست
       return;
     }
   }
@@ -136,7 +119,6 @@ async function fromHttpUrl(value: string, max: number): Promise<Media> {
   } catch {
     throw new ProviderError("لینک فایل نامعتبر است");
   }
-  // ریدایرکت‌ها دستی دنبال می‌شوند تا هر مقصد هم بررسی شود
   for (let hop = 0; hop < 5; hop++) {
     await assertPublicUrl(url);
     let res: Awaited<ReturnType<typeof netFetch>>;
@@ -162,7 +144,6 @@ async function fromHttpUrl(value: string, max: number): Promise<Media> {
   throw new ProviderError("ریدایرکت‌های لینک فایل بیش از حد است");
 }
 
-/** لینک یا data URL را به فایل قابل آپلود تبدیل می‌کند */
 export async function loadMedia(value: string, opts: { max?: number; filename?: string; expect?: "image" } = {}): Promise<Media> {
   const max = opts.max ?? MAX_MEDIA_BYTES;
   const media = /^data:/i.test(value) ? fromDataUrl(value, max) : await fromHttpUrl(value, max);
@@ -173,7 +154,6 @@ export async function loadMedia(value: string, opts: { max?: number; filename?: 
   return media;
 }
 
-/** data URLهای بزرگ را برای لاگ کوتاه می‌کند */
 export function summarizeForLog(value: unknown): unknown {
   if (typeof value === "string") {
     if (/^data:/i.test(value) && value.length > 200) {
@@ -189,10 +169,6 @@ export function summarizeForLog(value: unknown): unknown {
   return value;
 }
 
-/**
- * فیلد ورودی رسانه برای ابزارها. علامت x-media به داشبورد می‌گوید
- * کنار فیلد، دکمه‌ی «انتخاب از دستگاه» و پیش‌نمایش بگذارد.
- */
 export function mediaField(kind: "image" | "file", what: string) {
   return z
     .string()

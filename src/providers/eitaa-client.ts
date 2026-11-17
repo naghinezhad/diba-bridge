@@ -1,12 +1,3 @@
-/**
- * ایتا با حساب کاربری از طریق «پل» EitaaBun.
- *
- * EitaaBun یک سرویس محلی است که پروتکل MTProto ایتا را روی HTTP باز می‌کند
- * (پورت پیش‌فرض ۱۲۳۴). این فایل فقط با آن پل حرف می‌زند و خودش MTProto
- * پیاده‌سازی نمی‌کند؛ چون لایه‌ی ایتا با سروش/تلگرام فرق دارد.
- *
- * راه‌اندازی پل: docs/EITAA_CLIENT_BRIDGE.md
- */
 import { z } from "zod";
 import { netFetch } from "../core/net.js";
 import {
@@ -339,7 +330,6 @@ async function startUpdates(ctx: ProviderContext, state: BridgeState): Promise<v
     state.updatesStarted = true;
     state.webhookSecret = token;
   } catch {
-    // دریافت webhook اختیاری است؛ ابزارهای دیگر کار می‌کنند
   }
 }
 
@@ -360,11 +350,9 @@ async function getState(ctx: ProviderContext): Promise<BridgeState> {
     updatesStarted: false,
     closed: false,
   };
-  // اگر پل تازه اجرا شده، نشست ذخیره‌شده‌اش را از فایل بارگذاری کن
   try {
     await bridgeCall(ctx, "auth/loadSession", { phone: session.phone }, 10_000);
   } catch {
-    // ممکن است نشست از قبل در حافظه‌ی پل باشد
   }
   try {
     await bridgeCall(ctx, "messages/dialogs", { phone: session.phone, date: 0 }, 45_000);
@@ -466,8 +454,6 @@ export function handleEitaaBridgeWebhook(payload: any, token: string | undefined
   for (const update of updates) {
     const type = String(update?.type ?? "");
     if (type !== "MSG_USER" && type !== "MSG_GROUP") continue;
-    // در MSG_USERِ خروجی، Update فقط from_id (خودمان) را می‌دهد و peer نیست؛
-    // برای جلوگیری از نسبت‌دادن پیام به چت اشتباه، خروجی‌های تک‌به‌تک را رد می‌کنیم.
     if (type === "MSG_USER" && update.fromMe) continue;
     const isGroup = type === "MSG_GROUP";
     const chatId = String(isGroup ? update.group_id : update.from);

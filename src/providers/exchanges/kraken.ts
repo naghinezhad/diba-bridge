@@ -1,4 +1,3 @@
-/** کراکن — Spot REST API (https://docs.kraken.com/api/) */
 import { createHash, createHmac } from "node:crypto";
 import type { ProviderContext } from "../../core/types.js";
 import { ProviderError } from "../../core/types.js";
@@ -7,19 +6,13 @@ import { baseOf, credentials, defineExchange, exchangeFetch, query, splitSymbol,
 const NAME = "کراکن";
 const BASE = "https://api.kraken.com";
 const MINUTES: Record<CandleInterval, number> = { "1m": 1, "5m": 5, "15m": 15, "1h": 60, "4h": 240, "1d": 1440, "1w": 10080 };
-/** کراکن برای چند ارز نام خودش را دارد */
 const ALIASES: Record<string, string> = { BTC: "XBT", DOGE: "XDG" };
 
-/**
- * امضای کراکن: Base64(HMAC-SHA512(کلید = رمز API پس از decode از Base64،
- * داده = مسیر + SHA256(nonce + بدنه‌ی فرم))).
- */
 export function krakenSign(secretBase64: string, path: string, nonce: string, postData: string): string {
   const digest = createHash("sha256").update(nonce + postData).digest();
   return createHmac("sha512", Buffer.from(secretBase64, "base64")).update(Buffer.concat([Buffer.from(path), digest])).digest("base64");
 }
 
-/** کراکن خطا را با HTTP 200 و آرایه‌ی error برمی‌گرداند */
 function unwrap(data: any) {
   if (Array.isArray(data?.error) && data.error.length) throw new ProviderError(`${NAME}: ${data.error.join("، ")}`, data);
   return data?.result ?? {};
@@ -29,7 +22,6 @@ async function pub(ctx: ProviderContext, path: string, params: Record<string, st
   return unwrap(await exchangeFetch(NAME, `${baseOf(ctx, BASE)}${path}?${query(params)}`));
 }
 
-/** nonce باید در هر درخواست بزرگ‌تر از قبلی باشد، حتی اگر دو درخواست در یک میلی‌ثانیه ساخته شوند */
 let lastNonce = 0;
 function nextNonce(): string {
   lastNonce = Math.max(Date.now() * 1000, lastNonce + 1);
@@ -48,7 +40,6 @@ async function signed(ctx: ProviderContext, path: string, params: Record<string,
   return unwrap(data);
 }
 
-/** نتیجه‌ی اندپوینت‌های عمومی زیر کلیدی با نام داخلی جفت‌ارز است (مثلاً XXBTZUSD) */
 const firstPair = (result: Record<string, any>) => Object.entries(result).find(([key]) => key !== "last")?.[1];
 
 const adapter: ExchangeAdapter = {
@@ -69,13 +60,11 @@ const adapter: ExchangeAdapter = {
   async ticker(ctx, symbol) {
     const t = firstPair(await pub(ctx, "/0/public/Ticker", { pair: symbol }));
     if (!t) throw new ProviderError(`${NAME}: نماد ${symbol} پیدا نشد.`);
-    // کراکن فقط قیمت بازِ امروز (UTC) را می‌دهد، نه ۲۴ ساعت پیش؛ پس درصد تغییر ۲۴ساعته برگردانده نمی‌شود
     return {
       symbol,
       last: t.c?.[0],
       bid: t.b?.[0],
       ask: t.a?.[0],
-      // خانه‌ی دوم هر آرایه مقدار ۲۴ ساعت اخیر است
       high24h: t.h?.[1],
       low24h: t.l?.[1],
       volume24h: t.v?.[1],
@@ -90,7 +79,6 @@ const adapter: ExchangeAdapter = {
 
   async candles(ctx, symbol, interval, limit) {
     const rows: (string | number)[][] = firstPair(await pub(ctx, "/0/public/OHLC", { pair: symbol, interval: MINUTES[interval] })) ?? [];
-    // ترتیب ستون‌های کراکن: زمان، باز، بالا، پایین، بسته، vwap، حجم
     return rows.slice(-limit).map((r) => ({ time: new Date(Number(r[0]) * 1000).toISOString(), open: String(r[1]), high: String(r[2]), low: String(r[3]), close: String(r[4]), volume: String(r[6]) }));
   },
 

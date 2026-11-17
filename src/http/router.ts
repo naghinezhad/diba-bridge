@@ -21,11 +21,8 @@ import { hintFor, runSelfTest } from "../core/selftest.js";
 import { handleEitaaBridgeWebhook } from "../providers/eitaa-client.js";
 
 export interface RouterOptions {
-  /** نمایش داشبورد (پیش‌فرض: true). در پروژه‌ی میزبان می‌توانید خاموشش کنید */
   dashboard?: boolean;
-  /** دریافت خودکار پیام‌ها برای سرویس‌هایی که روشن کرده‌اند (پیش‌فرض: true) */
   inbox?: boolean;
-  /** پوشه‌ی فایل‌های داشبورد */
   publicDir?: string;
 }
 
@@ -39,7 +36,6 @@ function maskKey(key: string): string {
   return `${key.slice(0, 8)}…${key.slice(-4)}`;
 }
 
-/** پرامپت دستیار: فقط وضعیت امن و خلاصه‌ی داشبورد را می‌بیند، نه توکن‌ها */
 function agentSystemPrompt(engine: DibaMcpEngine, historySummary?: string, compact = false): string {
   const readyList: string[] = [];
   const offList: string[] = [];
@@ -57,7 +53,6 @@ function agentSystemPrompt(engine: DibaMcpEngine, historySummary?: string, compa
     .filter((s) => s.enabled || s.lastError)
     .map((s) => `${s.provider}: ${s.lastError ? `خطا (${s.lastError.slice(0, 80)})` : "دریافت فعال"}`);
 
-  // مدل‌های کم‌کانتکست (مثلاً ۸ هزار توکن): همان قواعد اصلی در یک‌پنجم حجم، تا جا برای ابزارها و گفتگو بماند
   if (compact) {
     return `تو «دستیار دیبا» هستی؛ دستیار فارسی داشبورد dibaMCP. کوتاه، دقیق و عملی جواب بده.
 قواعد:
@@ -103,7 +98,6 @@ function agentSystemPrompt(engine: DibaMcpEngine, historySummary?: string, compa
 دریافت پیام‌ها: ${inboxAlerts.join("؛ ") || "غیرفعال"}${historySummary ? `\n\n${historySummary}` : ""}`;
 }
 
-/** استخراج واقعیت‌های واضح از پیام کاربر (حافظه‌ی خودکار در کنار memory_remember) */
 function autoFacts(text: string): string[] {
   const out: string[] = [];
   const remember = text.match(/(?:یادت باشه|به خاطر بسپار|ذخیره کن|remember that|remember)\s*[:\-]?\s*(.{3,300})/i);
@@ -131,7 +125,6 @@ function assistantFallback(trace: Array<{ name: string; ok: boolean }>): string 
   ].join("\n");
 }
 
-/** حذف شناسه‌های چت از نتیجه‌ی ابزارها پیش از دادن به مدل */
 function stripChatIds(value: any): any {
   if (!value || typeof value !== "object") return value;
   if (Array.isArray(value)) return value.map(stripChatIds);
@@ -147,7 +140,6 @@ function stripChatIds(value: any): any {
   return out;
 }
 
-/** خلاصه‌ی خوانا و کوتاه وضعیت سرویس‌ها برای مدل (بدون آرایه‌ی بلند نام ابزارها). */
 function servicesBrief(list: unknown): string {
   const items = Array.isArray(list) ? list : [];
   const ready: string[] = [];
@@ -169,7 +161,6 @@ function servicesBrief(list: unknown): string {
 }
 
 function agentTools(engine: DibaMcpEngine, maxTools = 160): DibaRouterTool[] {
-  // ابزارهای سیستمی همیشه در دسترس دستیار باشند تا وضعیت را حدس نزند
   const out: DibaRouterTool[] = [
     {
       type: "function",
@@ -270,13 +261,6 @@ function applyProxySettings(settings: ReturnType<typeof normalizeSettings>) {
   configureProxy(process.env);
 }
 
-/**
- * یک express.Router کامل:
- *   POST /mcp         ← اندپوینت MCP (Streamable HTTP، بدون نشست)
- *   /api/*            ← API داشبورد
- *   /                 ← داشبورد
- * پروژه‌ی میزبان: app.use("/diba-mcp", createDibaMcpRouter(engine))
- */
 export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions = {}): Router {
   const router = express.Router();
   const env = process.env;
@@ -300,10 +284,8 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   };
   const postChatNames = new Map<string, string>();
   const loginLimiter = new RateLimiter(8, 10 * 60_000);
-  // محدودیت درخواست به اندپوینت MCP به ازای هر IP (پیش‌فرض ۱۲۰ در دقیقه)
   const mcpLimiter = new RateLimiter(Math.max(1, Number(env.MCP_RATE_LIMIT) || 120), 60_000);
 
-  // راه‌اندازی اولیه: تا وقتی رمز ادمین تعیین نشده، اولین بازدیدکننده در نصب‌کننده رمز را می‌سازد
   const needsSetup = () => !env.ADMIN_PASSWORD && !engine.store.admin;
   if (needsSetup()) {
     console.error("\n[diba-mcp] رمز داشبورد هنوز ساخته نشده است؛ داشبورد را باز کنید و نصب را کامل کنید.\n");
@@ -357,7 +339,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   router.get("/mcp", notAllowed);
   router.delete("/mcp", notAllowed);
 
-  // خطای پارس بدنه‌ی MCP باید JSON-RPC بماند، نه صفحه‌ی HTML اکسپرس
   router.use((err: any, req: Request, res: Response, next: NextFunction) => {
     if (req.path !== "/mcp" || res.headersSent) return next(err);
     const parseError = err?.type === "entity.parse.failed" || err instanceof SyntaxError;
@@ -372,9 +353,7 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
 
   if (opts.dashboard === false) return router;
 
-  // ---------------- API داشبورد ----------------
   const api = express.Router();
-  // ابزارهای رسانه‌ای فایل انتخاب‌شده را به‌صورت data URL می‌فرستند
   api.use("/tools", express.json({ limit: "30mb" }));
   api.use(express.json({ limit: "1mb" }));
 
@@ -386,7 +365,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.setHeader("Set-Cookie", `${COOKIE}=${value}; Path=${path}; HttpOnly; SameSite=Strict${secure}${age}`);
   };
 
-  // ---------------- کمک‌تابع‌های نصب (هم در راه‌اندازی اولیه و هم پس از ورود استفاده می‌شوند) ----------------
   const installServices = () =>
     engine.describeProviders().map((p) => ({
       id: p.id,
@@ -403,7 +381,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
       toolCount: p.tools.length,
     }));
 
-  /** متن خطا اگر فهرست سرویس‌ها نامعتبر باشد */
   const servicesProblem = (raw: unknown): string | null => {
     if (!Array.isArray(raw) || raw.some((id) => typeof id !== "string")) return "فهرست سرویس‌ها معتبر نیست";
     const known = new Set(engine.providers.map((p) => p.id));
@@ -411,16 +388,10 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     return unknown.length ? `سرویس ناشناخته: ${unknown.join("، ")}` : null;
   };
 
-  /**
-   * `ids` فهرست کامل انتخاب است؛ فقط سرویس‌هایی که وضعیتشان فرق می‌کند تغییر می‌کنند.
-   * خطای یک سرویس (مثلاً نشست خراب هنگام شروع دریافت پیام) بقیه را متوقف نمی‌کند؛
-   * نام سرویس‌های ناموفق برگردانده می‌شود.
-   */
   const applyServices = (ids: string[]): string[] => {
     const selected = new Set(ids);
     const failed: string[] = [];
     for (const p of engine.providers) {
-      // سرویسی که از env کنترل می‌شود از اینجا تغییر نمی‌کند
       if (engine.store.enabledFromEnv(p)) continue;
       const want = selected.has(p.id);
       if (engine.store.isEnabled(p) === want) continue;
@@ -434,7 +405,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     return failed;
   };
 
-  /** بدنه‌ی نصب را بررسی می‌کند؛ تا وقتی همه‌چیز معتبر نباشد هیچ چیزی ذخیره نمی‌شود */
   const parseInstall = (body: any): { profile: ReturnType<typeof normalizeProfile>; services: string[] } | { error: string; field: string } => {
     let profile;
     try {
@@ -459,7 +429,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
       authenticated,
       needsSetup: needsSetup(),
       version: SERVER_VERSION,
-      // مشخصات سازمان فقط پس از ورود برگردانده می‌شود
       ...(authenticated ? { needsInstall: engine.store.needsInstall, profile: engine.store.profile() } : {}),
     });
   });
@@ -476,8 +445,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     } catch (err: any) {
       return void res.status(400).json({ error: String(err?.message ?? err) });
     }
-    // نصب‌کننده مشخصات و سرویس‌ها را هم در همین درخواست می‌فرستد؛ قبل از ثبت رمز بررسی می‌شوند
-    // تا با ورودی نامعتبر هیچ چیزی نیمه‌کاره ذخیره نشود.
     const install = req.body?.install === undefined ? null : parseInstall(req.body.install);
     if (install && "error" in install) return void res.status(400).json(install);
     engine.store.updateSettings(settings);
@@ -487,10 +454,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.json({ ok: true, settings, ...(install ? completeInstall(install) : {}) });
   });
 
-  /**
-   * فهرست سرویس‌ها برای نصب‌کننده، پیش از ساخته شدن رمز ادمین.
-   * فقط تا وقتی راه‌اندازی اولیه انجام نشده پاسخ می‌دهد و چیزی جز نام سرویس‌ها ندارد.
-   */
   api.get("/auth/setup-info", (_req, res) => {
     if (!needsSetup()) return void res.status(403).json({ error: "راه‌اندازی اولیه قبلاً انجام شده است" });
     res.json({ profile: engine.store.profile(), services: installServices(), limits: PROFILE_LIMITS });
@@ -510,32 +473,26 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   });
 
   api.post("/auth/logout", (req, res) => {
-    // خروج = باطل شدن همه‌ی نشست‌ها (فقط یک ادمین داریم)
     if (sessions.valid(sid(req))) engine.store.bumpSessionEpoch();
     setCookie(req, res, "", 0);
     res.json({ ok: true });
   });
 
-  // EitaaBun پیام‌های جدید را به این آدرس می‌فرستد. توکن داخل query است چون
-  // EitaaBun هدر سفارشی نمی‌فرستد. عمداً قبل از middleware ورود است.
   api.post("/eitaa-bridge/webhook", (req, res) => {
     const token = typeof req.query.token === "string" ? req.query.token : undefined;
     const accepted = handleEitaaBridgeWebhook(req.body, token);
     res.status(accepted ? 200 : 202).json({ ok: accepted });
   });
 
-  // از اینجا به بعد ورود لازم است
   api.use((req, res, next) => {
     if (!sessions.valid(sid(req))) return void res.status(401).json({ error: "ابتدا وارد شوید" });
     next();
   });
 
-  // ---------------- پست و ارسال گروهی ----------------
   const postIsIdLike = (value: unknown, chatId: string): boolean => {
     const text = String(value ?? "").trim();
     if (!text) return true;
     if (text === chatId) return true;
-    // شناسه‌های عددی، peer idهایی مثل 12345|2 و آدرس‌های فنی، نام نیستند.
     return /^[\d\s|@._:\-]+$/.test(text);
   };
   const postNameOf = (raw: any, chatId: string): string => {
@@ -601,7 +558,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
       if (chat && cached) chat.title = cached;
       return chat;
     }).filter(Boolean) as Array<PostTarget & { lastText?: string }>;
-    // اگر فهرست گفتگوها فقط شناسه برگردانده باشد، نام واقعی را از خود سرویس می‌گیریم.
     const missingNames = chats.filter((x) => postIsIdLike(x.title, x.chatId)).slice(0, 20);
     const infoTool = POST_CHAT_INFO_TOOLS[provider];
     if (infoTool && missingNames.length) {
@@ -682,7 +638,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.json({ ok: results.every((r) => r.ok), results });
   });
 
-  // ---------------- نصب اولیه و مشخصات سازمان ----------------
   api.get("/install", (_req, res) => {
     res.json({
       needsInstall: engine.store.needsInstall,
@@ -692,17 +647,12 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     });
   });
 
-  /**
-   * تکمیل نصب: مشخصات ذخیره و سرویس‌های انتخاب‌شده روشن می‌شوند.
-   * `services` فهرست کامل انتخاب است؛ سرویسی که در آن نیست خاموش می‌شود (نشست ذخیره‌شده‌اش می‌ماند).
-   */
   api.post("/install", (req, res) => {
     const install = parseInstall(req.body);
     if ("error" in install) return void res.status(400).json(install);
     res.json({ ok: true, ...completeInstall(install) });
   });
 
-  /** تغییر سرویس‌های فعال پس از نصب (بخش «نصب و مشخصات» داشبورد) */
   api.put("/install/services", (req, res) => {
     const raw = req.body?.services;
     const problem = servicesProblem(raw);
@@ -722,7 +672,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.json({ ok: true, profile: engine.store.updateProfile(profile) });
   });
 
-  // ---------------- تنظیمات نصب ----------------
   api.get("/settings", (_req, res) => {
     res.json({ ok: true, version: SERVER_VERSION, dataDir: engine.store.dir, passwordFromEnv: Boolean(env.ADMIN_PASSWORD), ...engine.store.settings() });
   });
@@ -737,7 +686,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     const before = engine.store.settings();
     engine.store.updateSettings(settings);
     applyProxySettings(settings);
-    // پروکسی دستی جای انتخاب فهرست را می‌گیرد؛ انتخاب خودکار خاموش می‌شود تا آن را برنگرداند
     const pool = engine.store.proxyPool();
     const active = pool.entries.find((p) => p.id === pool.activeId);
     if (active && active.url !== settings.proxyUrl) engine.store.saveProxyPool({ ...pool, auto: false, activeId: undefined });
@@ -756,13 +704,10 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
       return void res.status(400).json({ error: "رمز فعلی اشتباه است" });
     if (next.length < 8) return void res.status(400).json({ error: "رمز جدید باید حداقل ۸ کاراکتر باشد" });
     engine.store.setAdmin(hashPassword(next));
-    // setAdmin نشست‌ها را باطل می‌کند؛ یک نشست تازه برای همین مرورگر بساز.
     setCookie(req, res, sessions.create(), SESSION_MAX_AGE);
     res.json({ ok: true });
   });
 
-  // ---------------- فهرست پروکسی ----------------
-  // مقصدهای سنجش را می‌شود با PROXY_TEST_URLS (جدا شده با ویرگول) عوض کرد، مثلاً نشانی سرویسی که واقعاً لازم دارید
   const probeTargets = String(env.PROXY_TEST_URLS ?? "")
     .split(",")
     .map((u) => u.trim())
@@ -780,7 +725,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
   });
   proxies.schedule();
 
-  /** خطای قابل‌انتظار فهرست پروکسی را به پاسخ 400 تبدیل می‌کند */
   const proxyRoute = (handler: (req: Request, res: Response) => unknown) => async (req: Request, res: Response, next: NextFunction) => {
     try {
       await handler(req, res);
@@ -826,8 +770,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.json({ ok: true, ...proxies.describe() });
   }));
 
-  // ---------------- دیبا روتر ----------------
-  // سقف کانتکست هر مدل (اعلام‌شده در فهرست مدل‌ها + آنچه از خطای خود مدل یاد گرفته‌ایم)
   const modelLimits = new ModelLimits(() => dibaRouterModels(engine.store.dibarouter()));
 
   api.get("/dibarouter", (_req, res) => {
@@ -896,14 +838,12 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     }
   });
 
-  // ---------------- دستیار دیبا (چت‌بات داشبورد) ----------------
   api.post("/agent/chat", async (req, res) => {
     if (!Array.isArray(req.body?.messages) || !req.body.messages.length) {
       return void res.status(400).json({ error: "پیامی برای دستیار ارسال نشد" });
     }
     const c = engine.store.dibarouter();
     if (!c.apiKey) return void res.status(400).json({ error: "برای استفاده از دستیار، ابتدا دیبا روتر را در تب «دیبا روتر» وصل کنید" });
-    // همه‌ی سقف‌ها (تاریخچه، ابزارها، خروجی ابزار، طول پاسخ) از کانتکست همین مدل حساب می‌شود
     let plan = planContext(await modelLimits.limitOf(c.baseUrl, c.model));
     const compacted = compactConversation(req.body.messages, {
       keepRecent: plan.compact ? 4 : 6,
@@ -931,7 +871,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
       sendSse("status", { text: "در حال آماده‌سازی کانتکست…" });
     }
 
-    // دکمه‌ی «توقف» مرورگر را می‌بندد؛ همان لحظه کار سرور و درخواست مدل هم لغو می‌شود
     const abort = new AbortController();
     res.on("close", () => {
       if (!res.writableEnded) abort.abort();
@@ -965,7 +904,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
       return payload;
     };
 
-    // داده‌ی پایه را خودمان می‌خوانیم تا مدل برای وضعیت سرویس‌ها حدس نزند
     const plainGreeting = /^(سلام|درود|وقت بخیر|صبح بخیر|شب بخیر|hi|hello|hey|thanks|ممنون|مرسی)[!؟.،\s]*$/i.test(selectionText.trim());
     const wantsChatList = /(لیست|فهرست|چت‌ها|چتها|گفتگوها|همه‌ی چت|همه چت|inbox|list chats|all chats)/i.test(selectionText);
 
@@ -1031,8 +969,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
         });
       } catch (err: any) {
         let failure = err;
-        // سقف واقعی مدل کمتر از تصور ما بود: همان عدد را یاد بگیر، برنامه را کوچک کن و دوباره بفرست.
-        // دور آخر بدون ابزار است تا مدل دست‌کم پاسخ متنی بدهد.
         for (let attempt = 0; attempt < 3 && isContextLimitError(failure); attempt++) {
           const reported = extractContextLimit(failure);
           const assumed = Math.floor(plan.contextLength * 0.6);
@@ -1058,7 +994,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
           e.status = 400;
           throw e;
         }
-        // اگر مدل tool_choice اجباری را نپذیرفت، با auto و همان ابزارها دوباره امتحان کن
         if (forcedChoice && tools.length && /tool|function|support|unsupported|tool_choice/i.test(String(failure?.message ?? failure))) {
           try {
             return await dibaRouterChat(c, msgs, {
@@ -1080,7 +1015,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
       }
     };
 
-    // اگر پیش‌نویس ارسال منتظر تأیید است، پیام فعلی را به‌عنوان انتخاب/تأیید/لغو پردازش کن
     if (engine.memory.getPending(conversationId)) {
       try {
         sendSse("status", { text: "در حال بررسی پاسخ شما…" });
@@ -1109,7 +1043,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
       }
     }
 
-    // مرحله‌ی آماده‌سازی ارسال: نزدیک‌ترین مخاطبین + پیش‌نویس، بدون ارسال
     if (forceSendTool && sendIntent) {
       try {
         sendSse("status", { text: `در حال پیدا کردن نزدیک‌ترین مخاطب برای «${sendIntent.recipient}»…` });
@@ -1137,7 +1070,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
         return void res.json(payload);
       } catch (err: any) {
         console.error("[diba-mcp] prepare send failed", err?.message ?? err);
-        // در صورت خطای غیرمنتظره، جریان عادی دستیار ادامه می‌دهد
       }
     }
 
@@ -1152,7 +1084,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
             }
           : undefined;
 
-        // برای هر دور، ابزارها را با توجه به درخواست، پاسخ قبلی و ابزارهای اجراشده انتخاب کن
         const roundQuery = [selectionText, lastReply, toolTrace.map((t) => t.name).join(" ")].filter(Boolean).join("\n");
         const roundTools = plan.maxTools
           ? selectAndCompactTools(allTools, roundQuery, { maxTools: plan.maxTools, maxToolTokens: plan.toolTokens, blockDirectSend: true })
@@ -1220,7 +1151,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
           const name = call.function.name;
           sendSse("status", { text: `در حال اجرای ${name}…` });
 
-          // آرگومان نامعتبر را هرگز با {} اجرا نکن؛ به مدل فرصت اصلاح بده
           let args: Record<string, unknown> = {};
           let argsError = "";
           try {
@@ -1243,7 +1173,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
             continue;
           }
 
-          // از اجرای تکراری ابزار با همان آرگومان‌ها جلوگیری کن (مخصوصاً برای ارسال پیام)
           const cacheKey = name === "list_services" ? "list_services" : `${name}:${JSON.stringify(args)}`;
           const cached = callCache.get(cacheKey);
           if (cached) {
@@ -1281,7 +1210,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
         if (wantStream) sendSse("status", { text: "در حال جمع‌بندی پاسخ…" });
       }
 
-      // اگر به سقف دورها رسیدیم، یک جمع‌بندی نهایی بدون ابزار بگیر
       if (stopped()) return;
       let finalReply = lastReply;
       if (toolTrace.length) {
@@ -1301,7 +1229,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
           );
           if (summary.reply) finalReply = summary.reply;
         } catch {
-          // از lastReply استفاده می‌کنیم
         }
       }
       if (!finalReply) finalReply = "ابزارها اجرا شدند، اما مدل پاسخی برای جمع‌بندی برنگرداند. نتیجه را در گزارش‌ها ببینید.";
@@ -1314,7 +1241,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
       }
       res.json(payload);
     } catch (err: any) {
-      // کاربر پاسخ را متوقف کرده یا اتصال بسته شده؛ نوشتن روی پاسخ بسته فایده‌ای ندارد
       if (stopped()) {
         if (!res.writableEnded) res.end();
         return;
@@ -1328,7 +1254,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     }
   });
 
-  // تاریخچه و حافظه‌ی دستیار (برای همگام‌سازی بین دستگاه‌ها و بازبینی)
   api.get("/agent/history", (req, res) => {
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 40));
     const conversationId = typeof req.query.conversationId === "string" ? req.query.conversationId : "dashboard";
@@ -1375,7 +1300,7 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     for (const f of p.fields) {
       const v = values?.[f.key];
       if (typeof v !== "string") continue;
-      if (f.type === "secret" && v === "") continue; // خالی = بدون تغییر
+      if (f.type === "secret" && v === "") continue;
       if (f.type === "url" && v && !/^(https?|wss?|socks4a?|socks5h?):\/\//i.test(v))
         return void res.status(400).json({ error: `«${f.label}» باید با http، https، ws، wss یا socks5 شروع شود` });
       clean[f.key] = v;
@@ -1395,8 +1320,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.json(await engine.callTool(String(req.params.name), req.body?.args ?? {}, "dashboard"));
   });
 
-  // صفحه‌بندی‌شده: api.get("/logs", ...) با page/pageSize/ok/provider
-  // سازگاری قبلی: بدون پارامتر page، همان آرایه‌ی محدود برگردانده می‌شود.
   api.get("/logs", (req, res) => {
     const q = req.query;
     const paginated = q.page !== undefined || q.pageSize !== undefined || q.ok !== undefined || q.provider !== undefined;
@@ -1418,7 +1341,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
 
   api.get("/netcheck", async (_req, res) => res.json(await runNetcheck(engine)));
 
-  // ---------------- تست کامل ----------------
   api.post("/providers/:id/selftest", async (req, res) => {
     try {
       res.json(await runSelfTest(engine, String(req.params.id), { send: req.body?.send === true, chatId: req.body?.chatId }));
@@ -1431,7 +1353,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.json(await engine.runAction(String(req.params.id), String(req.params.name)));
   });
 
-  // ---------------- ورود با حساب کاربری (کلاینت غیررسمی) ----------------
   api.post("/providers/:id/auth/browser/start", async (req, res) => {
     res.json(await engine.authBrowserStart(String(req.params.id)));
   });
@@ -1459,16 +1380,13 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.json(await engine.authStep(id, step as "start" | "code" | "password" | "logout", req.body ?? {}));
   });
 
-  // ---------------- صندوق پیام‌ها ----------------
   api.get("/inbox", async (req, res) => {
     const provider = typeof req.query.provider === "string" ? req.query.provider : undefined;
     const chat = typeof req.query.chat === "string" ? req.query.chat : undefined;
     let chats = engine.inbox.chats();
     try {
-      // نام واقعی چت‌های بی‌نام از خود سرویس خوانده می‌شود
       chats = await enrichChatTitles(engine, chats);
     } catch {
-      // اگر نام‌خوانی شکست خورد، فهرست خام کافی است
     }
     res.json({
       statuses: engine.inbox.statuses().map((st) => ({ ...st, hint: st.lastError ? hintFor(st.lastError, "receive") : undefined })),
@@ -1499,12 +1417,10 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.json({ ok: true });
   });
 
-  // ---------------- تریگرها و اتوماسیون ----------------
   api.get("/triggers", (_req, res) => {
     res.json(engine.triggers.list());
   });
 
-  /** ورودی تریگر را بررسی می‌کند؛ در صورت خطا پاسخ 400 با نام فیلد می‌دهد و null برمی‌گرداند */
   const parseTrigger = (res: Response, body: unknown) => {
     try {
       return normalizeTrigger(body);
@@ -1535,12 +1451,10 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     const current = engine.triggers.list().triggers.find((t) => t.id === id);
     if (!current) return void res.status(404).json({ error: "تریگر پیدا نشد" });
     const body = (req.body && typeof req.body === "object" ? req.body : {}) as Record<string, unknown>;
-    // روشن/خاموش کردن تنها، محتوای تریگر را عوض نمی‌کند و بررسی دوباره نمی‌خواهد
     if (Object.keys(body).every((k) => k === "enabled")) {
       if (typeof body.enabled !== "boolean") return void res.status(400).json({ error: "وضعیت تریگر نامعتبر است", field: "enabled" });
       return void res.json({ ok: true, trigger: engine.triggers.update(id, { enabled: body.enabled }) });
     }
-    // ویرایش: تریگر کامل پس از اعمال تغییرها بررسی و جایگزین می‌شود تا فیلدهای اقدام قبلی جا نماند
     const input = parseTrigger(res, { ...current, ...body });
     if (!input) return;
     res.json({ ok: true, trigger: engine.triggers.replace(id, { ...input, enabled: typeof body.enabled === "boolean" ? body.enabled : current.enabled }) });
@@ -1565,7 +1479,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.json({ token: engine.store.mcpToken, fromEnv: engine.store.mcpTokenFromEnv, dataDir: engine.store.dir });
   });
 
-  // تست واقعی اندپوینت MCP از سمت سرور (tools/list با همان توکن)
   api.post("/connection/test", async (req, res) => {
     const prefix = req.originalUrl.split("?")[0].replace(/\/api\/connection\/test\/?$/, "");
     const url = `${req.protocol}://${req.get("host")}${prefix}/mcp`;
@@ -1603,7 +1516,6 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     res.json({ token: engine.store.rotateMcpToken() });
   });
 
-  // هر خطای پیش‌بینی‌نشده در API به شکل JSON برمی‌گردد تا داشبورد پیام روشن نشان دهد، نه صفحه‌ی HTML
   api.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     if (res.headersSent) return next(err);
     const tooLarge = err?.type === "entity.too.large";
@@ -1616,15 +1528,12 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
 
   router.use("/api", api);
 
-  // ---------------- فایل‌های داشبورد ----------------
   router.use((req, res, next) => {
-    // مسیرهای نسبی داشبورد به اسلش پایانی نیاز دارند
     if (req.method === "GET" && req.path === "/" && req.baseUrl && !req.originalUrl.split("?")[0].endsWith("/")) {
       return void res.redirect(301, req.originalUrl.replace(/(\?|$)/, "/$1"));
     }
     next();
   });
-  // no-cache: مرورگر هر بار با ETag چک می‌کند؛ بعد از آپدیت، نسخه‌ی قدیمی داشبورد نمی‌ماند
   router.use(
     express.static(opts.publicDir ?? defaultPublic, {
       index: "index.html",

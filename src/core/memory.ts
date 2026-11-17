@@ -1,10 +1,3 @@
-/**
- * حافظه‌ی ماندگار دستیار دیبا (و ابزارهای MCP).
- *
- * چرا در core؟ چون هم دستیار داشبورد و هم کلاینت‌های MCP باید بتوانند
- * گفتگوها، اطلاعات پایدار کاربر و مخاطبان شناخته‌شده را به یاد بیاورند.
- * فایل: data/assistant.json (همان پوشه‌ی داده‌ی داشبورد)
- */
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -42,15 +35,12 @@ export interface SendRecord {
   provider: string;
   chatId: string;
   title?: string;
-  /** هش متن برای تشخیص تکرار، بدون ذخیره‌ی متن کامل در فهرست ارسال‌ها */
   textHash: string;
-  /** پیش‌نمایش کوتاه برای مرور انسانی */
   preview: string;
   ok: boolean;
   error?: string;
 }
 
-/** یک گزینه‌ی مخاطب در جریان تأیید ارسال (شناسه‌ها فقط سمت سرور می‌مانند) */
 export interface PendingCandidate {
   provider: string;
   chatId: string;
@@ -60,7 +50,6 @@ export interface PendingCandidate {
   score?: number;
 }
 
-/** پیش‌نویس ارسال که منتظر انتخاب/تأیید کاربر است */
 export interface PendingSend {
   id: string;
   conversationId: string;
@@ -104,10 +93,6 @@ export function providerLabel(id: string): string {
   return PROVIDER_LABELS[id] || id;
 }
 
-/**
- * عنوان قابل‌نمایش بدون افشای chat_id/شماره/JID.
- * اگر عنوان فقط شناسه بود، نام کاربری (@username) جای آن نمایش داده می‌شود.
- */
 export function publicTitle(title: string, type?: string, username?: string): string {
   const raw = String(title ?? "").trim();
   const compact = raw.replace(/[\s@._+-]/g, "");
@@ -121,14 +106,12 @@ export function publicTitle(title: string, type?: string, username?: string): st
     if (handle && !/^\d+$/.test(handle)) return `@${handle}`.slice(0, 60);
     if (type === "group" || type === "chat") return "گروه بدون نام";
     if (type === "channel") return "کانال بدون نام";
-    // نام در سرویس موجود نیست؛ فقط چند رقم آخر برای تشخیص از بقیه‌ی بی‌نام‌ها
     const tail = raw.replace(/\D/g, "").slice(-4);
     return tail.length === 4 ? `مخاطب بدون نام (…${tail})` : "مخاطب بدون نام";
   }
   return raw.slice(0, 60).replace(/\+?\d{7,}/g, (digits) => `${digits.slice(0, 4)}…${digits.slice(-3)}`);
 }
 
-/** نرمال‌سازی فارسی/عربی برای تطبیق نام‌ها و متن‌ها */
 export function normalizePersonName(value: string): string {
   return String(value ?? "")
     .normalize("NFKC")
@@ -203,14 +186,12 @@ interface EphemeralSession {
   lastRecipient?: { provider: string; chatId: string; title: string; type: string; at: number };
 }
 
-/** گفتگوهای موقت دستیار (در حافظه‌ی پروسه، با انقضا) */
 const SESSION_TTL_MS = 30 * 60_000;
 const SESSION_MAX_TURNS = 12;
 
 export class AssistantMemory {
   private file: string;
   private data: MemoryFile;
-  /** گفتگوی جاری هر کلاینت؛ عمداً روی دیسک ذخیره نمی‌شود (موقت است) */
   private sessions = new Map<string, EphemeralSession>();
 
   constructor(dataDir: string) {
@@ -249,24 +230,19 @@ export class AssistantMemory {
       try {
         renameSync(tmp, this.file);
       } catch {
-        // ویندوز: اگر مقصد توسط برنامه‌ی دیگری باز باشد rename با EPERM شکست می‌خورد.
-        // نوشتن مستقیم را امتحان کن و در هر حال سرور را به‌خاطر حافظه crash نکن.
         try {
           writeFileSync(this.file, json, { mode: 0o600 });
         } catch {
-          // فعلاً نمی‌توان نوشت؛ داده در حافظه باقی می‌ماند و دفعه‌ی بعد تلاش می‌شود
         }
         try {
           unlinkSync(tmp);
         } catch {
-          // فایل موقت ممکن است باقی بماند؛ خطا را بالا نده
         }
       }
     } catch {
       try {
         writeFileSync(this.file, json, { mode: 0o600 });
       } catch {
-        // بی‌صدا رد شو؛ حافظه‌ی درون‌حافظه‌ای معتبر است
       }
     }
   }
@@ -282,7 +258,6 @@ export class AssistantMemory {
     }
   }
 
-  // ---------------- اطلاعات پایدار کاربر ----------------
   rememberFact(text: string, tags: string[] = []): AssistantFact | undefined {
     const clean = String(text ?? "").trim();
     if (clean.length < 2) return undefined;
@@ -305,7 +280,6 @@ export class AssistantMemory {
     return this.data.facts.slice(-Math.max(1, limit)).reverse();
   }
 
-  // ---------------- مخاطبان شناخته‌شده ----------------
   upsertRecipient(input: {
     provider: string;
     chatId: string;
@@ -340,7 +314,6 @@ export class AssistantMemory {
     return item;
   }
 
-  /** جستجوی حافظه برای ابزار memory_search */
   search(query: string, limit = 8) {
     const q = String(query ?? "").trim();
     const facts = q
@@ -373,7 +346,6 @@ export class AssistantMemory {
     return this.data.recipients.slice(-Math.max(1, limit));
   }
 
-  // ---------------- گفتگوها ----------------
   appendTurn(input: {
     role: "user" | "assistant";
     content: string;
@@ -385,7 +357,6 @@ export class AssistantMemory {
     if (!content) return undefined;
     const conversationId = String(input.conversationId ?? "dashboard");
     const last = this.data.turns[this.data.turns.length - 1];
-    // اگر همان پیام در چند ثانیه‌ی اخیر ثبت شده، دوباره ذخیره نکن
     if (
       last &&
       last.role === input.role &&
@@ -423,7 +394,6 @@ export class AssistantMemory {
     return removed;
   }
 
-  // ---------------- گفتگوی موقت (فقط درون پروسه) ----------------
   private sessionOf(conversationId: string): EphemeralSession | undefined {
     const session = this.sessions.get(conversationId);
     if (!session) return undefined;
@@ -434,7 +404,6 @@ export class AssistantMemory {
     return session;
   }
 
-  /** یک نوبت گفتگو را موقت نگه می‌دارد؛ بعد از ۳۰ دقیقه بی‌خبری پاک می‌شود. */
   rememberTurn(conversationId: string, role: "user" | "assistant", content: string): void {
     const text = String(content ?? "").trim();
     if (!text) return;
@@ -455,7 +424,6 @@ export class AssistantMemory {
     }
   }
 
-  /** چند نوبت آخر گفتگو برای زمینه‌ی کوتاه (بهینه برای کانتکست). */
   recentTurns(conversationId: string, limit = 6): EphemeralTurn[] {
     const session = this.sessionOf(conversationId);
     return session ? session.turns.slice(-Math.max(1, limit)) : [];
@@ -479,7 +447,6 @@ export class AssistantMemory {
     this.sessions.delete(conversationId);
   }
 
-  // ---------------- جریان تأیید ارسال ----------------
   setPending(input: {
     conversationId: string;
     query: string;
@@ -538,7 +505,6 @@ export class AssistantMemory {
     return true;
   }
 
-  /** برداشت اتمی پیش‌نویس برای جلوگیری از ارسال دوباره با دو کلیک/دو درخواست هم‌زمان */
   takePending(conversationId: string): PendingSend | undefined {
     const pending = this.getPending(conversationId);
     if (!pending) return undefined;
@@ -547,7 +513,6 @@ export class AssistantMemory {
     return pending;
   }
 
-  // ---------------- ارسال‌ها (ضد تکرار/بن) ----------------
   recordSend(input: {
     provider: string;
     chatId: string;
@@ -602,7 +567,6 @@ export class AssistantMemory {
     };
   }
 
-  // ---------------- زمینه برای پرامپت ----------------
   promptContext(query: string, now = Date.now()): string {
     const lines: string[] = [];
     const facts = query

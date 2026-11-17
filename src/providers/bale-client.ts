@@ -1,19 +1,5 @@
-/**
- * بله با حساب کاربری (نه ربات).
- *
- * بله برای ربات‌ها Bot API رسمی داشت که حذف شده است؛ این فایل برای خودِ کاربر
- * API عمومی ندارد. این سرویس از پروتکل داخلی کلاینت وب بله استفاده می‌کند:
- * gRPC-Web برای ورود و WebSocket + Protobuf برای پیام‌ها.
- *
- * پیاده‌سازی پروتکل در کتابخانه‌ی `@hoseinbnoob/balejs` است (MIT، بر پایه‌ی
- * پروژه‌ی Zellias/balejs). این فایل فقط آن را به قرارداد ProviderDef وصل می‌کند.
- *
- * هشدار: این API خصوصی است و بله می‌تواند بدون اطلاع تغییرش دهد. اگر روزی
- * کار نکرد، اول نسخه‌ی کتابخانه و آدرس‌های پایه را بررسی کنید.
- */
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-// نسخه‌ی وصله‌شده در vendor/balejs (سازگار با Node 24) — به‌جای بسته‌ی npm
 import { AuthenticationError, BaleRpcError, Chat, Client, User, type Message } from "../../vendor/balejs/dist/index.js";
 import { z } from "zod";
 import { describeNetError } from "../core/net.js";
@@ -36,7 +22,6 @@ const CONNECT_TIMEOUT_MS = 30_000;
 
 // ---------------------------------------------------------------- helpers
 
-/** شماره را به شکل بین‌المللی و فقط رقم تبدیل می‌کند: ۰۹۱۲… ← ۹۸۹۱۲… */
 export function normalizeBalePhone(raw: string): string {
   const latin = String(raw ?? "")
     .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))
@@ -49,7 +34,6 @@ export function normalizeBalePhone(raw: string): string {
   return s;
 }
 
-/** رشته‌ی نشست بله: `<userId>:<jwt>` */
 export function parseBaleSession(raw: string): { userId: number; jwt: string } {
   const value = String(raw ?? "").trim();
   const i = value.indexOf(":");
@@ -88,7 +72,6 @@ function chatTypeOf(value: string | undefined): IncomingMessage["chatType"] {
   return "unknown";
 }
 
-/** تاریخ بله می‌تواند ثانیه، میلی‌ثانیه یا میکروثانیه باشد */
 function isoDate(value: unknown): string {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return new Date().toISOString();
@@ -143,7 +126,6 @@ function isPeerId(value: string) {
   return /^\d+\|\d+$/.test(value);
 }
 
-/** خطاهای کتابخانه را به پیام فارسی قابل فهم تبدیل می‌کند */
 function friendlyError(err: any, prefix: string): ProviderError {
   if (err instanceof ProviderError) return err;
   if (err?.message === "timeout") {
@@ -206,7 +188,6 @@ interface ManagedClient {
   waiters: Set<Waiter>;
   titles: Map<string, { title?: string; type: IncomingMessage["chatType"] }>;
   users: Map<number, string>;
-  /** rid پیام‌هایی که خودمان از طریق ابزار فرستادیم؛ تکرارشان را در صندوق نگه نمی‌داریم */
   outgoing: Set<string>;
   closed: boolean;
   connecting?: Promise<void>;
@@ -216,7 +197,6 @@ let current: ManagedClient | undefined;
 
 function clientOptions(ctx: ProviderContext) {
   return {
-    // نشست به‌صورت رشته در config ذخیره می‌شود؛ این پوشه فقط برای سازگاری کتابخانه است.
     sessionDir: join(tmpdir(), "diba-mcp-bale-client"),
     grpc: { baseUrl: (ctx.config.baseUrl?.trim() || BALE_CLIENT_DEFAULT_BASE_URL).replace(/\/+$/, "") },
     websocket: {
@@ -233,12 +213,10 @@ function wakeAll(m: ManagedClient, err?: Error) {
   }
 }
 
-/** بستن اتصال؛ اگر سوکت از قبل بسته باشد کتابخانه ممکن است معطل بماند */
 async function safeDisconnect(client: Client): Promise<void> {
   try {
     await withTimeout(client.disconnect(), 3_000);
   } catch {
-    // اتصال از قبل بسته بوده یا بستن طول کشید
   }
 }
 
@@ -254,7 +232,6 @@ export async function resetBaleClient(): Promise<void> {
 function pushMessage(m: ManagedClient, message: IncomingMessage) {
   m.queue.push(message);
   if (m.queue.length > MAX_QUEUE) m.queue.splice(0, m.queue.length - MAX_QUEUE);
-  // فقط یک منتظر را بیدار کن؛ بقیه در نوبت می‌مانند تا صف دوباره پر شود.
   const first = m.waiters.values().next().value as Waiter | undefined;
   first?.wake();
 }
@@ -327,10 +304,8 @@ function createManaged(session: string, ctx: ProviderContext): ManagedClient {
   client.on_message((msg) => {
     try {
       const incoming = toIncoming(m, msg);
-      // echo پیامی که خودمان از طریق ابزار فرستادیم را engine در recordSent ثبت می‌کند
       if (incoming && !(incoming.direction === "out" && m.outgoing.has(incoming.messageId))) pushMessage(m, incoming);
     } catch {
-      // یک پیام بدشکل نباید حلقه‌ی دریافت را متوقف کند
     }
   });
   client.on_disconnect(() => {
@@ -338,7 +313,6 @@ function createManaged(session: string, ctx: ProviderContext): ManagedClient {
     wakeAll(m, new ProviderError("اتصال حساب بله قطع شد؛ دوباره وصل می‌شویم"));
   });
   client.on_error(() => {
-    // پیام خطای واقعی هنگام poll دوباره از Bale گرفته می‌شود
   });
   return m;
 }
@@ -351,15 +325,12 @@ async function connectManaged(m: ManagedClient): Promise<void> {
       return;
     }
     m.selfId = Number(m.client.user?.id ?? m.selfId);
-    // کتابخانه on_disconnect را فقط در حالت run() صدا می‌زند؛ ما مستقیم connect()
-    // می‌کنیم، پس خودمان تعطیل شدن سوکت را می‌فهمیم تا حلقه‌ی دریافت دوباره وصل شود.
     const socket = (m.client as any).websocket;
     socket?.on?.("close", () => {
       m.closed = true;
       wakeAll(m, new ProviderError("اتصال حساب بله قطع شد؛ دوباره وصل می‌شویم"));
     });
     await loadDialogIndex(m).catch(() => {
-      // اگر LoadDialogs اجازه نداشت، عنوان‌ها بعداً با get_chat پر می‌شوند.
     });
   } catch (err) {
     m.closed = true;
@@ -431,7 +402,6 @@ async function resolveTitles(m: ManagedClient, messages: IncomingMessage[]): Pro
           m.titles.set(chatId, { title: chat.title || chat.full_name || undefined, type: chatTypeOf(chat.type) });
         }
       } catch {
-        // عنوان اختیاری است
       }
     }),
   );
@@ -465,7 +435,6 @@ function chatIdOf(ctx: ProviderContext, chatId?: string): string {
   return id;
 }
 
-/** نام کاربری/@username را به شناسه‌ی peer بله تبدیل می‌کند */
 async function resolvePeerId(client: Client, rawId: string): Promise<string> {
   if (isPeerId(rawId)) return rawId;
   const chat = await client.get_chat(rawId);
@@ -623,7 +592,6 @@ export const baleClient: ProviderDef = {
     idleMs: 1_000,
     async poll(ctx, _cursor, longPollSec) {
       const m = await getManaged(ctx);
-      // WebSocket پیام‌ها را push می‌کند؛ پس polling فقط منتظر می‌ماند.
       await waitForMessage(m, longPollSec > 0 ? longPollSec * 1_000 : 1_200);
       const messages = m.queue.splice(0, m.queue.length);
       await resolveTitles(m, messages);
@@ -672,7 +640,6 @@ export const baleClient: ProviderDef = {
         const peerId = await resolvePeerId(m.client, chatIdOf(ctx, a.chat_id));
         const sent = await m.client.send_message(peerId, a.text);
         const rid = String(sent.rid);
-        // اگر echo همین پیام از WebSocket زودتر رسیده باشد، آن را به recordSent موکول می‌کنیم
         m.outgoing.add(rid);
         if (m.outgoing.size > 200) {
           const first = m.outgoing.values().next().value;
@@ -878,7 +845,6 @@ export const baleClient: ProviderDef = {
   ],
 };
 
-/** گفتگوها را به شکل یکنواخت برمی‌گرداند */
 async function dialogsOf(m: ManagedClient, limit: number) {
   const data: any = await m.client.load_dialogs(limit);
   const users = new Map<number, any>();

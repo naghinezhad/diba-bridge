@@ -1,15 +1,3 @@
-/**
- * بلوبانک (BluBank) — اتصال به API اپلیکیشن بانکی.
- *
- * نکته‌های مهم درباره‌ی این API (استخراج‌شده از HAR اپلیکیشن):
- *   - آدرس پایه: https://openapi.sdb247.com/openapi/v0
- *   - بیشتر بدنه‌ها protobuf هستند (نه JSON). چون اسکیمای رسمی منتشر نشده،
- *     این provider یک decoder سبک protobuf دارد که فیلدها را می‌خواند و
- *     برای درخواست‌های ناشناخته، بدنه‌ی خام base64 را هم می‌پذیرد.
- *   - جریان ورود: key-exchange → login (شماره) → otp/verify (کد).
- *   - احراز هویت با هدر Authorization انجام می‌شود؛ توکن را از نشست
- *     اپلیکیشن (HAR یا حافظه‌ی دستگاه) استخراج و اینجا ثبت کنید.
- */
 import { z } from "zod";
 import { netFetch } from "../core/net.js";
 import { defineTool, ProviderError, type ProviderContext, type ProviderDef } from "../core/types.js";
@@ -20,7 +8,6 @@ function baseOf(ctx: ProviderContext): string {
   return (ctx.config.baseUrl || DEFAULT_BASE).replace(/\/+$/, "");
 }
 
-/** هدرهای احراز هویت؛ توکن Bearer یا کوکی خام. */
 function authHeaders(ctx: ProviderContext, requireAuth = true): Record<string, string> {
   const headers: Record<string, string> = {
     accept: "*/*",
@@ -37,7 +24,6 @@ function authHeaders(ctx: ProviderContext, requireAuth = true): Record<string, s
   return headers;
 }
 
-/** یک درخواست به API بلوبانک؛ بدنه و پاسخ protobuf خام. */
 async function blubankRequest(
   ctx: ProviderContext,
   path: string,
@@ -72,7 +58,6 @@ async function blubankRequest(
 }
 
 /* ------------------------------------------------------------------ */
-/* decoder سبک protobuf                                                */
 /* ------------------------------------------------------------------ */
 
 export interface ProtoField {
@@ -81,11 +66,9 @@ export interface ProtoField {
   value: number | string | Buffer;
 }
 
-/** یک پیام protobuf را به فهرست فیلدها تبدیل می‌کند (بدون نیاز به .proto). */
 export function decodeProto(buf: Buffer): ProtoField[] {
   const fields: ProtoField[] = [];
   let i = 0;
-  /** varint می‌خواند؛ اگر بافر تمام شود یا بیش از ۱۰ بایت شود، undefined برمی‌گرداند. */
   const readVarint = (): number | undefined => {
     let result = 0;
     let shift = 0;
@@ -96,16 +79,16 @@ export function decodeProto(buf: Buffer): ProtoField[] {
       bytes++;
       if ((byte & 0x80) === 0) return result;
       shift += 7;
-      if (bytes >= 10) return undefined; // varint معتبر حداکثر ۱۰ بایت است
+      if (bytes >= 10) return undefined;
     }
-    return undefined; // بافر وسط varint تمام شد
+    return undefined;
   };
   while (i < buf.length) {
     const tag = readVarint();
     if (tag === undefined) break;
     const field = tag >>> 3;
     const wire = tag & 0x07;
-    if (field === 0) break; // فیلد ۰ در protobuf معتبر نیست
+    if (field === 0) break;
     if (wire === 0) {
       const value = readVarint();
       if (value === undefined) break;
@@ -124,13 +107,12 @@ export function decodeProto(buf: Buffer): ProtoField[] {
       fields.push({ field, wire, value: buf.subarray(i, i + 8) });
       i += 8;
     } else {
-      break; // wire ناشناخته؛ ادامه بی‌معناست
+      break;
     }
   }
   return fields;
 }
 
-/** رشته‌های خوانا (فارسی/لاتین) را از یک پیام protobuf بیرون می‌کشد. */
 export function extractStrings(buf: Buffer): string[] {
   const out: string[] = [];
   let current: number[] = [];
@@ -149,7 +131,6 @@ export function extractStrings(buf: Buffer): string[] {
   return out;
 }
 
-/** خلاصه‌ی خوانا از یک پاسخ protobuf برای نمایش به کاربر. */
 function summarize(buf: Buffer) {
   const strings = extractStrings(buf);
   const ibans = strings.filter((s) => /^IR\d{24}$/.test(s));
@@ -158,7 +139,7 @@ function summarize(buf: Buffer) {
     .map((s) => s.match(/^\d+(?:\.\d+)?/)?.[0])
     .filter((s): s is string => !!s)
     .filter((s) => !ibans.includes(s) && !cards.includes(s))
-    .filter((s) => !/^\d{16,}$/.test(s)); // شماره کارت/حساب، نه مبلغ
+    .filter((s) => !/^\d{16,}$/.test(s));
   return {
     bytes: buf.length,
     fields: decodeProto(buf).slice(0, 40).map((f) => ({
@@ -174,16 +155,9 @@ function summarize(buf: Buffer) {
 }
 
 /* ------------------------------------------------------------------ */
-/* جریان ورود (key-exchange → login → otp)                             */
 /*                                                                     */
-/* هشدار مهم: بدنه‌ی این سه اندپوینت در اپلیکیشن بلوبانک رمزنگاری‌شده  */
-/* است (بایت‌های تصادفی، نه متن خام). کلید عمومی و الگوریتم رمزنگاری   */
-/* منتشر نشده، پس این provider نمی‌تواند خودش شماره/کد را رمز کند.      */
-/* این ابزارها بدنه‌ی خام (base64) را می‌پذیرند تا شما بتوانید payload  */
-/* واقعی را از HAR یا ابزار خودتان بدهید.                              */
 /* ------------------------------------------------------------------ */
 
-/** مرحله‌ی ۱: تبادل کلید نشست. بدنه‌ی خام اختیاری است. */
 async function keyExchange(ctx: ProviderContext, bodyBase64?: string) {
   const { buf } = await blubankRequest(ctx, "/session/key-exchange", {
     method: "POST",
@@ -193,7 +167,6 @@ async function keyExchange(ctx: ProviderContext, bodyBase64?: string) {
   return { ok: true, bytes: buf.length, session: buf.toString("base64"), strings: extractStrings(buf).slice(0, 20) };
 }
 
-/** مرحله‌ی ۲: ورود. بدنه‌ی رمزنگاری‌شده‌ی خام را از HAR بدهید. */
 async function login(ctx: ProviderContext, bodyBase64: string) {
   const { buf } = await blubankRequest(ctx, "/session/login", {
     method: "POST",
@@ -203,7 +176,6 @@ async function login(ctx: ProviderContext, bodyBase64: string) {
   return { ok: true, bytes: buf.length, challenge: buf.toString("base64"), strings: extractStrings(buf).slice(0, 20) };
 }
 
-/** مرحله‌ی ۳: تأیید کد پیامک. بدنه‌ی رمزنگاری‌شده‌ی خام را از HAR بدهید. */
 async function verifyOtp(ctx: ProviderContext, bodyBase64: string) {
   const { buf } = await blubankRequest(ctx, "/user/otp/verify", {
     method: "POST",
@@ -214,28 +186,23 @@ async function verifyOtp(ctx: ProviderContext, bodyBase64: string) {
 }
 
 /* ------------------------------------------------------------------ */
-/* موجودی و کارت‌ها                                                     */
 /* ------------------------------------------------------------------ */
 
-/** فهرست حساب‌های سپرده (موجودی). */
 async function deposits(ctx: ProviderContext) {
   const { buf } = await blubankRequest(ctx, "/account/deposit/list/all", { method: "POST" });
   return summarize(buf);
 }
 
-/** فهرست پروفایل‌ها/کارت‌ها. */
 async function profiles(ctx: ProviderContext) {
   const { buf } = await blubankRequest(ctx, "/account-profile/profile/list", { method: "POST" });
   return summarize(buf);
 }
 
-/** پروفایل کاربر. */
 async function userProfile(ctx: ProviderContext) {
   const { buf } = await blubankRequest(ctx, "/user/profile/get", { method: "POST" });
   return summarize(buf);
 }
 
-/** هویت‌ها (JSON). */
 async function identities(ctx: ProviderContext) {
   const { buf } = await blubankRequest(ctx, "/identities/", { method: "POST", bodyJson: {} });
   try {
@@ -280,7 +247,6 @@ export const blubank: ProviderDef = {
   ],
   test: (ctx) => deposits(ctx),
   tools: [
-    /* ---------- ورود ---------- */
     defineTool({
       name: "blubank_key_exchange",
       title: "تبادل کلید بلوبانک",
@@ -310,7 +276,6 @@ export const blubank: ProviderDef = {
       handler: async (a, ctx) => verifyOtp(ctx, a.body_base64),
     }),
 
-    /* ---------- موجودی ---------- */
     defineTool({
       name: "blubank_get_balance",
       title: "موجودی بلوبانک",
@@ -320,7 +285,6 @@ export const blubank: ProviderDef = {
       handler: async (_a, ctx) => deposits(ctx),
     }),
 
-    /* ---------- کارت‌ها ---------- */
     defineTool({
       name: "blubank_list_cards",
       title: "کارت‌های بلوبانک",
@@ -346,7 +310,6 @@ export const blubank: ProviderDef = {
       handler: async (_a, ctx) => identities(ctx),
     }),
 
-    /* ---------- تراکنش‌ها ---------- */
     defineTool({
       name: "blubank_list_transactions",
       title: "تراکنش‌های بلوبانک",
@@ -392,7 +355,6 @@ export const blubank: ProviderDef = {
       },
     }),
 
-    /* ---------- عمومی ---------- */
     defineTool({
       name: "blubank_flags",
       title: "پرچم‌های بلوبانک",

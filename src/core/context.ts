@@ -1,8 +1,3 @@
-/**
- * مدیریت، خلاصه‌سازی و کنترل سقف کانتکست برای ارسال به مدل (DibaRouter / Agent Chat).
- * هدف: جلوگیری از خطای Context Limit در مدل‌های کوچک (مثل 8192 توکن) و حفظ اطلاعات کلیدی.
- */
-
 export interface ChatTurn {
   role: "user" | "assistant";
   content: string;
@@ -49,10 +44,6 @@ function extractIdentifiers(text: string): string[] {
   return [...found];
 }
 
-/**
- * تخمین محافظه‌کارانه تعداد توکن‌ها:
- * کاراکترهای غیرلاتین (فارسی/عربی) معمولاً ~۱.۵ کاراکتر بر توکن و لاتین ~۳.۵ کاراکتر بر توکن هستند.
- */
 export function estimateTokens(text: string): number {
   if (!text) return 0;
   let nonAscii = 0;
@@ -74,9 +65,6 @@ export function estimateRequestTokens(messages: unknown[], tools: unknown[] = []
   return total;
 }
 
-/**
- * تشخیص خطای سرریز کانتکست از پیام خطای مدل/روتر و استخراج سقف توکن در صورت وجود.
- */
 export function isContextLimitError(err: unknown): boolean {
   const msg = String((err as any)?.message ?? err ?? "");
   return /exceeds the available context size|context.?length|maximum context|too many tokens|context_length_exceeded|prompt is too long|max_tokens.*exceed/i.test(
@@ -109,10 +97,6 @@ export function summarizeContextError(err: unknown): string {
   return "حجم پیام یا خروجی ابزارها از سقف کانتکست مدل بیشتر شد. لطفاً یک گفتگوی تازه یا کوتاه‌تر ارسال کنید.";
 }
 
-/**
- * تاریخچه‌ی گفتگو را در صورت طولانی شدن فشرده می‌کند:
- * ۶ پیام آخر را کامل‌تر نگه می‌دارد و پیام‌های قدیمی‌تر را به یک خلاصه‌ی نکته‌ای تبدیل می‌کند.
- */
 export function compactConversation(
   rawMessages: unknown,
   opts: {
@@ -237,16 +221,6 @@ const PROVIDER_KEYWORDS: Record<string, string[]> = {
   x: ["twitter", "ایکس", "توییتر"],
 };
 
-/**
- * ابزارها را متناسب با پیام کاربر و بودجه توکن انتخاب و اسکیمای آن‌ها را فشرده می‌کند
- * تا مدل‌های با کانتکست 8192 سرریز نکنند.
- *
- * قواعد مهم:
- *  - `list_services` و `list_chats` همیشه در فهرست هستند تا مدل وضعیت را حدس نزند.
- *  - ابزارهای نوشتنی فقط وقتی درخواست ارسال/ویرایش/حذف صریح باشد وارد می‌شوند.
- *  - ابزارهای خطرناک (حذف/خروج/بن) فقط با درخواست صریح حذف/خروج.
- *  - اگر سرویسی در پیام نام برده شده، ابزارهای همان سرویس اولویت می‌گیرند.
- */
 const META_TOOL_NAMES = new Set([
   "list_services",
   "list_chats",
@@ -289,10 +263,8 @@ export function selectAndCompactTools<T extends { type: "function"; function: { 
   const wantsMemory = /(یادت|حافظه|قبلاً|قبلا|به یاد|ذخیره|فراموش|اسم من|نام من|یادت باشه|به خاطر بسپار)/.test(query);
   const allowWrites = wantsSend || wantsCreate || wantsEdit || wantsDestructive;
   const hasHighLevelSend = tools.some((t) => t.function.name === "send_message_to");
-  // اگر کاربر خودش chat_id/یوزرنیم داده، ابزار سطح‌پایین هم مجاز است
   const explicitTarget = /(?:^|\s)@[A-Za-z0-9_]{3,}|-?\d{5,}|\|/.test(userText);
 
-  // سلام/تشکر ساده نیازی به ابزار ندارد
   const plainGreeting = /^(سلام|درود|وقت بخیر|صبح بخیر|شب بخیر|hi|hello|hey|thanks|ممنون|مرسی)[!؟.،\s]*$/i.test(userText.trim());
   if (plainGreeting) return [];
 
@@ -313,16 +285,12 @@ export function selectAndCompactTools<T extends { type: "function"; function: { 
     const isEdit = /(edit|update|set|mark|pin|archive|rename)/.test(name);
     const isCreate = /(add|invite|join|create)/.test(name);
 
-    // برای ارسال به «نام مخاطب» از ابزار سطح‌بالا استفاده کن، نه انتخاب دستی chat_id
     const directTextSend = /(?:^|_)(?:send_message|send_msg|send_dm|send_text)$/.test(name);
     if (hasHighLevelSend && !explicitTarget && directTextSend) return;
-    // در دستیار داشبورد ارسال مستقیم متن ممنوع است؛ فقط مسیر آماده‌سازی/تأیید
     if (opts.blockDirectSend && directTextSend) return;
-    // ابزار سطح‌بالای ارسال فقط وقتی کاربر ارسال خواسته باشد
     if (name === "send_message_to" && !wantsSend) return;
 
     if (!isMeta) {
-      // ابزار نوشتنی فقط با درخواست متناسب با همان نوع کار
       if (isWrite) {
         if (isDestructive) {
           if (!wantsDestructive) return;
@@ -335,7 +303,6 @@ export function selectAndCompactTools<T extends { type: "function"; function: { 
         } else if (!allowWrites) {
           return;
         }
-        // اگر سرویس مشخصی نام برده شده، ارسال/تغییر از سرویس دیگر را نشان نده
         if (mentionedPlatforms.size && platform && !mentionedPlatforms.has(platform)) return;
       }
     }
@@ -391,7 +358,6 @@ export function selectAndCompactTools<T extends { type: "function"; function: { 
     }
   };
 
-  // ۱) ابزارهای سیستمی/سطح‌بالا همیشه و حتی اگر بودجه تنگ باشد
   const forceNames = ["list_services", "list_chats"];
   if (wantsSend) forceNames.push("send_message_to", "resolve_recipient");
   if (wantsMemory) forceNames.push("memory_search");
@@ -400,7 +366,6 @@ export function selectAndCompactTools<T extends { type: "function"; function: { 
     if (t) push(t, true);
   }
 
-  // ۲) بقیه‌ی ابزارها با سقف هر پلتفرم
   for (const item of scored) {
     if (selected.length >= maxTools) break;
     if (META_TOOL_NAMES.has(item.tool.function.name.toLowerCase())) continue;
@@ -411,10 +376,6 @@ export function selectAndCompactTools<T extends { type: "function"; function: { 
   return selected;
 }
 
-/**
- * کل آرایه‌ی پیام‌ها + ابزارها را پیش از فراخوانی مدل به سقف توکن ایمن می‌رساند.
- * پیام‌های قدیمی‌تر ابزارها یا تاریخچه را فشرده می‌کند، اما سیستم‌پرامپت و آخرین پیام کاربر را حفظ می‌کند.
- */
 export function fitContextToBudget<M extends { role: string; content?: string; tool_calls?: unknown }>(
   messages: M[],
   tools: any[],
@@ -428,7 +389,6 @@ export function fitContextToBudget<M extends { role: string; content?: string; t
 
   if (!over()) return { messages: msgs, tools: activeTools, trimmed: false };
 
-  // سقف کاراکتر متناسب با بودجه (فارسی ~۱.۴۵ کاراکتر بر توکن)
   const budgetChars = Math.floor(maxInputTokens * 1.45);
   const shorten = (index: number, limit: number) => {
     const content = msgs[index]?.content;
@@ -438,7 +398,6 @@ export function fitContextToBudget<M extends { role: string; content?: string; t
     }
   };
 
-  // ۱. خروجی ابزارها: قدیمی‌ترها خیلی کوتاه، تازه‌ترین‌ها (که مدل همین حالا لازمشان دارد) بلندتر
   const lastUser = () => {
     for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].role === "user") return i;
     return -1;
@@ -450,15 +409,12 @@ export function fitContextToBudget<M extends { role: string; content?: string; t
     if (!over()) return done();
   }
 
-  // ۲. کاهش تعداد ابزارها (حداقل ۶ ابزار می‌ماند)
   while (activeTools.length > 6 && over()) {
     activeTools = activeTools.slice(0, Math.max(6, Math.floor(activeTools.length * 0.6)));
     trimmed = true;
   }
   if (!over()) return done();
 
-  // ۳. حذف نوبت‌های قدیمی. هر پیام assistant دارای tool_calls همراه با نتیجه‌ی ابزارهایش حذف می‌شود
-  //    تا پیام tool بدون والد نماند (مدل‌ها چنین دنباله‌ای را رد می‌کنند). آخرین پیام کاربر و هر چه بعد از آن است می‌ماند.
   const first = msgs[0]?.role === "system" ? 1 : 0;
   while (over()) {
     const keepFrom = lastUser();
@@ -473,7 +429,6 @@ export function fitContextToBudget<M extends { role: string; content?: string; t
   msgs = dropOrphanToolMessages(msgs);
   if (!over()) return done();
 
-  // ۴. کوتاه کردن پیام‌های بلند باقی‌مانده (به‌جز سیستم‌پرامپت)، از بلندترین
   for (const limit of [Math.floor(budgetChars * 0.3), Math.floor(budgetChars * 0.18), 400]) {
     const order = msgs
       .map((m, index) => ({ index, size: typeof m.content === "string" ? m.content.length : 0 }))
@@ -485,7 +440,6 @@ export function fitContextToBudget<M extends { role: string; content?: string; t
     }
   }
 
-  // ۵. سیستم‌پرامپت متناسب با بودجه کوتاه می‌شود (قواعد اصلی در ابتدای آن است و می‌ماند)
   if (first === 1) {
     for (const share of [0.45, 0.3, 0.2]) {
       shorten(0, Math.max(500, Math.floor(budgetChars * share)));
@@ -493,7 +447,6 @@ export function fitContextToBudget<M extends { role: string; content?: string; t
     }
   }
 
-  // ۶. آخرین راه: بدون ابزار، تا مدل دست‌کم پاسخ متنی بدهد
   if (activeTools.length) {
     activeTools = [];
     trimmed = true;
@@ -505,7 +458,6 @@ export function fitContextToBudget<M extends { role: string; content?: string; t
   return done();
 }
 
-/** پیام‌های tool که پیام assistantِ دارای tool_calls قبل از آن‌ها حذف شده را کنار می‌گذارد. */
 function dropOrphanToolMessages<M extends { role: string; tool_calls?: unknown }>(messages: M[]): M[] {
   const out: M[] = [];
   let open = false;
@@ -553,10 +505,6 @@ function distillValue(value: unknown, maxItems: number, maxStr: number, depth = 
   return String(value);
 }
 
-/**
- * خروجی ابزار را پیش از ارسال به مدل فشرده می‌کند تا ضمن حفظ شناسه‌ها و ساختار معتبر JSON،
- * کانتکست مدل‌های کوچک پر نشود.
- */
 export function compactToolResult(result: unknown, maxChars = 2400): string {
   if (result === undefined) return "null";
   const raw = JSON.stringify(result);

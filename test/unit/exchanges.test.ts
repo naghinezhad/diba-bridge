@@ -56,7 +56,6 @@ describe("صرافی‌ها — ساختار مشترک", () => {
 
   test("نماد با هر جداکننده‌ای به دو بخش پایه و نقل‌قول شکسته می‌شود", () => {
     for (const input of ["btc/usdt", "BTC-USDT", "btc_usdt", " btc usdt "]) assert.deepEqual(splitSymbol(input), ["BTC", "USDT"], input);
-    // نماد چسبیده قابل تفکیک نیست و همان‌طور که هست به صرافی داده می‌شود
     assert.equal(splitSymbol("BTCUSDT"), null);
   });
 
@@ -73,7 +72,6 @@ describe("صرافی‌ها — درخواست‌ها با سرور آزمایش
   let server: Server;
   let base = "";
   const seen: { method: string; url: string; headers: IncomingMessage["headers"]; body: string }[] = [];
-  /** پاسخ هر مسیر؛ کلید = pathname */
   const replies: Record<string, unknown> = {
     // Binance
     "/api/v3/ticker/24hr": { symbol: "BTCUSDT", lastPrice: "65000.10", bidPrice: "65000.00", askPrice: "65000.20", highPrice: "66000", lowPrice: "64000", volume: "1234.5", priceChangePercent: "1.25" },

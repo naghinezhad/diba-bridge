@@ -34,7 +34,6 @@ describe("name matching", () => {
       assert.ok(forward.score >= 88, `${fa} → ${en}: ${forward.score}`);
       assert.ok(backward.score >= 88, `${en} → ${fa}: ${backward.score}`);
     }
-    // نام کوچک در برابر نام کامل هم پیدا می‌شود
     assert.ok(matchName("John", ["جان اسمیت"]).score >= 88);
   });
 
@@ -45,10 +44,8 @@ describe("name matching", () => {
   });
 
   test("نام‌های هم‌اسکلت ولی متفاوت با اطمینان بالا تطبیق نمی‌شوند", () => {
-    // «عماد» و «Mohammad» هر دو اسکلت md دارند، ولی نام یکسانی نیستند
     assert.ok(matchName("عماد", ["Mohammad"]).score < 88, String(matchName("عماد", ["Mohammad"]).score));
     assert.ok(matchName("Emad", ["Mohammad"]).score < 88);
-    // «محمد» هم پیدا می‌شود، ولی برای ارسال خودکار به تأیید نیاز دارد
     assert.ok(matchName("محمد", ["Mohammad"]).score >= 60);
     assert.ok(matchName("محمد", ["Mohammad"]).score < 88);
     assert.ok(matchName("عماد", ["Emad"]).score >= 88);

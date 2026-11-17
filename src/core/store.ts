@@ -6,7 +6,6 @@ import type { ProviderDef } from "./types.js";
 
 export interface ProviderState {
   enabled: boolean;
-  /** «دریافت پیام‌ها» روشن است؟ */
   receive?: boolean;
   values: Record<string, string>;
 }
@@ -15,40 +14,27 @@ export interface StoredConfig {
   version: 1;
   mcpToken: string;
   admin?: { salt: string; hash: string };
-  /** کلید امضای کوکی نشست داشبورد */
   sessionSecret: string;
-  /** با هر خروج یا تغییر رمز زیاد می‌شود و همه‌ی نشست‌های قبلی باطل می‌شوند */
   sessionEpoch: number;
   providers: Record<string, ProviderState>;
-  /** اتصال دیبا روتر برای دستیار داشبورد */
   dibarouter?: DibaRouterStored;
-  /** تنظیمات نصب/میزبانی */
   settings?: AppSettingsStored;
-  /** مشخصات سازمان/پروژه و وضعیت نصب اولیه */
   profile?: ProfileStored;
-  /** فهرست پروکسی‌ها و انتخاب خودکار سریع‌ترین */
   proxyPool?: ProxyPoolStored;
 }
 
 export interface ProxyPoolStored {
-  /** با روشن بودن، پس از هر سنجش سریع‌ترین پروکسی سالم فعال می‌شود */
   auto: boolean;
-  /** پروکسی‌ای که از این فهرست فعال شده است */
   activeId?: string;
   entries: ProxyEntry[];
 }
 
-/** مشخصاتی که در نصب اولیه گرفته می‌شود */
 export interface ProfileStored {
-  /** نام و نام خانوادگی مسئول */
   ownerName?: string;
-  /** نام شرکت یا پروژه */
   orgName?: string;
   description?: string;
   website?: string;
-  /** لوگو به شکل data URL (فقط تصویر بیت‌مپ؛ در سرور اعتبارسنجی می‌شود) */
   logo?: string;
-  /** زمان تکمیل نصب اولیه (ISO)؛ تا وقتی خالی است نصب‌کننده نمایش داده می‌شود */
   installedAt?: string;
 }
 
@@ -63,7 +49,6 @@ export interface AppSettingsStored {
   mcpWriteLimit?: number;
 }
 
-/** خواندن تنظیمات پیش از ساخت موتور (برای اعمال پروکسی در startup) */
 export function readStoredSettings(dataDir: string): AppSettingsStored {
   try {
     const parsed = JSON.parse(readFileSync(join(dataDir, "config.json"), "utf8"));
@@ -75,7 +60,6 @@ export function readStoredSettings(dataDir: string): AppSettingsStored {
 
 export function dockerizeLocalProxy(value: string): string {
   if (process.env.DOCKER_CONTAINER !== "1" || !value) return value;
-  // «socks5://user:pass@127.0.0.1:1080» هم باید بازنویسی شود، نه فقط نشانی بدون احراز هویت
   return value.replace(
     /(\/\/(?:[^@/\s]*@)?)(?:127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\])(?=[:/]|$)/i,
     (_match, prefix: string) => `${prefix}host.docker.internal`,
@@ -97,16 +81,11 @@ export interface DibaRouterStored {
 export const DIBAROUTER_DEFAULT_BASE = "https://dibarouter.ir/api/v1";
 export const DIBAROUTER_DEFAULT_MODEL = "dibachain/diba-router-free";
 
-/** نام متغیر محیطی برای هر فیلد: BALE_TOKEN ، RUBIKA_BASE_URL ، ... */
 export function envKey(providerId: string, fieldKey: string): string {
   const snake = fieldKey.replace(/([a-z0-9])([A-Z])/g, "$1_$2");
   return `${providerId}_${snake}`.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
 }
 
-/**
- * ذخیره‌سازی تنظیمات در یک فایل JSON (data/config.json).
- * مقادیر env همیشه بر مقادیر فایل اولویت دارند.
- */
 export class ConfigStore {
   private data: StoredConfig;
   private file: string;
@@ -134,14 +113,12 @@ export class ConfigStore {
         const parsed = JSON.parse(readFileSync(this.file, "utf8"));
         const merged: StoredConfig = { ...defaults(), ...parsed };
         if (!merged.mcpToken) merged.mcpToken = newToken();
-        // فایل‌های نسخه‌ی قبل این فیلدها را نداشتند
         if (!parsed.sessionSecret || !parsed.mcpToken) {
           this.data = merged;
           this.persist();
         }
         return merged;
       } catch (err) {
-        // فایل خراب را دور نمی‌ریزیم؛ کنارش نگه می‌داریم
         const backup = `${this.file}.corrupt-${Date.now()}`;
         copyFileSync(this.file, backup);
         console.error(`[diba-mcp] config.json خراب بود؛ نسخه‌ی خراب در ${backup} ذخیره شد و فایل تازه ساخته شد`, err);
@@ -158,7 +135,6 @@ export class ConfigStore {
     renameSync(tmp, this.file);
   }
 
-  // ---------- توکن MCP ----------
   get mcpToken(): string {
     return this.env.MCP_TOKEN || this.data.mcpToken;
   }
@@ -171,7 +147,6 @@ export class ConfigStore {
     return this.data.mcpToken;
   }
 
-  // ---------- ادمین ----------
   get admin() {
     return this.data.admin;
   }
@@ -181,27 +156,23 @@ export class ConfigStore {
     this.persist();
   }
 
-  /** حذف رمز ادمین؛ اجرای بعدی دوباره در داشبورد رمز تازه می‌خواهد */
   clearAdmin() {
     delete this.data.admin;
     this.data.sessionEpoch++;
     this.persist();
   }
 
-  // ---------- نشست‌ها ----------
   get sessionSecret(): string {
     return this.data.sessionSecret;
   }
   get sessionEpoch(): number {
     return this.data.sessionEpoch;
   }
-  /** همه‌ی نشست‌های داشبورد را باطل می‌کند */
   bumpSessionEpoch() {
     this.data.sessionEpoch++;
     this.persist();
   }
 
-  // ---------- دیبا روتر ----------
   dibarouter() {
     const saved = this.data.dibarouter ?? {};
     const baseUrl = (this.env.DIBAROUTER_BASE_URL || saved.baseUrl || DIBAROUTER_DEFAULT_BASE).trim().replace(/\/+$/, "");
@@ -238,7 +209,6 @@ export class ConfigStore {
     return this.dibarouter();
   }
 
-  // ---------- تنظیمات نصب ----------
   settings() {
     const saved = this.data.settings ?? {};
     const envSocks = this.env.SOCKS_PROXY || this.env.socks_proxy;
@@ -278,13 +248,11 @@ export class ConfigStore {
     return this.settings();
   }
 
-  // ---------- فهرست پروکسی ----------
   proxyPool(): ProxyPoolStored {
     const pool = this.data.proxyPool;
     return { auto: Boolean(pool?.auto), activeId: pool?.activeId, entries: Array.isArray(pool?.entries) ? pool.entries : [] };
   }
 
-  /** نشانی‌ها ممکن است رمز داشته باشند؛ مثل بقیه‌ی config.json فقط با دسترسی 600 ذخیره می‌شوند */
   saveProxyPool(pool: ProxyPoolStored) {
     this.data.proxyPool = { auto: pool.auto, activeId: pool.activeId, entries: pool.entries };
     if (!pool.activeId) delete this.data.proxyPool.activeId;
@@ -292,7 +260,6 @@ export class ConfigStore {
     return this.proxyPool();
   }
 
-  // ---------- مشخصات و نصب اولیه ----------
   profile() {
     const p = this.data.profile ?? {};
     return {
@@ -306,12 +273,10 @@ export class ConfigStore {
     };
   }
 
-  /** نصب اولیه هنوز کامل نشده است */
   get needsInstall(): boolean {
     return !this.data.profile?.installedAt;
   }
 
-  /** مقادیر باید از قبل اعتبارسنجی شده باشند؛ رشته‌ی خالی یعنی حذف آن فیلد */
   updateProfile(patch: Partial<Pick<ProfileStored, (typeof PROFILE_TEXT_FIELDS)[number] | "logo">>) {
     const next: ProfileStored = { ...(this.data.profile ?? {}) };
     for (const key of [...PROFILE_TEXT_FIELDS, "logo"] as const) {
@@ -331,12 +296,10 @@ export class ConfigStore {
     return this.profile();
   }
 
-  // ---------- سرویس‌ها ----------
   state(id: string): ProviderState {
     return this.data.providers[id] ?? { enabled: false, values: {} };
   }
 
-  /** مقدار نهایی هر فیلد + اینکه از env آمده یا نه */
   resolve(def: ProviderDef): { values: Record<string, string>; fromEnv: Record<string, boolean> } {
     const st = this.state(def.id);
     const values: Record<string, string> = {};
@@ -354,7 +317,6 @@ export class ConfigStore {
     return { values, fromEnv };
   }
 
-  /** دریافت خودکار پیام‌ها (env: BALE_RECEIVE=true) */
   isReceiving(def: ProviderDef): boolean {
     const envFlag = this.env[`${def.id.toUpperCase()}_RECEIVE`];
     if (envFlag !== undefined) return envFlag === "true" || envFlag === "1";
@@ -370,7 +332,6 @@ export class ConfigStore {
     return this.state(def.id).enabled;
   }
 
-  /** آیا روشن/خاموش بودن از env کنترل می‌شود؟ */
   enabledFromEnv(def: ProviderDef): boolean {
     return this.env[`${def.id.toUpperCase()}_ENABLED`] !== undefined;
   }

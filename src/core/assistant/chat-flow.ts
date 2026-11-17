@@ -1,11 +1,3 @@
-/**
- * مسیر «به [نام] پیام بده» در گفتگوی داشبورد.
- *
- * برخلاف ابزار MCP (agent.ts) که می‌تواند پیام صریح را مستقیم بفرستد، داشبورد
- * همیشه دو مرحله‌ای است: اول نزدیک‌ترین مخاطب و متن پیشنهادی را نشان می‌دهد و
- * **فقط پس از تأیید کاربر** ارسال می‌کند. پیدا کردن مخاطب، ساخت پیش‌نویس و
- * تشخیص «بله/لغو/شماره» با همان ماژول‌های مشترک دستیار انجام می‌شود.
- */
 import type { DibaRouterConfig } from "../dibarouter.js";
 import type { DibaMcpEngine } from "../engine.js";
 import { normalizePersonName, publicTitle, type PendingCandidate } from "../memory.js";
@@ -45,11 +37,9 @@ function cleanName(value: string): string {
     .trim();
 }
 
-/** الگوهای واضح «به X پیام بده/بفرست/بگو» را تشخیص می‌دهد. */
 export function parseSendIntent(text: string): SendIntent | undefined {
   const raw = String(text ?? "").trim();
   if (!raw) return undefined;
-  // جمله‌ی پرسشی را دستور ارسال تلقی نکن («\b» برای فارسی کار نمی‌کند، پس مرز با فاصله)
   if (/[؟?]\s*$/.test(raw) || /^(?:آیا|ایا)(?:\s|$)/.test(raw)) return undefined;
   const patterns = [
     /(?:^|\s)(?:به|برای)\s+(?<name>[^،.!؟]{2,60}?)\s*[،,]?\s+پیام\s*(?:بده|بفرست|بفرستد|بدهد)(?=\s|$|[،.!؟])\s*(?:که|:)?\s*(?<instruction>[\s\S]*)$/i,
@@ -113,7 +103,6 @@ function confirmReply(engine: DibaMcpEngine, selected: Option, text: string): st
   );
 }
 
-/** انتخاب کاربر از فهرست: شماره، ترتیب («دومی»)، شماره‌ی ابتدای جمله یا بخشی از نام */
 function pickCandidate<T extends Option>(text: string, candidates: T[]): T | undefined {
   const index = selectionIndex(text);
   if (index !== undefined) return candidates[index];
@@ -131,7 +120,6 @@ function pickCandidate<T extends Option>(text: string, candidates: T[]): T | und
   return undefined;
 }
 
-/** مرحله‌ی اول: پیدا کردن نزدیک‌ترین مخاطبین و ساخت پیش‌نویس (بدون ارسال). */
 export async function prepareSend(
   engine: DibaMcpEngine,
   config: DibaRouterConfig,
@@ -143,10 +131,8 @@ export async function prepareSend(
   const aborted = () => opts.signal?.aborted === true;
   if (aborted()) return { ok: false, reply: "درخواست لغو شد.", toolTrace };
 
-  // «علی در تلگرام» → نام: علی، سرویس: تلگرام
   const target = splitProviderHint(intent.recipient, providerWords(engine));
   const started = performance.now();
-  // گروه‌ها هم جستجو می‌شوند تا بتوانیم دقیق بگوییم «فقط گروه پیدا شد»
   const resolution = await resolveRecipient(engine, target.name, {
     provider: target.provider,
     allowGroup: true,
@@ -217,7 +203,6 @@ export async function prepareSend(
   };
 }
 
-/** مرحله‌ی دوم: انتخاب/تأیید/لغو بر اساس پیام بعدی کاربر. */
 export async function handleSendReply(
   engine: DibaMcpEngine,
   config: DibaRouterConfig,
@@ -236,7 +221,6 @@ export async function handleSendReply(
     engine.memory.clearPending(conversationId);
     return { ok: true, reply: "ارسال لغو شد.", toolTrace, pending: false };
   }
-  // درخواست ارسال جدید، پیش‌نویس قبلی را کنار می‌گذارد
   if (parseSendIntent(clean)) {
     engine.memory.clearPending(conversationId);
     return undefined;
@@ -280,7 +264,6 @@ export async function handleSendReply(
     };
   }
 
-  // برداشت اتمی: اگر دو کلیک/دو درخواست هم‌زمان برسد، فقط یکی ارسال می‌شود
   const claimed = engine.memory.takePending(conversationId);
   if (!claimed) {
     return { ok: false, reply: "این پیش‌نویس قبلاً ارسال یا لغو شده است؛ دوباره درخواست بده.", toolTrace };

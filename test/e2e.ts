@@ -1,12 +1,3 @@
-/**
- * تست سرتاسری: یک سرویس آزمایشی (ProviderDef) + یک API جعلی بالا می‌آورد،
- * سرور diba-mcp را اجرا می‌کند و با کلاینت واقعی MCP ابزارها را صدا می‌زند.
- *   npm test
- *
- * سرویس‌های واقعی (بله، تلگرام، ...) وابسته به شبکه و حساب واقعی هستند؛ اینجا
- * همان مسیرهای پلتفرم (engine، صندوق، تست کامل، داشبورد و MCP) با یک سرویس
- * ساختگی پوشش داده می‌شوند و خودِ سرویس‌ها تست واحد دارند.
- */
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -25,7 +16,6 @@ const listen = (app: express.Express) =>
     const s = app.listen(0, "127.0.0.1", () => ok({ url: `http://127.0.0.1:${(s.address() as AddressInfo).port}`, close: () => s.close() }));
   });
 
-// ---------- API جعلی سرویس آزمایشی ----------
 const seen: any[] = [];
 const pending: any[] = [];
 let nextId = 100;
@@ -63,7 +53,6 @@ mock.get("/updates", (req, res) => {
   res.json({ ok: true, result: batch });
 });
 
-// دیبا روتر جعلی: پاسخ SSE کند، برای تست دکمه‌ی «توقف» دستیار
 let drOpen = false;
 let drClosed = false;
 mock.post("/dr/chat/completions", (req, res) => {
@@ -80,7 +69,6 @@ mock.post("/dr/chat/completions", (req, res) => {
 
 const upstream = await listen(mock);
 
-// ---------- سرویس آزمایشی ----------
 const demo: ProviderDef = {
   id: "demo",
   name: "Demo",
@@ -178,7 +166,7 @@ const { store } = dibaMcp.engine;
 store.update("demo", { enabled: true, values: { token: "GOOD", baseUrl: upstream.url, defaultChatId: "555" } });
 
 const app = express();
-app.use("/diba-mcp", dibaMcp.router()); // مثل الحاق به پروژه‌ی میزبان، با پیشوند
+app.use("/diba-mcp", dibaMcp.router());
 const srv = await listen(app);
 const mcpUrl = new URL(`${srv.url}/diba-mcp/mcp`);
 
@@ -228,7 +216,6 @@ try {
 
   await step("دریافت پیام خاموش است ← get_updates مستقیم از API", async () => {
     pushUpdate(777, "سلام از سرویس");
-    // ابزار get_updates برای این سرویس تعریف نشده؛ صندوق مستقیم تست می‌شود
     const { added } = await dibaMcp.engine.inbox.fetchOnce("demo");
     assert.equal(added, 1);
     const list = dibaMcp.engine.inbox.messages("demo");
@@ -262,7 +249,7 @@ try {
     const conv = dibaMcp.engine.inbox.messages("demo", { chatId: "777" });
     assert.equal(conv[0].direction, "out");
     assert.equal(conv[0].source, "dashboard");
-    assert.equal(conv[0].chatTitle, "مریم"); // عنوان از پیام‌های قبلی همان چت
+    assert.equal(conv[0].chatTitle, "مریم");
     const chat = dibaMcp.engine.inbox.chats("demo").find((c) => c.chatId === "777")!;
     assert.equal(chat.lastDirection, "out");
   });
@@ -314,8 +301,8 @@ try {
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type") ?? "", /text\/event-stream/);
     const reader = res.body!.getReader();
-    await reader.read(); // اولین رویداد استریم
-    ac.abort(); // همان چیزی که دکمه‌ی «توقف» انجام می‌دهد
+    await reader.read();
+    ac.abort();
     await reader.cancel().catch(() => {});
 
     const end = Date.now() + 2000;

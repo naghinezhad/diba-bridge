@@ -1,10 +1,4 @@
 /* ================================================================
-   dibaMCP — دیباچین Design System v1.0.0
-   Brand: Primary Blue #2563eb · Slate Neutrals · RTL-first · Logical Properties
-   Based on dibachain-design-system.md
-   ================================================================ */
-
-/* ================================================================
    1. DESIGN TOKENS
    ================================================================ */
 :root {
@@ -174,7 +168,6 @@ code, .mono {
   grid-template-columns: 260px 1fr;
   min-height: 100vh;
 }
-/* دستیار دیبا به‌صورت ستون چپ ثابت */
 .shell.with-agent {
   grid-template-columns: 260px minmax(0, 1fr) 360px;
 }
@@ -699,7 +692,6 @@ code, .mono {
 .switch input:checked + span {
   background: var(--brand);
 }
-/* داشبورد RTL است؛ knob در حالت روشن از راست به چپ می‌رود */
 .switch input:checked + span::after {
   right: 23px;
   left: auto;
@@ -1157,7 +1149,6 @@ code, .mono {
   flex: 1 1 200px;
   background: #ffffff;
 }
-/* ورود جایگزین با کوکی/nشست */
 .auth-import {
   margin-top: var(--s-2);
   padding-top: var(--s-3);
@@ -2138,7 +2129,6 @@ pre.json .b { color: var(--error); }
   box-shadow: var(--shadow-sm);
 }
 
-/* صفحه‌بندی گزارش‌ها */
 .pager {
   display: flex;
   align-items: center;
@@ -2533,7 +2523,6 @@ pre.json .b { color: var(--error); }
     padding: 8px 12px;
   }
   .nav a span { display: none; }
-  /* در موبایل هر گروه فقط آیکن خودش را نشان می‌دهد؛ زیرمنوی ایرانی/خارجی پنهان است */
   .nav-group { display: contents; }
   .nav-group .nav-sub,
   .nav-group.open .nav-sub { display: none; }
@@ -4630,7 +4619,6 @@ body { background: var(--bg-soft); }
   flex: 1;
   min-width: 180px;
 }
-/* عنوانِ تک‌خطی نباید عرض کارت را از صفحه بیرون ببرد */
 .trg-card { min-width: 0; }
 .trg-card-top > .trg-title { flex: 1 1 auto; }
 .trg-meta span, .trg-card .hint, .trg-err { overflow-wrap: anywhere; }
@@ -5109,9 +5097,6 @@ body.agent-fullscreen { overflow: hidden; }
 .auth-browser-login .btn-primary { width: 100%; }
 .auth-browser-login .test-out { margin-top: 8px; }
 
-/* ================================================================
-   INSTALLER (نصب اولیه) + profile fields + service picker
-   ================================================================ */
 .inst-page {
   min-height: 100vh;
   display: grid;
@@ -5195,7 +5180,6 @@ body.agent-fullscreen { overflow: hidden; }
 .inst-welcome h1 { margin: 0 0 10px; font-size: 25px; font-weight: 900; color: var(--ink); letter-spacing: -.4px; }
 .inst-welcome p { margin: 0 auto 22px; max-width: 46ch; color: var(--muted); font-size: 14px; line-height: 1.9; }
 .inst-plan { list-style: none; margin: 0 auto; padding: 0; display: grid; gap: 10px; text-align: start; max-width: 480px; }
-/* شماره و متن دو ستون جدا هستند تا در هیچ عرضی روی هم نیفتند */
 .inst-plan li {
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr);
@@ -5297,7 +5281,6 @@ body.agent-fullscreen { overflow: hidden; }
 .svc-tick svg { width: 12px; height: 12px; }
 .svc-item:has(input:checked) .svc-tick { background: var(--brand); border-color: var(--brand); color: #fff; }
 
-/* install page (داخل داشبورد) */
 /* Overview: only active services are listed; the rest is one summary line */
 .ov-more {
   display: block; width: 100%; margin-top: 8px; padding: 9px 12px;
@@ -5310,9 +5293,6 @@ body.agent-fullscreen { overflow: hidden; }
 .ov-empty { margin: 4px 0; }
 .ov-prov[hidden] { display: none; }
 
-/* ================================================================
-   PROXY LIST (تنظیمات)
-   ================================================================ */
 .shell .settings-proxy-pool { grid-column: 1 / -1; }
 .px-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .px-head > div { flex: 1 1 320px; min-width: 0; }
@@ -5321,7 +5301,6 @@ body.agent-fullscreen { overflow: hidden; }
 .px-add .settings-actions { margin-top: 10px; }
 #px-table { margin-top: 16px; }
 .px-list { display: grid; gap: 8px; }
-/* نشانی همیشه یک سطر کامل دارد؛ آمار و دکمه‌ها زیر آن می‌نشینند تا در ستون باریک هم بریده نشود */
 .px-row {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;
@@ -5356,9 +5335,6 @@ body.agent-fullscreen { overflow: hidden; }
   .px-actions { border-top: 0; padding-top: 0; }
 }
 
-/* ================================================================
-   MOBILE HARDENING — هیچ صفحه‌ای نباید اسکرول افقی بدهد
-   ================================================================ */
 .shell .main { min-width: 0; }
 .shell .panel, .settings-grid > *, .install-grid > * { min-width: 0; }
 .settings-meta code { min-width: 0; overflow-wrap: anywhere; text-align: left; }
@@ -5369,7 +5345,6 @@ body.agent-fullscreen { overflow: hidden; }
   .seg button { flex: 1 1 auto; }
 }
 
-/* ستون‌ها بر اساس جای واقعیِ موجود می‌شکنند (پنل دستیار ممکن است باز باشد) */
 .install-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 16px; align-items: start; }
 .shell .install-grid .panel { align-self: start; min-width: 0; }
 .shell .install-grid .panel + .panel { margin-top: 0; }

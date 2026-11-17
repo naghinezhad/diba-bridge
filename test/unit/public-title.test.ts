@@ -19,7 +19,6 @@ describe("publicTitle", () => {
     assert.equal(publicTitle("989121234567@s.whatsapp.net", "private"), "مخاطب بدون نام (…4567)");
     assert.equal(publicTitle("1203630@g.us", "group"), "گروه بدون نام");
     assert.equal(publicTitle("7939…674@lid", "private", ""), "مخاطب بدون نام (…9674)");
-    // نام کاربری عددی هم چیزی را لو نمی‌دهد
     assert.equal(publicTitle("768654080|1", "private", "989121234567"), "مخاطب بدون نام (…0801)");
   });
 });

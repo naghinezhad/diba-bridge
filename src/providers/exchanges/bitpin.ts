@@ -1,8 +1,3 @@
-/**
- * بیت‌پین — API رسمی نسخه‌ی ۱ (https://docs.bitpin.ir).
- * کلید و رمز API یک بار با `usr/authenticate/` به توکن دسترسی کوتاه‌عمر تبدیل می‌شود و
- * درخواست‌های حساب با `Authorization: Bearer` می‌روند. قیمت بازارهای تومانی به تومان است.
- */
 import type { ProviderContext } from "../../core/types.js";
 import { ProviderError } from "../../core/types.js";
 import { baseOf, credentials, decimalMinus, defineExchange, exchangeFetch, query, splitByQuote, trimDecimal, type ExchangeAdapter } from "./common.js";
@@ -10,12 +5,10 @@ import { baseOf, credentials, decimalMinus, defineExchange, exchangeFetch, query
 const NAME = "بیت‌پین";
 const BASE = "https://api.bitpin.ir";
 const QUOTES = ["IRT", "TMN", "USDT"];
-/** توکن دسترسی حدود ۱۵ دقیقه اعتبار دارد؛ کمی زودتر دوباره گرفته می‌شود */
 const TOKEN_TTL_MS = 12 * 60_000;
 
 const tokens = new Map<string, { access: string; expires: number }>();
 
-/** نماد بیت‌پین: «BTC_IRT» یا «BTC_USDT» */
 function toSymbol(input: string): string {
   const parts = splitByQuote(input, QUOTES);
   if (!parts) return input.trim().toUpperCase();
@@ -48,13 +41,11 @@ async function authed(ctx: ProviderContext, method: "GET" | "POST" | "DELETE", p
   try {
     return await send(false);
   } catch (err: any) {
-    // توکن ممکن است زودتر از انتظار باطل شده باشد؛ یک بار با توکن تازه دوباره امتحان می‌شود
     if (err?.details?.status !== 401) throw err;
     return send(true);
   }
 }
 
-/** بعضی فهرست‌های بیت‌پین آرایه‌ی ساده‌اند و بعضی صفحه‌بندی‌شده با results */
 const rowsOf = (data: any): any[] => (Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []);
 
 const adapter: ExchangeAdapter = {
@@ -92,7 +83,6 @@ const adapter: ExchangeAdapter = {
   },
 
   async balances(ctx) {
-    // balance کل موجودی است و frozen بخشی از آن که در سفارش‌ها درگیر است
     return rowsOf(await authed(ctx, "GET", "/api/v1/wlt/wallets/")).map((w) => ({ asset: String(w.asset), free: decimalMinus(w.balance, w.frozen), locked: trimDecimal(w.frozen ?? "0") }));
   },
 

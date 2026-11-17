@@ -1,4 +1,3 @@
-/** OKX — REST API v5، بازار spot (https://www.okx.com/docs-v5/en/) */
 import type { ProviderContext } from "../../core/types.js";
 import { ProviderError } from "../../core/types.js";
 import { baseOf, credentials, defineExchange, exchangeFetch, hmacBase64, query, splitSymbol, type CandleInterval, type ExchangeAdapter } from "./common.js";
@@ -7,12 +6,10 @@ const NAME = "او‌کی‌ایکس";
 const BASE = "https://www.okx.com";
 const INTERVALS: Record<CandleInterval, string> = { "1m": "1m", "5m": "5m", "15m": "15m", "1h": "1H", "4h": "4H", "1d": "1D", "1w": "1W" };
 
-/** امضای OKX: Base64(HMAC-SHA256) روی «timestamp + METHOD + مسیر با پرس‌وجو + بدنه» */
 export function okxSign(secret: string, timestamp: string, method: string, requestPath: string, body = ""): string {
   return hmacBase64("sha256", secret, `${timestamp}${method.toUpperCase()}${requestPath}${body}`);
 }
 
-/** OKX خطا را با HTTP 200 و code غیر "0" برمی‌گرداند؛ جزئیات سفارش ناموفق در sMsg است */
 function unwrap(data: any): any[] {
   if (String(data?.code) !== "0") {
     const detail = Array.isArray(data?.data) ? data.data.map((d: any) => d?.sMsg).filter(Boolean).join("، ") : "";
@@ -114,7 +111,6 @@ const adapter: ExchangeAdapter = {
         ordType: order.type,
         sz: order.quantity,
         px: order.price,
-        // بدون این، مقدار خرید market به واحد ارز نقل‌قول تفسیر می‌شود
         tgtCcy: order.type === "market" ? "base_ccy" : undefined,
       })
     )[0];

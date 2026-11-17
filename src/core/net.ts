@@ -1,15 +1,6 @@
-/**
- * لایه‌ی شبکه: همه‌ی درخواست‌های بیرونی از اینجا رد می‌شوند تا بشود
- * برای سرورهای خارج از ایران، ترافیک را از یک پراکسی داخل ایران عبور داد.
- *
- *   SOCKS_PROXY=socks5://user:pass@host:1080     ← مثلاً تونل ssh -D به سرور ایران
- *   HTTPS_PROXY=http://host:3128                 ← پراکسی HTTP معمولی
- *   NO_PROXY=localhost,127.0.0.1                 ← آدرس‌هایی که مستقیم بروند
- */
 import { Agent, EnvHttpProxyAgent, fetch as undiciFetch, FormData as UndiciFormData, ProxyAgent, Socks5ProxyAgent, type Dispatcher } from "undici";
 
 let dispatcher: Dispatcher = new Agent();
-/** اتصال مستقیم، مستقل از پراکسی تنظیم‌شده */
 const directDispatcher: Dispatcher = new Agent();
 let mode: { type: "direct" | "http" | "socks5"; target?: string } = { type: "direct" };
 
@@ -23,7 +14,6 @@ function hidePassword(url: string) {
   }
 }
 
-/** یک بار در شروع برنامه صدا زده می‌شود (env را می‌خواند) */
 export function configureProxy(env: NodeJS.ProcessEnv = process.env) {
   const socks = env.SOCKS_PROXY || env.socks_proxy;
   const http = env.HTTPS_PROXY || env.https_proxy || env.HTTP_PROXY || env.http_proxy;
@@ -58,12 +48,10 @@ export function netFetch(url: string, init: FetchInit = {}) {
   return undiciFetch(url, { ...init, dispatcher });
 }
 
-/** درخواست بدون پراکسی؛ برای سرویس‌هایی که از هر دو مسیر در دسترس‌اند (مثل دیبا روتر) */
 export function netFetchDirect(url: string, init: FetchInit = {}) {
   return undiciFetch(url, { ...init, dispatcher: directDispatcher });
 }
 
-/** یک dispatcher مستقل برای یک پروکسی مشخص (برای سنجش، بدون تغییر پروکسی فعال برنامه) */
 function dispatcherFor(proxyUrl: string): Dispatcher {
   const u = new URL(proxyUrl);
   if (/^socks/i.test(u.protocol)) {
@@ -75,10 +63,6 @@ function dispatcherFor(proxyUrl: string): Dispatcher {
   return new ProxyAgent(proxyUrl);
 }
 
-/**
- * زمان یک درخواست کامل (اتصال، TLS و پاسخ) از راه یک پروکسی مشخص را اندازه می‌گیرد.
- * خطای اتصال، پایان مهلت و پاسخ خطای خودِ پروکسی (407 یا 5xx) ناموفق حساب می‌شود.
- */
 export async function probeViaProxy(proxyUrl: string, target: string, timeoutMs: number): Promise<{ ok: boolean; ms: number; error?: string }> {
   let agent: Dispatcher | undefined;
   const started = performance.now();
@@ -110,10 +94,8 @@ const EXPLAIN: Record<string, string> = {
   TimeoutError: "جوابی نیامد (احتمالاً محدودیت IP خارجی)",
 };
 
-/** خطای شبکه را به یک جمله‌ی فارسی قابل فهم تبدیل می‌کند */
 export function describeNetError(err: any): string {
   if (err?.name === "TimeoutError") return `${EXPLAIN.TimeoutError} — Timeout`;
-  // عمیق‌ترین علت را پیدا کن
   const chain: any[] = [];
   for (let e = err; e && chain.length < 5; e = e.cause) chain.push(e);
   const text = chain.map((e) => String(e?.message ?? "")).join(" | ");

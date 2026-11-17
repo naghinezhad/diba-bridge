@@ -1,9 +1,3 @@
-/**
- * واتس‌اپ با حساب کاربری (WhatsApp Web / Multi-Device).
- *
- * QR مستقیم از پروتکل WhatsApp Web تولید می‌شود؛ بدون مرورگر، OpenWA،
- * API Token یا کد لینک. برای اسکن از WhatsApp → Linked devices استفاده کنید.
- */
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";

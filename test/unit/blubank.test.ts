@@ -6,7 +6,6 @@ import { configureProxy } from "../../src/core/net.ts";
 import type { ProviderContext } from "../../src/core/types.ts";
 import { blubank, decodeProto, extractStrings } from "../../src/providers/blubank.ts";
 
-/** یک پیام protobuf ساده می‌سازد: field 1 = varint، field 2 = string. */
 function protoFixture(): Buffer {
   const parts: Buffer[] = [];
   parts.push(Buffer.from([0x08, 0x2a])); // field 1, varint 42
@@ -55,13 +54,9 @@ describe("blubank provider", () => {
   });
 
   test("decodeProto روی بافر ناقص/نامعتبر بی‌نهایت حلقه نمی‌زند", () => {
-    // varint بدون بایت پایانی
     assert.doesNotThrow(() => decodeProto(Buffer.from([0x08, 0x80])));
-    // طول رشته بیشتر از بافر
     assert.doesNotThrow(() => decodeProto(Buffer.from([0x12, 0xff, 0x01, 0x41])));
-    // wire ناشناخته
     assert.doesNotThrow(() => decodeProto(Buffer.from([0x0f])));
-    // بافر خالی
     assert.deepEqual(decodeProto(Buffer.alloc(0)), []);
   });
 

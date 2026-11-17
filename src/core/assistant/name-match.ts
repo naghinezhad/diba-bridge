@@ -1,20 +1,4 @@
-/**
- * تطبیق نام بین فارسی و انگلیسی.
- *
- * مشکل اصلی: کاربر می‌گوید «عماد» ولی مخاطب در لیست چت‌ها «Emad» است (یا برعکس).
- * مقایسه‌ی متنی این دو هیچ‌وقت جواب نمی‌دهد، پس اینجا یک «کلید آوایی» می‌سازیم:
- *   حروف فارسی → لاتین → یکسان‌سازی digraphها → حذف صدادارها و h → فشرده‌سازی
- * در نتیجه «عماد» و «Emad» هر دو «md» می‌شوند و «جان» و «John» هر دو «jn».
- *
- * اسکلت صامت تنها کافی نیست: «عماد» و «Mohammad» هم به «md» می‌رسند. برای همین
- * یک «کلید ساده» (همه‌ی صدادارها = a) هم می‌سازیم و فقط وقتی هر دو نزدیک بودند
- * تطبیق را با اطمینان بالا اعلام می‌کنیم.
- *
- * عمداً بدون مدل/شبکه کار می‌کند تا تشخیص همیشه و سریع انجام شود.
- */
-
 const ZWNJ = /[\u200B-\u200F\u202A-\u202E\uFEFF]/g;
-/** اعراب، تشدید، تنوین، علامت‌های قرآنی و کشیده */
 const MARKS = /[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g;
 
 const LETTERS: Record<string, string> = {
@@ -66,7 +50,6 @@ const EN_DIGITS = "0123456789";
 const FA_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
 const AR_DIGITS = "٠١٢٣٤٥٦٧٨٩";
 
-/** یکسان‌سازی متن: حروف عربی/فارسی، اعداد، نیم‌فاصله. علائم را نگه می‌دارد. */
 export function cleanText(input: unknown): string {
   return String(input ?? "")
     .normalize("NFKC")
@@ -84,7 +67,6 @@ export function cleanText(input: unknown): string {
     .trim();
 }
 
-/** متن آماده‌ی مقایسه: بدون علائم، حروف کوچک. */
 export function foldName(input: unknown): string {
   return cleanText(input)
     .toLowerCase()
@@ -93,7 +75,6 @@ export function foldName(input: unknown): string {
     .trim();
 }
 
-/** حروف فارسی را به لاتین برمی‌گرداند؛ لاتین را دست‌نخورده نگه می‌دارد. */
 export function toLatin(input: unknown): string {
   const text = foldName(input);
   let out = "";
@@ -103,7 +84,6 @@ export function toLatin(input: unknown): string {
   return out.replace(/\s+/g, " ").trim();
 }
 
-/** کلید آوایی: «عماد»→md، «Emad»→md، «جان اسمیت»→jn smt، «John Smith»→jn smt. */
 export function phoneticKey(input: unknown): string {
   const latin = toLatin(input)
     .toLowerCase()
@@ -132,11 +112,6 @@ export function phoneticKey(input: unknown): string {
     .trim();
 }
 
-/**
- * کلید «ساده» برای جدا کردن نام‌هایی که اسکلت صامت یکسانی دارند:
- * همه‌ی صدادارها به a تبدیل و h حذف می‌شود، پس «عماد/Emad» یکی می‌مانند
- * ولی «Mohammad» جدا می‌شود (amad ≠ mamad).
- */
 export function simpleKey(input: unknown): string {
   return toLatin(input)
     .toLowerCase()
@@ -153,7 +128,6 @@ export function simpleKey(input: unknown): string {
     .trim();
 }
 
-/** فاصله‌ی لِوِنشتاین (برای تشابه تقریبی) */
 export function levenshtein(a: string, b: string): number {
   if (a === b) return 0;
   if (!a.length) return b.length;
@@ -180,7 +154,6 @@ function digitsOnly(value: string): string {
   return String(value ?? "").replace(/\D/g, "");
 }
 
-/** هسته‌ی شماره: حذف ۰۰/۰ ابتدایی و کد کشور ۹۸ تا ۰۹۱۲… و +۹۸۹۱۲… یکی شوند */
 function phoneCore(value: string): string {
   let digits = digitsOnly(value);
   digits = digits.replace(/^00/, "").replace(/^98/, "").replace(/^0+/, "");
@@ -194,10 +167,6 @@ function tokens(value: string): string[] {
     .filter(Boolean);
 }
 
-/**
- * نزدیکی «ساختار صدادار» بین دو نام، توکن‌به‌توکن.
- * «John» با «جان اسمیت» باید ۱ شود، ولی «عماد» با «Mohammad» کمتر از ۰٫۸۵.
- */
 function simpleCoverage(queryTokens: string[], fieldTokens: string[]): number {
   if (!queryTokens.length || !fieldTokens.length) return 1;
   const fieldKeys = fieldTokens.map((token) => simpleKey(token).replace(/\s/g, ""));
@@ -214,12 +183,10 @@ function simpleCoverage(queryTokens: string[], fieldTokens: string[]): number {
   return total / queryTokens.length;
 }
 
-/** کیفیت تطبیق دو توکن، بین ۰ و ۱ */
 function tokenQuality(queryToken: string, queryKey: string, candidateToken: string, candidateKey: string): number {
   if (!queryToken || !candidateToken) return 0;
   if (queryToken === candidateToken) return 1;
   if (queryKey && candidateKey && queryKey === candidateKey) {
-    // اسکلت صامت یکی است؛ اگر «کلید ساده» هم نزدیک باشد، همان نام است
     const simpleSim = similarity(
       simpleKey(queryToken).replace(/\s/g, ""),
       simpleKey(candidateToken).replace(/\s/g, ""),
@@ -242,10 +209,6 @@ export interface NameMatch {
   reason: string;
 }
 
-/**
- * امتیاز تطبیق یک عبارت جستجو با چند فیلد (عنوان، نام کاربری، نام‌های دیگر).
- * ۱۰۰ = یکسان، ۹۰+ = با اطمینان، ۶۰–۸۹ = نزدیک، کمتر = حدس.
- */
 export function matchName(query: string, fields: Array<string | undefined>): NameMatch {
   const q = foldName(query).replace(/^@+/, "");
   if (!q) return { score: 0, field: "", reason: "" };
@@ -267,8 +230,6 @@ export function matchName(query: string, fields: Array<string | undefined>): Nam
     const fTokens = tokens(field);
     const fKeys = fTokens.map((token) => phoneticKey(token));
 
-    // «همان نام» بودن: اسکلت صامت یکی است و ساختار صدادار هم نزدیک است.
-    // فقط همین حالت می‌تواند به تطبیق با اطمینان بالا برسد؛ وگرنه حداکثر «نزدیک».
     const sameName = simpleCoverage(qTokens, fTokens) >= 0.85;
 
     let local = { score: 0, reason: "" };
@@ -291,7 +252,6 @@ export function matchName(query: string, fields: Array<string | undefined>): Nam
       }
     }
 
-    // پوشش توکن‌های پرسش: «John» باید «جان اسمیت» را پیدا کند
     if (qTokens.length && fTokens.length) {
       let total = 0;
       for (let i = 0; i < qTokens.length; i++) {
@@ -325,26 +285,22 @@ export function matchName(query: string, fields: Array<string | undefined>): Nam
       }
     }
 
-    // نام‌های هم‌اسکلت ولی متفاوت (عماد/Mohammad) هرگز «قطعی» نمی‌شوند
     if (!sameName) local.score = Math.min(local.score, 74);
     consider(local.score, field, local.reason);
   }
   return best;
 }
 
-/** آیا این متن شبیه شماره موبایل است؟ */
 export function looksLikePhone(value: string): boolean {
   const digits = digitsOnly(value);
   return digits.length >= 8 && /^[+\d\s\-()۰-۹٠-٩]+$/.test(cleanText(value));
 }
 
-/** آیا این متن نام کاربری است؟ */
 export function looksLikeUsername(value: string): boolean {
   const text = cleanText(value).trim();
   return /^@[A-Za-z0-9_.]{2,32}$/.test(text) || /^[A-Za-z0-9_.]{3,32}$/.test(text);
 }
 
-/** نمایش کوتاه و امن یک نام برای پاسخ به مدل/کاربر */
 export function shortName(value: string, max = 48): string {
   return cleanText(value).replace(/\s+/g, " ").slice(0, max);
 }

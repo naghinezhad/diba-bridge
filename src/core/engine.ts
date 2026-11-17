@@ -17,11 +17,9 @@ import { summarizeForLog } from "./media.js";
 import { ConfigStore, envKey } from "./store.js";
 import { ProviderError, type AuthStep, type ProviderContext, type ProviderDef, type ToolDef } from "./types.js";
 
-// پیام‌های خطای اعتبارسنجی به فارسی
 z.config(z.locales.fa());
 
 export const SERVER_NAME = "diba-mcp";
-/** نسخه از package.json خوانده می‌شود (هم در src و هم در dist دو پوشه بالاتر است) */
 export const SERVER_VERSION: string = (() => {
   try {
     return JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version;
@@ -31,7 +29,6 @@ export const SERVER_VERSION: string = (() => {
 })();
 
 export interface EngineOptions {
-  /** پوشه‌ی ذخیره‌ی config.json */
   dataDir: string;
   providers: ProviderDef[];
   env?: NodeJS.ProcessEnv;
@@ -44,23 +41,15 @@ export interface CallResult {
   error?: string;
 }
 
-/**
- * قلب پروژه: نگهداری سرویس‌ها، تنظیمات، لاگ و ساخت سرور MCP.
- * هم نسخه‌ی مستقل (main.ts) و هم پروژه‌ی میزبان از همین کلاس استفاده می‌کنند.
- */
 export class DibaMcpEngine {
   readonly store: ConfigStore;
   readonly logger: CallLogger;
-  /** حافظه‌ی ماندگار دستیار: گفتگوها، اطلاعات کاربر و مخاطبان */
   readonly memory: AssistantMemory;
   readonly providers: ProviderDef[];
-  /** متغیرهای محیطی مؤثر (برای حالت MCP و تنظیمات) */
   readonly env: NodeJS.ProcessEnv;
-  /** صندوق پیام‌های ورودی */
   readonly inbox: Inbox;
   readonly triggers: TriggerEngine;
   readonly version = SERVER_VERSION;
-  /** سقف فراخوانی ابزارهای «نوشتنی» (ارسال پیام و ...) از طرف مدل در دقیقه */
   private writeLimiter: RateLimiter;
   private toolIndex = new Map<string, { tool: ToolDef<any>; provider: ProviderDef }>();
 
@@ -88,7 +77,6 @@ export class DibaMcpEngine {
     };
   }
 
-  /** چیزی که ابزارها و تست‌ها از یک سرویس می‌بینند */
   contextOf(p: ProviderDef): ProviderContext {
     return {
       config: this.store.resolve(p).values,
@@ -97,13 +85,11 @@ export class DibaMcpEngine {
     };
   }
 
-  /** تغییر تنظیمات یک سرویس + هماهنگ کردن دریافت پیام‌ها */
   updateProvider(id: string, patch: { enabled?: boolean; receive?: boolean; values?: Record<string, string> }) {
     this.store.update(id, patch);
     this.inbox.sync();
   }
 
-  /** اجرای یک کار مدیریتی (فقط از داشبورد) */
   async runAction(id: string, name: string): Promise<CallResult> {
     const p = this.provider(id);
     const action = p?.actions?.[name];
@@ -123,15 +109,10 @@ export class DibaMcpEngine {
     return this.providers.find((p) => p.id === id);
   }
 
-  /** ابزارهایی که الان قابل استفاده‌اند (سرویس فعال + تنظیمات کامل) */
   activeTools() {
     return [...this.toolIndex.values()].filter(({ provider }) => this.store.isReady(provider));
   }
 
-  /**
-   * خلاصه‌ی وضعیت سرویس‌ها برای ابزار `list_services`.
-   * هم MCP و هم دستیار داشبورد از همین منبع استفاده می‌کنند تا پاسخ‌ها grounded باشند.
-   */
   servicesSummary() {
     const inboxStatus = new Map(this.inbox.statuses().map((s) => [s.provider, s]));
     return this.providers.map((p) => {
@@ -152,7 +133,6 @@ export class DibaMcpEngine {
     });
   }
 
-  /** چت‌های دریافتی برای ابزار `list_chats` (MCP و دستیار). */
   chatsSummary(provider?: string) {
     const statuses = this.inbox.statuses().filter((s) => s.supported && (!provider || s.provider === provider));
     return {
@@ -161,9 +141,7 @@ export class DibaMcpEngine {
     };
   }
 
-  /** پیدا کردن مخاطب با نام/شماره/نام کاربری در همه‌ی سرویس‌های آماده */
   async resolveRecipient(name: string, opts: { provider?: string; force?: boolean; allowGroup?: boolean } = {}) {
-    // «علی در تلگرام» → نام و سرویس جدا می‌شوند، مگر اینکه سرویس صریح داده شده باشد
     const target = opts.provider ? { name, provider: opts.provider } : splitProviderHint(name, providerWords(this));
     return resolveRecipient(this, target.name, {
       provider: target.provider,
@@ -173,7 +151,6 @@ export class DibaMcpEngine {
     });
   }
 
-  /** دستیار دیبا؛ یک نمونه برای کل موتور تا کش و وضعیتش بین درخواست‌ها بماند */
   get assistant(): DibaAgent {
     this.agent ??= new DibaAgent(this);
     return this.agent;
@@ -187,10 +164,6 @@ export class DibaMcpEngine {
       .join("، ");
   }
 
-  /**
-   * ارسال پیام به مخاطب با نام — با resolve، کنترل کیفیت، ضدتکرار و محدودیت نرخ.
-   * این مسیر برای دستیار است تا بدون پرسیدن، اما ایمن، ارسال کند.
-   */
   async sendToRecipient(input: {
     recipient: string;
     text: string;
@@ -215,7 +188,6 @@ export class DibaMcpEngine {
     let confidence = 100;
     let resolutionReason: string | undefined;
     if (input.chatId && input.provider) {
-      // مسیر داخلی: مخاطب قبلاً resolve شده است
       best = {
         provider: input.provider,
         chatId: input.chatId,
@@ -248,7 +220,6 @@ export class DibaMcpEngine {
         result: { candidates },
       };
     }
-    // گروه/کانال قبل از بررسی اطمینان رد می‌شود تا دلیلِ درست به کاربر گفته شود
     if (isGroupLike(best.type) && !input.allowGroup) {
       return {
         ok: false,
@@ -284,7 +255,6 @@ export class DibaMcpEngine {
       };
     }
 
-    // محدودیت نرخ برای کاهش ریسک بن
     const perMinute = this.memory.sendsSince(60_000, { provider: best.provider, chatId: best.chatId }).length;
     if (perMinute >= 2) {
       return { ok: false, ms: ms(), error: "به این مخاطب در یک دقیقه‌ی اخیر دو پیام/تلاش ارسال شده؛ کمی صبر کن تا ریسک محدودیت کم شود." };
@@ -353,7 +323,6 @@ export class DibaMcpEngine {
     };
   }
 
-  /** اجرای یک ابزار با اعتبارسنجی ورودی و ثبت لاگ */
   async callTool(name: string, rawArgs: unknown, source: "mcp" | "dashboard"): Promise<CallResult> {
     const entry = this.toolIndex.get(name);
     const meta = ["list_services", "list_chats", "memory_search", "memory_remember", "resolve_recipient", "send_message_to"].includes(name);
@@ -374,7 +343,6 @@ export class DibaMcpEngine {
       return { ...r, ms };
     };
 
-    // ابزارهای سیستمی (در toolIndex نیستند) — برای MCP و دستیار یکسان
     if (!entry) {
       const a = (rawArgs && typeof rawArgs === "object" ? rawArgs : {}) as Record<string, any>;
       if (name === "list_services") return finish({ ok: true, result: this.servicesSummary() });
@@ -438,12 +406,10 @@ export class DibaMcpEngine {
     }
   }
 
-  /** پیام‌های ارسالی حساب را در گفتگوی همان چت ثبت می‌کند */
   private recordSent(provider: ProviderDef, toolName: string, args: Record<string, unknown>, result: unknown, source: "mcp" | "dashboard") {
     if (!/_send_/.test(toolName)) return;
     try {
       const r: any = result;
-      // بعضی سرویس‌ها (مثل بله با حساب کاربری) نام کاربری را به شناسه‌ی چت تبدیل می‌کنند
       const resolvedChat = r?.chat_id ?? r?.result?.chat_id;
       const chatId = String(resolvedChat || args.chat_id || this.store.resolve(provider).values.defaultChatId || "");
       if (!chatId) return;
@@ -473,7 +439,6 @@ export class DibaMcpEngine {
     }
   }
 
-  /** تست اتصال یک سرویس (حتی اگر غیرفعال باشد) */
   async testProvider(id: string): Promise<CallResult> {
     const p = this.provider(id);
     const started = performance.now();
@@ -491,10 +456,6 @@ export class DibaMcpEngine {
     }
   }
 
-  /**
-   * یک قدم از ورود با حساب کاربری (کلاینت غیررسمی) را اجرا می‌کند.
-   * start ← شماره، code ← کد پیامک/بله، password ← رمز دومرحله‌ای، logout ← خروج.
-   */
   async authStep(
     id: string,
     step: "start" | "code" | "password" | "logout",
@@ -529,10 +490,6 @@ export class DibaMcpEngine {
     }
   }
 
-  /**
-   * ورود جایگزین با کوکی/نشست آماده (برای سرویس‌هایی مثل اینستاگرام که
-   * ورود با رمز از سمت سرور مسدود می‌شود).
-   */
   async authImport(id: string, raw: string): Promise<CallResult> {
     const p = this.provider(id);
     const started = performance.now();
@@ -551,15 +508,11 @@ export class DibaMcpEngine {
       this.inbox.sync();
       return { ok: true, ms: ms(), result };
     } catch (err: any) {
-      // کوکی ورودی هم می‌تواند راز باشد و نباید در پیام خطا برگردد
       const secrets = [String(raw ?? ""), ...Object.values(ctx.config).filter((v) => v && v.length > 8)];
       return { ok: false, ms: ms(), error: redact(err?.message ?? String(err), secrets) };
     }
   }
 
-  /**
-   * باز کردن پنجره‌ی واقعی مرورگر برای ورود (Instagram iframe را مسدود می‌کند).
-   */
   async authBrowserStart(id: string): Promise<CallResult> {
     const started = performance.now();
     const p = this.provider(id);
@@ -593,9 +546,6 @@ export class DibaMcpEngine {
     }
   }
 
-  /**
-   * وضعیت QR جاری برای ورود (بدون شروع دوباره‌ی جریان).
-   */
   async authQr(id: string): Promise<CallResult> {
     const started = performance.now();
     const p = this.provider(id);
@@ -608,16 +558,8 @@ export class DibaMcpEngine {
     }
   }
 
-  /**
-   * یک McpServer تازه با ابزارهای فعال می‌سازد.
-   * در حالت HTTP بدون‌نشست، برای هر درخواست یک نمونه ساخته می‌شود تا تغییر
-   * تنظیمات در داشبورد بلافاصله اعمال شود.
-   */
   createMcpServer(): McpServer {
     // MCP_MODE:
-    //   agent (پیش‌فرض) → فقط ابزار سطح‌بالای diba_agent
-    //   tools          → ابزارهای سطح‌پایین قبلی
-    //   both           → هر دو
     const mode = String(this.env.MCP_MODE ?? "agent").toLowerCase();
     const agentMode = mode !== "tools";
     const lowLevel = mode === "tools" || mode === "both";
@@ -857,7 +799,6 @@ export class DibaMcpEngine {
     return server;
   }
 
-  // ---------- داده برای داشبورد ----------
   describeProviders() {
     return this.providers.map((p) => {
       const { values, fromEnv } = this.store.resolve(p);
@@ -913,7 +854,6 @@ export class DibaMcpEngine {
           ...f,
           envName: envKey(p.id, f.key),
           fromEnv: fromEnv[f.key],
-          // مقدار secret هیچ‌وقت کامل به مرورگر نمی‌رود
           value: f.type === "secret" ? "" : values[f.key] ?? "",
           masked: f.type === "secret" && values[f.key] ? maskSecret(values[f.key]) : "",
           hasValue: Boolean(values[f.key]),

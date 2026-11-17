@@ -1,31 +1,11 @@
-/**
- * فهرست پروکسی‌ها و انتخاب خودکار سریع‌ترین.
- *
- * هر پروکسی چند بار و روی چند مقصد سنجیده می‌شود. از نمونه‌ها یک «امتیاز» ساخته می‌شود
- * (کمتر = بهتر) که هم سرعت را می‌بیند، هم پایداری و هم سابقه:
- *
- *   امتیاز = EWMA(میانه‌ی تأخیر) × (۱ + ۴ × نرخ خطا) + ۰٫۵ × لرزش
- *
- *   - میانه به‌جای میانگین: یک نمونه‌ی کند اتفاقی نتیجه را خراب نمی‌کند.
- *   - EWMA: سنجش تازه وزن بیشتری دارد ولی سابقه یک‌باره دور ریخته نمی‌شود.
- *   - جریمه‌ی خطا: پروکسی سریع ولی ناپایدار از پروکسی کمی کندتر و مطمئن عقب می‌افتد.
- *   - لرزش (پراکندگی نمونه‌ها): اتصال یکنواخت به اتصال پرنوسان ترجیح دارد.
- *
- * جابه‌جایی هم «هیسترزیس» دارد: پروکسی فعال فقط وقتی عوض می‌شود که گزینه‌ی تازه دست‌کم
- * ۱۵٪ بهتر باشد، مگر اینکه پروکسی فعال از کار افتاده باشد. این جلوی رفت‌وبرگشت بی‌دلیل را می‌گیرد.
- */
 import { createHash } from "node:crypto";
 
 export type ProxyKind = "http" | "socks5";
 
 export interface ProxyStats {
-  /** میانگین نمایی تأخیر (میلی‌ثانیه) */
   ewmaMs?: number;
-  /** لرزش آخرین سنجش (میلی‌ثانیه) */
   jitterMs?: number;
-  /** نرخ خطا در پنجره‌ی اخیر، بین ۰ و ۱ */
   failRate: number;
-  /** تعداد سنجش‌های پیاپیِ کاملاً ناموفق */
   consecutiveFailures: number;
   checks: number;
   lastCheckedAt?: string;
@@ -34,7 +14,6 @@ export interface ProxyStats {
 
 export interface ProxyEntry {
   id: string;
-  /** نشانی کامل، شامل نام کاربری و رمز در صورت وجود */
   url: string;
   kind: ProxyKind;
   label?: string;
@@ -49,25 +28,19 @@ export interface ProbeSample {
 }
 
 export const PROXY_POOL_LIMIT = 50;
-/** وزن سنجش تازه در EWMA */
 const EWMA_ALPHA = 0.4;
-/** وزن سنجش تازه در نرخ خطا */
 const FAIL_ALPHA = 0.5;
 const FAIL_PENALTY = 4;
 const JITTER_WEIGHT = 0.5;
-/** گزینه‌ی تازه باید دست‌کم این نسبت بهتر باشد تا جای پروکسی فعال را بگیرد */
 export const SWITCH_MARGIN = 0.15;
-/** پس از این تعداد سنجش ناموفق پیاپی، پروکسی از کار افتاده حساب می‌شود */
 export const DEAD_AFTER = 2;
 
 export class ProxyUrlError extends Error {}
 
-/** نشانی پروکسی را بررسی و یکدست می‌کند؛ فقط http، https و socks5 پذیرفته می‌شود */
 export function normalizeProxyUrl(raw: string): { url: string; kind: ProxyKind } {
   const text = String(raw ?? "").trim();
   if (!text) throw new ProxyUrlError("نشانی پروکسی خالی است");
   if (text.length > 500) throw new ProxyUrlError("نشانی پروکسی خیلی طولانی است");
-  // «host:port» بدون پروتکل، پروکسی HTTP فرض می‌شود
   const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : `http://${text}`;
   let u: URL;
   try {
@@ -85,12 +58,10 @@ export function normalizeProxyUrl(raw: string): { url: string; kind: ProxyKind }
   return { url: `${scheme}://${auth}${u.hostname}:${port}`, kind };
 }
 
-/** شناسه‌ی پایدار از روی نشانی؛ افزودن دوباره‌ی همان پروکسی تکراری نمی‌سازد */
 export function proxyId(url: string): string {
   return createHash("sha256").update(url).digest("hex").slice(0, 12);
 }
 
-/** رمز را پنهان می‌کند؛ هر چیزی که به مرورگر یا لاگ می‌رود باید از همین تابع رد شود */
 export function maskProxyUrl(url: string): string {
   try {
     const u = new URL(url);
@@ -101,7 +72,6 @@ export function maskProxyUrl(url: string): string {
   }
 }
 
-/** متن چندخطی (هر خط یک پروکسی) را به فهرست تبدیل می‌کند؛ خط‌های نامعتبر جدا گزارش می‌شوند */
 export function parseProxyList(text: string): { entries: { url: string; kind: ProxyKind }[]; invalid: string[] } {
   const entries: { url: string; kind: ProxyKind }[] = [];
   const invalid: string[] = [];
@@ -131,13 +101,11 @@ function median(values: number[]): number {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-/** میانگین قدر مطلق فاصله از میانه؛ در برابر نمونه‌ی پرت مقاوم‌تر از انحراف معیار است */
 function jitter(values: number[], center: number): number {
   if (values.length < 2) return 0;
   return values.reduce((sum, v) => sum + Math.abs(v - center), 0) / values.length;
 }
 
-/** آمار پروکسی را با نمونه‌های یک دور سنجش به‌روز می‌کند (آمار قبلی دست نمی‌خورد) */
 export function updateStats(prev: ProxyStats, samples: ProbeSample[], now = new Date()): ProxyStats {
   const ok = samples.filter((s) => s.ok).map((s) => s.ms);
   const roundFail = samples.length ? (samples.length - ok.length) / samples.length : 1;
@@ -157,7 +125,6 @@ export function updateStats(prev: ProxyStats, samples: ProbeSample[], now = new 
   return next;
 }
 
-/** امتیاز یک پروکسی؛ کمتر بهتر است. پروکسی سنجیده‌نشده یا ازکارافتاده امتیاز بی‌نهایت می‌گیرد */
 export function proxyScore(stats: ProxyStats): number {
   if (stats.ewmaMs === undefined || stats.consecutiveFailures >= DEAD_AFTER) return Number.POSITIVE_INFINITY;
   return stats.ewmaMs * (1 + FAIL_PENALTY * stats.failRate) + JITTER_WEIGHT * (stats.jitterMs ?? 0);
@@ -167,18 +134,12 @@ export function isAlive(stats: ProxyStats): boolean {
   return Number.isFinite(proxyScore(stats));
 }
 
-/** پروکسی‌های روشن و سالم، از بهترین به بدترین */
 export function rankProxies(pool: ProxyEntry[]): ProxyEntry[] {
   return pool
     .filter((p) => p.enabled && isAlive(p.stats))
     .sort((a, b) => proxyScore(a.stats) - proxyScore(b.stats) || a.id.localeCompare(b.id));
 }
 
-/**
- * پروکسی فعال بعدی را انتخاب می‌کند.
- * اگر پروکسی فعال سالم باشد، فقط وقتی کنار می‌رود که بهترین گزینه دست‌کم SWITCH_MARGIN بهتر باشد.
- * خروجی undefined یعنی هیچ پروکسی سالمی نیست.
- */
 export function chooseProxy(pool: ProxyEntry[], currentId?: string): { id?: string; reason: "none" | "keep" | "first" | "faster" | "failover" } {
   const ranked = rankProxies(pool);
   const best = ranked[0];
@@ -197,7 +158,6 @@ export interface ProbeOptions {
   targets: string[];
   rounds: number;
   timeoutMs: number;
-  /** چند پروکسی هم‌زمان سنجیده شوند */
   concurrency: number;
 }
 
@@ -208,10 +168,6 @@ export const DEFAULT_PROBE: ProbeOptions = {
   concurrency: 6,
 };
 
-/**
- * همه‌ی پروکسی‌های روشن را می‌سنجد و فهرست را با آمار تازه برمی‌گرداند.
- * نمونه‌های هر پروکسی پشت‌سرهم گرفته می‌شوند (تا خودش را کند نکند) ولی پروکسی‌ها موازی‌اند.
- */
 export async function probePool(pool: ProxyEntry[], probe: ProbeFn, opts: Partial<ProbeOptions> = {}): Promise<ProxyEntry[]> {
   const o = { ...DEFAULT_PROBE, ...opts };
   const result = pool.map((p) => ({ ...p, stats: { ...p.stats } }));
@@ -226,7 +182,6 @@ export async function probePool(pool: ProxyEntry[], probe: ProbeFn, opts: Partia
         } catch (err: any) {
           samples.push({ ok: false, ms: o.timeoutMs, error: String(err?.message ?? err) });
         }
-        // پروکسی‌ای که دو بار پشت‌سرهم جواب نداده را بیشتر معطل نمی‌کنیم
         if (samples.length >= 2 && samples.every((s) => !s.ok)) break;
       }
       entry.stats = updateStats(entry.stats, samples);

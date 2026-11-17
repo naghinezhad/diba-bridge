@@ -64,12 +64,9 @@ describe("ModelLimits", () => {
     assert.equal(await limits.limitOf(source, "missing"), undefined);
     assert.equal(calls, 1, "فهرست مدل‌ها باید کش شود");
 
-    // سرور گفت سقف واقعی ۲۰۴۸ است
     assert.equal(limits.learn(source, "small", 2048), 2048);
     assert.equal(await limits.limitOf(source, "small"), 2048);
-    // عدد بزرگ‌تر بعدی، آموخته‌ی کوچک‌تر را خراب نمی‌کند
     assert.equal(limits.learn(source, "small", 4096), 2048);
-    // با تغییر نشانی روتر، کش قبلی معتبر نیست
     assert.equal(await limits.limitOf("https://other.example/v1", "small"), 8192);
     assert.equal(calls, 2);
   });
@@ -123,7 +120,6 @@ describe("fitContextToBudget", () => {
       assert.equal(last.role, "user");
       assert.match(last.content, /وضعیت تلگرام/, "آخرین پیام کاربر باید بماند");
 
-      // هیچ پیام tool نباید بدون assistantِ دارای tool_calls قبل از خودش باشد
       let open = false;
       for (const message of fitted.messages) {
         if (message.role === "tool") assert.ok(open, "پیام tool بدون والد");
@@ -185,13 +181,11 @@ describe("DibaRouter connection", () => {
   test("وقتی پراکسی برنامه از کار افتاده، دیبا روتر از مسیر مستقیم خوانده می‌شود", async () => {
     const router = await mockRouter(() => ({ status: 200, type: "application/json", body: models }));
     try {
-      // پراکسی‌ای که هیچ‌کس روی آن گوش نمی‌دهد
       configureProxy({ HTTPS_PROXY: "http://127.0.0.1:9", HTTP_PROXY: "http://127.0.0.1:9" } as any);
       const list = await dibaRouterModels(config(router.baseUrl));
       assert.equal(list.length, 1);
       assert.equal(list[0].context_length, 8192);
       assert.equal(list[0].supports_tools, true);
-      // مسیر سالم به خاطر سپرده می‌شود و درخواست بعدی هم جواب می‌گیرد
       assert.equal((await dibaRouterModels(config(router.baseUrl))).length, 1);
     } finally {
       configureProxy({} as any);

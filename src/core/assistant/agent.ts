@@ -1,22 +1,3 @@
-/**
- * دستیار دیبا — سطح‌بالای MCP.
- *
- * یک ابزار، یک جمله‌ی ساده، و تمام کار:
- *   «به عماد داخل تلگرام پیام بده که فردا جلسه داریم»
- *   → نیت: send | سرویس: telegram_client | مخاطب: عماد | متن: فردا جلسه داریم
- *
- * ترتیب پیدا کردن مخاطب همان چیزی است که کاربر انتظار دارد:
- *   ۱) چت‌های اخیر (شامل نام‌های انگلیسی با تطبیق آوایی)
- *   ۲) مخاطبین/دفترچه‌ی سرویس
- *   ۳) حافظه‌ی دستیار، و در آخر نزدیک‌ترین گزینه‌ها
- *
- * سیاست ارسال:
- *   - پیام صریح + مخاطب قطعی  → همان‌جا ارسال می‌شود (بدون سؤال اضافه)
- *   - پیام باید ساخته شود یا تطبیق قطعی نیست → پیش‌نویس + تأیید
- *   - چند گزینه → فهرست کوتاه بدون chat_id
- *
- * محدودیت‌ها: بدون افشای chat_id، با کش کوتاه‌مدت، خروجی فشرده برای کانتکست.
- */
 import { createHmac } from "node:crypto";
 import { dibaRouterChat } from "../dibarouter.js";
 import type { DibaMcpEngine } from "../engine.js";
@@ -102,7 +83,6 @@ export interface AgentResult {
   auto_sent?: boolean;
   suggestions?: string[];
   source?: string;
-  /** خروجی خام ابزار وقتی assistant خودش ابزار را اجرا کرده است */
   result?: unknown;
 }
 
@@ -110,7 +90,6 @@ const MAX_CANDIDATES = 6;
 const MAX_CHATS = 12;
 const ALIAS_TTL_MS = 10 * 60_000;
 
-/** تاریخ‌ها ممکن است ISO، ثانیه، میلی‌ثانیه یا میکروثانیه باشند. */
 function isoDate(value: unknown): string {
   if (typeof value === "number" && Number.isFinite(value) && value > 0) {
     const ms = value > 1e14 ? value / 1000 : value > 1e11 ? value : value * 1000;
@@ -125,12 +104,10 @@ export class DibaAgent {
 
   constructor(private readonly engine: DibaMcpEngine) {}
 
-  // ---------------- زیرساخت ----------------
   private providerName(id: string): string {
     return providerName(this.engine, id);
   }
 
-  /** نام نمایشی؛ اگر عنوان فقط شناسه بود، نام کاربری یا نام واقعی جای آن می‌آید. */
   private showName(candidate: { title: string; type?: string; username?: string }): string {
     return publicTitle(candidate.title, candidate.type, candidate.username);
   }
@@ -201,7 +178,6 @@ export class DibaAgent {
     resolution: Resolution,
     conversationId: string,
   ): AgentResult {
-    // گزینه‌های ضعیف حذف می‌شوند تا فهرست کوتاه و قابل‌اعتماد بماند
     const ranked = resolution.candidates
       .filter((candidate, index) => index < 3 || candidate.score >= 85)
       .slice(0, MAX_CANDIDATES);
@@ -220,7 +196,6 @@ export class DibaAgent {
     };
   }
 
-  // ---------------- وضعیت و توانایی‌ها ----------------
   private status(conversationId: string): AgentResult {
     const summary = this.engine.servicesSummary();
     const providers: AgentProvider[] = summary.map((provider) => ({
@@ -269,7 +244,6 @@ export class DibaAgent {
     );
   }
 
-  // ---------------- چت‌ها و پیام‌ها ----------------
   private async listChats(parsed: ParsedRequest, input: AgentInput, conversationId: string): Promise<AgentResult> {
     const explicit = this.normalizeProviderId(input.provider) ?? parsed.providerHints[0];
     const ready = this.engine.describeProviders().filter((provider) => provider.ready);
@@ -384,7 +358,6 @@ export class DibaAgent {
           }
         }
       } catch {
-        // از صندوق استفاده می‌کنیم
       }
     }
     return this.engine.inbox.messages(candidate.provider, { chatId: candidate.chatId, limit: 10 }).map((message) => ({
@@ -395,7 +368,6 @@ export class DibaAgent {
     }));
   }
 
-  // ---------------- اجرای مستقیم ابزار (دسترسی به همه‌ی امکانات) ----------------
   private async runTool(input: AgentInput, conversationId: string): Promise<AgentResult> {
     const name = String(input.tool ?? "").trim();
     if (!name) return this.error("run", "نام ابزار خالی است.", conversationId);
@@ -421,7 +393,6 @@ export class DibaAgent {
           confirmation_token: token,
         };
       }
-      // confirm=true به‌تنهایی کافی نیست: توکن ثابت می‌کند همین ابزار و همین آرگومان‌ها دیده و تأیید شده‌اند
       if (input.confirmation_token !== token) {
         return this.error("run", "توکن تأیید این اجرا معتبر نیست؛ دوباره درخواست بده.", conversationId);
       }
@@ -434,8 +405,6 @@ export class DibaAgent {
     });
   }
 
-  // ---------------- مخاطب ----------------
-  /** آخرین مخاطب همین گفتگو به شکل یک نتیجه‌ی قطعی (برای «بهش بگو …») */
   private lastRecipientResolution(conversationId: string): Resolution | undefined {
     const last = this.engine.memory.sessionRecipient(conversationId);
     if (!last) return undefined;
@@ -461,7 +430,6 @@ export class DibaAgent {
     };
   }
 
-  /** دریافت نسخه‌های املایی/ترنسلیت نام از مدل (فقط وقتی تطبیق قطعی نبود). */
   private async llmAliases(query: string): Promise<string[]> {
     const key = cleanText(query).toLowerCase();
     const cached = this.aliasCache.get(key);
@@ -495,7 +463,6 @@ export class DibaAgent {
           }
         }
       } catch {
-        // بدون مدل هم تطبیق آوایی کار خودش را می‌کند
       }
     }
     const list = values.slice(0, 5);
@@ -556,7 +523,6 @@ export class DibaAgent {
     };
   }
 
-  // ---------------- پیش‌نویس و ارسال ----------------
   private async compose(candidate: ResolvedCandidate, instruction: string, raw: string): Promise<string> {
     const config = this.engine.store.dibarouter();
     const text = await buildDraft(
@@ -596,7 +562,6 @@ export class DibaAgent {
     if (!result.ok) {
       return this.error("send", `ارسال به «${this.showName(candidate)}» انجام نشد: ${result.error}`, conversationId);
     }
-    // ارسال انجام شد؛ فهرست/پیش‌نویس قبلی این گفتگو دیگر معتبر نیست
     this.engine.memory.clearPending(conversationId);
     this.engine.memory.setSessionRecipient(conversationId, {
       provider: candidate.provider,
@@ -660,7 +625,6 @@ export class DibaAgent {
     conversationId: string,
     ephemeral = false,
   ): void {
-    // در حالت dry_run وضعیت ذخیره نمی‌شود تا درخواست بعدی ناخواسته از آن استفاده نکند
     if (ephemeral) return;
     this.engine.memory.setPending({
       conversationId,
@@ -672,7 +636,6 @@ export class DibaAgent {
     });
   }
 
-  // ---------------- جریان اصلی ----------------
   async handle(input: AgentInput): Promise<AgentResult> {
     const conversationId = String(input.conversation_id ?? "").trim() || "mcp";
     const request = String(input.request ?? "").trim();
@@ -717,7 +680,6 @@ export class DibaAgent {
     if (!person && parsed.refersToLast) {
       const last = this.lastRecipientResolution(conversationId);
       if (last?.best) {
-        // همان چتی که کاربر لحظه‌ای پیش به آن پیام داده؛ اگر گروه بوده، اجازه‌اش همان‌جا گرفته شده است
         const groupOk = allowGroup || isGroupLike(last.best.type);
         return this.decide(parsed, input, last.best.title, last.best.provider, groupOk, { resolution: last, viaAlias: false }, conversationId);
       }
@@ -777,7 +739,6 @@ export class DibaAgent {
       );
     }
 
-    // متن پیام دست‌نخورده می‌ماند (نیم‌فاصله و اعداد فارسی حفظ می‌شوند)
     const explicit = String(input.text ?? parsed.message ?? "").trim();
     if (!this.canSend(best.provider)) {
       return this.error(
@@ -796,7 +757,6 @@ export class DibaAgent {
           { recipient: this.publicRecipient(best), draft: explicit },
         );
       }
-      // تطبیق قطعی (به‌خصوص از راه املای نام) → اول تأیید بگیر
       if (viaAlias && !resolution.exact) {
         return this.needConfirmation(best, explicit, conversationId, parsed.message ?? "", allowGroup);
       }
@@ -816,7 +776,6 @@ export class DibaAgent {
     return this.needConfirmation(best, text, conversationId, parsed.message ?? "", allowGroup);
   }
 
-  // ---------------- ادامه‌ی گفتگو (انتخاب/تأیید/متن جدید) ----------------
   private async continuePending(
     pending: PendingSend,
     input: AgentInput,
@@ -832,7 +791,6 @@ export class DibaAgent {
       selected = candidates.find((candidate) => this.selectionToken(candidate) === input.selection_token);
     }
     if (!selected && parsed.selection !== undefined) selected = candidates[parsed.selection];
-    // انتخاب با نوشتن نام فقط وقتی است که درخواست جدیدِ کاملی («به X پیام بده») نباشد
     if (!selected && parsed.action !== "send") {
       const typed = cleanText(input.recipient ?? parsed.person ?? "");
       if (typed) {
@@ -846,9 +804,7 @@ export class DibaAgent {
     }
 
     if (pending.stage === "choose") {
-      // خواندن پیام‌ها ربطی به فهرست انتخاب ندارد و نباید پشت آن گیر کند
       if (parsed.action === "confirm" || parsed.action === "cancel" || parsed.action === "read") return undefined;
-      // هر درخواست کامل و تازه («به مریم در تلگرام پیام بده که ...») فهرست قبلی را باطل می‌کند
       if (parsed.action === "send") {
         this.engine.memory.clearPending(conversationId);
         return undefined;
@@ -870,7 +826,6 @@ export class DibaAgent {
     const selectedCandidate = (pending.selected ?? candidates[0]) as ResolvedCandidate;
     if (!selectedCandidate) return undefined;
 
-    // درخواست ارسال به شخص دیگری (یا سرویس دیگر): پیش‌نویس قبلی را دور بریز
     const askedPerson = cleanText(input.recipient ?? parsed.person ?? "");
     if (parsed.action === "send") {
       const otherProvider =
@@ -904,7 +859,6 @@ export class DibaAgent {
       return this.sendNow(claimed.selected as ResolvedCandidate, claimed.text, allowGroup, conversationId, false);
     }
 
-    // کاربر متن را عوض کرد: همان مخاطب، متن جدید
     const replaceable =
       request.length >= 3 &&
       !isSmallTalk(request) &&
@@ -928,7 +882,6 @@ export class DibaAgent {
     conversationId: string,
     allowGroup: boolean,
   ): Promise<AgentResult> {
-    // متنِ همین درخواست بر متنِ ذخیره‌شده‌ی قدیمی اولویت دارد
     const instruction = String(input.text ?? parsed.message ?? pending.instruction ?? "").trim();
     if (!this.canSend(selected.provider)) {
       return this.error("send", `سرویس ${this.providerName(selected.provider)} ارسال پیام ندارد.`, conversationId);

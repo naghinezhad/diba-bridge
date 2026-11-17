@@ -18,19 +18,14 @@ export interface CallLog {
 export type LogStatusFilter = "all" | "ok" | "fail";
 
 export interface LogQuery {
-  /** شماره‌ی صفحه؛ از ۱ شروع می‌شود */
   page?: number;
-  /** تعداد ردیف در هر صفحه (۱ تا ۱۰۰) */
   pageSize?: number;
-  /** فیلتر وضعیت */
   ok?: LogStatusFilter;
-  /** فیلتر شناسه‌ی سرویس؛ خالی یعنی همه */
   provider?: string;
 }
 
 export interface LogPage {
   items: CallLog[];
-  /** تعداد کل ردیف‌های مطابق فیلتر */
   total: number;
   page: number;
   pageSize: number;
@@ -38,21 +33,13 @@ export interface LogPage {
 }
 
 export interface LoggerOptions {
-  /** پوشه‌ی فایل‌های لاگ. اگر نباشد لاگ فقط در حافظه می‌ماند */
   dir?: string;
-  /** تعداد لاگ نگه‌داشته‌شده در حافظه برای داشبورد */
   max?: number;
-  /** فایل‌های قدیمی‌تر از این تعداد روز پاک می‌شوند */
   retentionDays?: number;
 }
 
 const FILE_RE = /^calls-(\d{4}-\d{2}-\d{2})\.jsonl$/;
 
-/**
- * لاگ فراخوانی ابزارها:
- *  - در حافظه (برای داشبورد، سریع)
- *  - و در فایل روزانه‌ی JSONL در data/logs (بعد از ری‌استارت هم می‌ماند)
- */
 export class CallLogger {
   private items: CallLog[] = [];
   private readonly max: number;
@@ -79,7 +66,6 @@ export class CallLogger {
       .sort((a, b) => b.day.localeCompare(a.day));
   }
 
-  /** حذف فایل‌های قدیمی‌تر از retentionDays */
   prune(now = new Date()) {
     const cutoff = new Date(now.getTime() - this.retentionDays * 86_400_000).toISOString().slice(0, 10);
     for (const f of this.files()) if (f.day < cutoff) rmSync(join(this.dir!, f.name), { force: true });
@@ -93,7 +79,6 @@ export class CallLogger {
         try {
           out.push(JSON.parse(line));
         } catch {
-          /* خط خراب را رد کن */
         }
         if (out.length >= this.max) break;
       }
@@ -120,10 +105,6 @@ export class CallLogger {
     return this.items.slice(0, limit);
   }
 
-  /**
-   * یک صفحه از لاگ‌ها همراه با فیلتر وضعیت/سرویس.
-   * فیلترها قبل از صفحه‌بندی اعمال می‌شوند تا «تعداد کل» و شماره‌ی صفحه‌ها درست باشد.
-   */
   page(query: LogQuery = {}): LogPage {
     const pageSize = Math.min(100, Math.max(1, Math.trunc(query.pageSize ?? 20) || 20));
     const ok: LogStatusFilter = query.ok === "ok" || query.ok === "fail" ? query.ok : "all";

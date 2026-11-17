@@ -32,7 +32,6 @@ describe("TriggerEngine", () => {
       assert.ok(CATEGORIES.has(p.category), `دسته‌ی نامعتبر: ${p.id}`);
       assert.ok(EVENTS.has(p.event), `رویداد نامعتبر: ${p.id}`);
       assert.ok(ACTIONS.has(p.action.type), `اقدام نامعتبر: ${p.id}`);
-      // تنها استثنا «دستیار هوشمند پیش‌فرض» است که فقط وقتی هیچ تریگر دیگری جواب نداده اجرا می‌شود
       assert.equal(p.enabled, p.id === "ai-assistant-default", `فقط دستیار پیش‌فرض خودکار روشن است: ${p.id}`);
       assert.ok(p.name.trim() && p.description.trim(), `نام/توضیح خالی: ${p.id}`);
       if (p.action.type === "reply_template") assert.ok(p.action.template?.trim(), `قالب خالی: ${p.id}`);
@@ -40,7 +39,6 @@ describe("TriggerEngine", () => {
       if (p.action.type === "call_tool") assert.ok(p.action.toolName?.trim(), `ابزار خالی: ${p.id}`);
     }
 
-    // هر پنج دسته باید نمونه داشته باشند تا فیلترهای صفحه خالی نمانند
     for (const cat of CATEGORIES) {
       assert.ok(presets.some((p) => p.category === cat), `دسته‌ی بدون نمونه: ${cat}`);
     }
@@ -56,7 +54,6 @@ describe("TriggerEngine", () => {
       assert.ok(logs.length >= 10, "گزارش‌های نمونه برای نمایش صفحه لازم است");
       assert.ok(logs.every((l) => l.demo === true), "گزارش‌های اولیه باید demo باشند");
       assert.ok(logs.some((l) => !l.ok), "باید چند خطای نمونه هم وجود داشته باشد");
-      // آمار اجرا از گزارش‌های نمونه ساخته می‌شود
       assert.ok(triggers.some((t) => (t.hitCount ?? 0) > 0 && t.lastRunAt));
     } finally {
       rmSync(fresh, { recursive: true, force: true });
@@ -181,7 +178,6 @@ describe("TriggerEngine", () => {
       assert.equal(kept?.enabled, true);
       assert.ok(logs.length > 0, "برای نصب قدیمی بدون گزارش هم نمونه ساخته می‌شود");
 
-      // بار دوم نباید چیزی دوباره اضافه شود
       const again = new TriggerEngine(work, mockHost() as any);
       assert.equal(again.list().triggers.length, triggers.length);
     } finally {

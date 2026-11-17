@@ -41,7 +41,6 @@ function setup(seedInbox = false) {
             { chat_id: "43", title: "علی رضایی", type: "private", last_date: now },
             { chat_id: "44", title: "علی محمدی", type: "private", last_date: now },
             { chat_id: "47", title: "مریم", type: "private", last_date: now },
-            // چت بی‌نام: فقط شناسه دارد و نامش را باید از get_chat گرفت
             { chat_id: "999", type: "private", last_date: now },
           ],
         }),
@@ -393,7 +392,6 @@ describe("Diba assistant", () => {
       assert.ok(list.chats?.some((c) => c.name === "سارا احمدی"), JSON.stringify(list.chats));
       assert.ok(!list.chats?.some((c) => c.name === "مخاطب بدون نام"));
 
-      // با همان نام واقعی هم قابل پیدا شدن است
       const found = await agent.handle({
         request: "به سارا در تلگرام پیام بده که فردا می‌بینمت",
         dry_run: true,
@@ -536,7 +534,6 @@ describe("Diba assistant", () => {
       assert.notEqual(a.engine.assistant, b.engine.assistant);
       const first = await a.engine.resolveRecipient("مریم");
       assert.equal(first.best?.chatId, "47");
-      // حذف ابزار فهرست چت در موتور دوم نباید با کش موتور اول پوشانده شود
       const tools = b.engine.provider("telegram_client")!.tools;
       tools.splice(tools.findIndex((tool) => tool.name === "telegram_client_get_chats"), 1);
       const second = await b.engine.resolveRecipient("مریم");

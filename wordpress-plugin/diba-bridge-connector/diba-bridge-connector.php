@@ -1,30 +1,4 @@
 <?php
-/**
- * Plugin Name:       Diba Bridge Connector
- * Plugin URI:        https://dibachain.ir
- * Description:       اتصال امن سایت وردپرس به «دیباپل» (Diba Bridge): مدیریت محتوا، رسانه، سئو، ووکامرس و ابزارهای نگهداری از طریق یک کلید اختصاصی با محدودیت دسترسی و گزارش فعالیت.
- * Version:           1.0.0
- * Requires at least: 6.0
- * Requires PHP:      7.4
- * Author:            Dibachain
- * Author URI:        https://dibachain.ir
- * License:           GPL-2.0-or-later
- * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       diba-bridge-connector
- * Domain Path:       /languages
- *
- * Diba Bridge Connector is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 of the License, or
- * any later version.
- *
- * Diba Bridge Connector is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * @package DibaBridgeConnector
- */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
