@@ -380,11 +380,14 @@ icons.settings = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 icons.dibarouter = icons.router;
 icons.install = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v11M7.5 10l4.5 4.5 4.5-4.5M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/></svg>';
 icons.banking = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9.5L12 4l9 5.5M4.5 9.5h15M6 10v7M10 10v7M14 10v7M18 10v7M3.5 20h17M5 17h14"/></svg>';
+icons.services = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><path d="M17 14v6M14 17h6"/></svg>';
 
 const pages = [
   { id: "overview", title: "نمای کلی" },
-  { id: "providers", title: "پیام‌رسان‌ها", submenu: true },
-  { id: "banking", title: "سرویس‌های بانکی", submenu: true },
+  // سه دسته‌ی سرویس: شبکه‌های اجتماعی، سرویس‌های مالی و بقیه
+  { id: "providers", title: "شبکه‌های اجتماعی", submenu: true },
+  { id: "banking", title: "سرویس‌های مالی", submenu: true },
+  { id: "services", title: "بقیه سرویس‌ها" },
   { id: "triggers", title: "تریگرها و اتوماسیون" },
   { id: "playground", title: "آزمایش ابزارها" },
   { id: "logs", title: "گزارش فراخوانی‌ها" },
@@ -401,8 +404,12 @@ const legacyBankingProviders = new Set(["blubank"]);
 const isBankingProvider = (p) => p?.category === "banking" || (!p?.region && legacyBankingProviders.has(p?.id));
 const isIranianProvider = (p) =>
   p?.region ? p.region === "iran" : legacyIranianPlatforms.has(String(p?.id ?? "").replace(/_client$/, ""));
-/** صفحه‌ای که هر سرویس در آن مدیریت می‌شود: پیام‌رسان‌ها یا سرویس‌های بانکی */
-const providerSection = (p) => (isBankingProvider(p) ? "banking" : "providers");
+// بانک، صرافی و درگاه پرداخت همه «مالی» هستند
+const isFinanceProvider = (p) => isBankingProvider(p) || p?.category === "payment";
+// پیام‌رسان‌ها و شبکه‌های اجتماعی؛ سرور قدیمی که category نمی‌فرستد هم همین‌جا می‌افتد
+const isSocialProvider = (p) => !isFinanceProvider(p) && (!p?.category || p.category === "messenger");
+/** صفحه‌ای که هر سرویس در آن مدیریت می‌شود: شبکه‌های اجتماعی، سرویس‌های مالی یا بقیه سرویس‌ها */
+const providerSection = (p) => (isFinanceProvider(p) ? "banking" : isSocialProvider(p) ? "providers" : "services");
 const providerHref = (p) => `#/${providerSection(p)}?open=${encodeURIComponent(p.id)}`;
 
 /**
@@ -523,6 +530,27 @@ for (const [key, name, where, passphrase] of [
       `API Key و API Secret${passphrase ? " و Passphrase" : ""} را در همین فرم وارد و ذخیره کنید، سپس «تست اتصال» را بزنید.`,
       "دسترسی برداشت (Withdraw) را هرگز برای این کلید روشن نکنید و در صورت امکان آن را به IP همین سرور محدود کنید.",
       "معامله به‌طور پیش‌فرض خاموش است. فقط اگر واقعاً می‌خواهید مدل سفارش ثبت یا لغو کند، دسترسی Trade را به کلید بدهید و «اجازه‌ی معامله» را روشن کنید.",
+      "هر سفارش با پول واقعی شما ثبت می‌شود؛ ابزار ثبت سفارش بدون تأیید صریح فقط پیش‌نمایش برمی‌گرداند.",
+    ],
+  };
+}
+
+// صرافی‌های ایرانی: هر کدام کلید و داده‌ی عمومی خودش را دارد
+for (const [key, name, market, credentials, unit] of [
+  ["nobitex", "نوبیتکس", "قیمت، دفتر سفارش و کندل‌های", "توکن API را در فیلد اول بگذارید. اگر «کلید API» جدید نوبیتکس را ساخته‌اید، کلید عمومی را در فیلد اول و کلید خصوصی را در فیلد دوم وارد کنید", "قیمت بازارهای تومانی نوبیتکس به ریال است، نه تومان؛ قیمت سفارش را هم به ریال بدهید."],
+  ["wallex", "والکس", "قیمت، دفتر سفارش و کندل‌های", "کلید API را در همین فرم وارد کنید", "قیمت بازارهای تومانی والکس به تومان است."],
+  ["bitpin", "بیت‌پین", "قیمت و دفتر سفارش", "API Key و Secret Key را در همین فرم وارد کنید", "قیمت بازارهای تومانی بیت‌پین به تومان است."],
+  ["tabdeal", "تبدیل", "قیمت و دفتر سفارش", "API Key و API Secret را در همین فرم وارد کنید", "قیمت بازارهای تومانی تبدیل به تومان است."],
+  ["abantether", "آبان‌تتر", "قیمت خرید و فروش", "Api-Key را از صفحه‌ی حساب کاربری بردارید و در همین فرم وارد کنید", "آبان‌تتر بازار خرید و فروش مستقیم است: مقدار سفارش خرید به تومان یا تتر و مقدار سفارش فروش به واحد خودِ رمزارز است."],
+]) {
+  providerTutorials[key] = {
+    client: [
+      `${market} ${name} بدون کلید هم کار می‌کند؛ کافی است سرویس را روشن کنید.`,
+      `برای موجودی و سفارش‌ها، در پنل ${name} یک کلید API بسازید و تا جای ممکن فقط دسترسی خواندن بدهید.`,
+      `${credentials} و ذخیره کنید، سپس «تست اتصال» را بزنید.`,
+      unit,
+      "دسترسی برداشت را هرگز برای این کلید روشن نکنید و در صورت امکان آن را به IP همین سرور محدود کنید.",
+      "معامله به‌طور پیش‌فرض خاموش است. فقط اگر واقعاً می‌خواهید مدل سفارش ثبت یا لغو کند، «اجازه‌ی معامله» را روشن کنید.",
       "هر سفارش با پول واقعی شما ثبت می‌شود؛ ابزار ثبت سفارش بدون تأیید صریح فقط پیش‌نمایش برمی‌گرداند.",
     ],
   };
@@ -844,13 +872,15 @@ const serviceLabel = (s) => platformMeta[parseProvider(s).platformKey]?.nameFa |
 
 function serviceGroups(services) {
   const groups = [
-    { key: "msg-ir", title: "پیام‌رسان‌های ایرانی", items: [] },
-    { key: "msg-intl", title: "پیام‌رسان‌ها و شبکه‌های خارجی", items: [] },
-    { key: "banking", title: "بانک‌ها و صرافی‌ها", items: [] },
-    { key: "other", title: "سایت و ابزارهای دیگر", items: [] },
+    { key: "social-ir", title: "شبکه‌های اجتماعی ایرانی", items: [] },
+    { key: "social-intl", title: "شبکه‌های اجتماعی خارجی", items: [] },
+    { key: "finance-ir", title: "سرویس‌های مالی ایرانی", items: [] },
+    { key: "finance-intl", title: "سرویس‌های مالی خارجی", items: [] },
+    { key: "other", title: "بقیه سرویس‌ها", items: [] },
   ];
   for (const s of services) {
-    const key = isBankingProvider(s) ? "banking" : s.category !== "messenger" ? "other" : isIranianProvider(s) ? "msg-ir" : "msg-intl";
+    const section = providerSection(s);
+    const key = section === "services" ? "other" : `${section === "banking" ? "finance" : "social"}-${isIranianProvider(s) ? "ir" : "intl"}`;
     groups.find((g) => g.key === key).items.push(s);
   }
   return groups.filter((g) => g.items.length);
@@ -958,7 +988,7 @@ async function renderInstaller({ firstRun = true, setup = false } = {}) {
 
   const planItems = [
     ["مشخصات شما", "نام شرکت یا پروژه، آدرس سایت و لوگو"],
-    ["انتخاب سرویس‌ها", "پیام‌رسان‌ها، سرویس‌های بانکی و ابزارهایی که لازم دارید"],
+    ["انتخاب سرویس‌ها", "شبکه‌های اجتماعی، سرویس‌های مالی و ابزارهایی که لازم دارید"],
     ...(setup ? [["رمز عبور داشبورد", "رمز ورود خود به داشبورد را انتخاب می‌کنید"]] : []),
     ["ورود به داشبورد", "اتصال حساب هر سرویس از صفحه‌ی خودش انجام می‌شود"],
   ];
@@ -1600,7 +1630,7 @@ async function render() {
   document.title = `${pages.find((p) => p.id === page).title} — Diba Bridge (دیبا پل) | دیباچین`;
   const main = document.getElementById("main");
   try {
-    await ({ overview: pageOverview, providers: pageProviders, banking: (m, query) => pageProviders(m, query, "banking"), playground: pagePlayground, triggers: pageTriggers, logs: pageLogs, dibarouter: pageDibaRouter, connect: pageConnect, install: pageInstall, settings: pageSettings })[page](main, q);
+    await ({ overview: pageOverview, providers: pageProviders, banking: (m, query) => pageProviders(m, query, "banking"), services: (m, query) => pageProviders(m, query, "services"), playground: pagePlayground, triggers: pageTriggers, logs: pageLogs, dibarouter: pageDibaRouter, connect: pageConnect, install: pageInstall, settings: pageSettings })[page](main, q);
   } catch (e) {
     if (!(e instanceof AuthError)) main.innerHTML = `<div class="err-box">${esc(e.message)}</div>`;
   }
@@ -1993,8 +2023,8 @@ function platformAccordionHtml(plat) {
 
 async function pageProviders(main, q, section = "providers") {
   state.providers = await api("providers");
-  const banking = section === "banking";
-  const region = q.get("region") === "iran" ? "iran" : q.get("region") === "other" ? "other" : "";
+  // «بقیه سرویس‌ها» زیرمنوی ایرانی/خارجی ندارد
+  const region = section === "services" ? "" : q.get("region") === "iran" ? "iran" : q.get("region") === "other" ? "other" : "";
   const focus = q.get("focus");
   const open = q.get("open");
 
@@ -2016,33 +2046,39 @@ async function pageProviders(main, q, section = "providers") {
     state.openPlatform = parseProvider({ id: open }).platformKey;
   }
 
-  const copy = banking
-    ? {
-      title: { iran: "سرویس‌های بانکی ایرانی", other: "صرافی‌ها و سرویس‌های مالی خارجی", "": "سرویس‌های بانکی و صرافی‌ها" },
+  const copy = {
+    banking: {
+      title: { iran: "سرویس‌های مالی ایرانی", other: "سرویس‌های مالی خارجی", "": "سرویس‌های مالی" },
       desc: {
-        iran: "بانک‌ها و سرویس‌های مالی ایرانی متصل به این سرور.",
-        other: "صرافی‌های ارز دیجیتال با API رسمی: قیمت و بازار، موجودی و سفارش‌ها. معامله تا وقتی خودتان روشنش نکنید خاموش است.",
-        "": "مدیریت اتصال بانک‌ها، صرافی‌ها و سرویس‌های مالی؛ موجودی، تراکنش‌ها و داده‌ی بازار در اختیار مدل قرار می‌گیرد. هر سرویس با یک کلید روشن یا خاموش می‌شود.",
+        iran: "بانک‌ها و صرافی‌های ایرانی: موجودی، قیمت و بازار و سفارش‌ها. معامله تا وقتی خودتان روشنش نکنید خاموش است.",
+        other: "صرافی‌های خارجی با API رسمی: قیمت و بازار، موجودی و سفارش‌ها. معامله تا وقتی خودتان روشنش نکنید خاموش است.",
+        "": "بانک‌ها و صرافی‌های ایرانی و خارجی؛ موجودی، تراکنش‌ها و داده‌ی بازار در اختیار مدل قرار می‌گیرد. هر سرویس با یک کلید روشن یا خاموش می‌شود.",
       },
       empty: {
-        iran: "هنوز سرویس بانکی ایرانی به دیباپل اضافه نشده است.",
-        other: "هنوز سرویس بانکی خارجی به دیباپل اضافه نشده است؛ پس از افزوده شدن، اینجا نمایش داده می‌شود.",
-        "": "هنوز سرویس بانکی به دیباپل اضافه نشده است.",
+        iran: "هنوز سرویس مالی ایرانی به دیباپل اضافه نشده است.",
+        other: "هنوز سرویس مالی خارجی به دیباپل اضافه نشده است.",
+        "": "هنوز سرویس مالی به دیباپل اضافه نشده است.",
       },
-    }
-    : {
-      title: { iran: "پیام‌رسان‌های ایرانی", other: "پیام‌رسان‌های خارجی", "": "پیام‌رسان‌ها" },
+    },
+    providers: {
+      title: { iran: "شبکه‌های اجتماعی ایرانی", other: "شبکه‌های اجتماعی خارجی", "": "شبکه‌های اجتماعی" },
       desc: {
-        iran: "سرویس‌های ایرانی متصل به این سرور با حساب کاربری.",
-        other: "سرویس‌های غیرایرانی متصل به این سرور با حساب کاربری.",
-        "": "مدیریت حساب‌های کاربری پیام‌رسان‌ها در یک آکاردئون یکپارچه. هر حساب با یک کلید روشن یا خاموش می‌شود.",
+        iran: "پیام‌رسان‌های ایرانی متصل به این سرور با حساب کاربری.",
+        other: "پیام‌رسان‌ها و شبکه‌های اجتماعی خارجی متصل به این سرور با حساب کاربری.",
+        "": "پیام‌رسان‌ها و شبکه‌های اجتماعی ایرانی و خارجی در یک جا. هر حساب با یک کلید روشن یا خاموش می‌شود.",
       },
       empty: {
         iran: "هنوز سرویس ایرانی در این دسته ثبت نشده است.",
         other: "سرویس‌های خارجی پس از افزودن، اینجا نمایش داده می‌شوند.",
         "": "هنوز سرویسی در این دسته ثبت نشده است.",
       },
-    };
+    },
+    services: {
+      title: { "": "بقیه سرویس‌ها" },
+      desc: { "": "سایت، مدیریت محتوا و ابزارهایی که شبکه‌ی اجتماعی یا سرویس مالی نیستند. هر سرویس با یک کلید روشن یا خاموش می‌شود." },
+      empty: { "": "هنوز سرویسی در این دسته به دیباپل اضافه نشده است." },
+    },
+  }[section];
   main.innerHTML = `
     ${head(copy.title[region], copy.desc[region], "مدیریت سرویس‌ها")}
     <div class="providers-accordion-list" id="provs">
