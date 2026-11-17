@@ -599,12 +599,14 @@ export function createDibaMcpRouter(engine: DibaMcpEngine, opts: RouterOptions =
     if (!targets.length) return void res.status(400).json({ error: "حداقل یک مقصد انتخاب کنید." });
     const results: any[] = [];
     for (const target of targets) {
-      const tool = SEND_TOOLS[target.provider];
+      const channelPost = target.provider === "whatsapp" && target.type === "channel";
+      const tool = channelPost ? "whatsapp_channel_send" : SEND_TOOLS[target.provider];
       if (!tool) {
         results.push({ target, ok: false, error: "این سرویس برای ارسال پست پشتیبانی نمی‌شود." });
         continue;
       }
-      const r = await engine.callTool(tool, { chat_id: target.chatId, text }, "dashboard");
+      const args = channelPost ? { channel: target.chatId, text } : { chat_id: target.chatId, text };
+      const r = await engine.callTool(tool, args, "dashboard");
       results.push({ target, ok: r.ok, error: r.error, ms: r.ms });
     }
     res.json({ ok: results.every((r) => r.ok), results });
