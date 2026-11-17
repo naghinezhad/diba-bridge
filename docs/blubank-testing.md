@@ -1,7 +1,7 @@
 # تست provider بلوبانک
 
 این provider در `src/providers/blubank.ts` است و در `src/providers/index.ts` ثبت شده.
-در داشبورد زیر تب **سرویس‌های بانکی ← ایرانی** (`#/banking?region=iran`) دیده می‌شود؛
+در داشبورد زیر تب **سرویس‌های مالی ← ایرانی** (`#/banking?region=iran`) دیده می‌شود؛
 دسته‌ی آن `banking` و منطقه‌اش `iran` است.
 برای تست دستی، به یک Access Token از نشست اپلیکیشن بلوبانک نیاز داری.
 
