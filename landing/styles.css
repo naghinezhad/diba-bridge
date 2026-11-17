@@ -469,6 +469,7 @@ ul, ol { padding: 0; list-style: none; }
 .section-why { background: var(--bg); }
 .section-features { background: #fbfcfe; }
 .section-integrations { background: var(--bg); }
+.section-posts { background: #fbfcfe; }
 .section-start { background: #f1f6fc; }
 .section-roadmap { background: var(--bg); }
 .section-security { background: var(--soft); }
@@ -1152,11 +1153,11 @@ ul, ol { padding: 0; list-style: none; }
 .section-finance { background: var(--bg); }
 .section-network { background: #f1f6fc; }
 
-/* extra integrations: finance, social and site */
+/* extra integrations: finance, social and tools */
 .integrations-layout { grid-template-areas: "intro panel" "extra extra"; row-gap: 28px; }
 .integrations-layout > .section-intro { grid-area: intro; }
 .integrations-layout > .integration-panel { grid-area: panel; }
-.integration-extra { grid-area: extra; display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; }
+.integration-extra { grid-area: extra; display: grid; grid-template-columns: 1.2fr 0.8fr 1fr; gap: 16px; align-items: start; }
 .integration-group {
   padding: 16px 18px;
   border: 1px solid var(--line);
