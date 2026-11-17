@@ -20,6 +20,11 @@ const EXPECTED: Record<string, { category: string; region: string }> = {
   linkedin: { category: "messenger", region: "international" },
   wordpress: { category: "utility", region: "international" },
   blubank: { category: "banking", region: "iran" },
+  nobitex: { category: "banking", region: "iran" },
+  wallex: { category: "banking", region: "iran" },
+  bitpin: { category: "banking", region: "iran" },
+  tabdeal: { category: "banking", region: "iran" },
+  abantether: { category: "banking", region: "iran" },
   binance: { category: "banking", region: "international" },
   bybit: { category: "banking", region: "international" },
   okx: { category: "banking", region: "international" },
@@ -38,9 +43,9 @@ describe("دسته و منطقه‌ی سرویس‌ها", () => {
     assert.deepEqual(builtinProviders.map((p) => p.id).sort(), Object.keys(EXPECTED).sort());
   });
 
-  test("سرویس‌های بانکی از پیام‌رسان‌ها جدا هستند", () => {
+  test("سرویس‌های مالی از شبکه‌های اجتماعی جدا هستند", () => {
     const banking = builtinProviders.filter((p) => p.category === "banking");
-    assert.deepEqual(banking.filter((p) => p.region === "iran").map((p) => p.id), ["blubank"]);
+    assert.deepEqual(banking.filter((p) => p.region === "iran").map((p) => p.id), ["blubank", "nobitex", "wallex", "bitpin", "tabdeal", "abantether"]);
     assert.deepEqual(banking.filter((p) => p.region === "international").map((p) => p.id), ["binance", "bybit", "okx", "kucoin", "kraken"]);
   });
 

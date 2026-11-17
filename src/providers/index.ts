@@ -2,11 +2,16 @@ import type { ProviderDef } from "../core/types.js";
 import { baleClient } from "./bale-client.js";
 import { blubank } from "./blubank.js";
 import { eitaaClient } from "./eitaa-client.js";
+import { abantether } from "./exchanges/abantether.js";
 import { binance } from "./exchanges/binance.js";
+import { bitpin } from "./exchanges/bitpin.js";
 import { bybit } from "./exchanges/bybit.js";
 import { kraken } from "./exchanges/kraken.js";
 import { kucoin } from "./exchanges/kucoin.js";
+import { nobitex } from "./exchanges/nobitex.js";
 import { okx } from "./exchanges/okx.js";
+import { tabdeal } from "./exchanges/tabdeal.js";
+import { wallex } from "./exchanges/wallex.js";
 import { instagram } from "./instagram.js";
 import { linkedinProvider } from "./linkedin.js";
 import { rubikaClient } from "./rubika-client.js";
@@ -34,6 +39,12 @@ export const builtinProviders: ProviderDef[] = [
   linkedinProvider,
   whatsapp,
   x,
+  // صرافی‌های ایرانی (API رسمی؛ معامله به‌طور پیش‌فرض خاموش است)
+  nobitex,
+  wallex,
+  bitpin,
+  tabdeal,
+  abantether,
   // صرافی‌های خارجی (API رسمی؛ معامله به‌طور پیش‌فرض خاموش است)
   binance,
   bybit,
@@ -43,4 +54,7 @@ export const builtinProviders: ProviderDef[] = [
   wordpress,
 ];
 
-export { baleClient, binance, blubank, bybit, eitaaClient, instagram, kraken, kucoin, linkedinProvider, okx, rubikaClient, soroushClient, telegramClient, whatsapp, wordpress, x };
+export {
+  abantether, baleClient, binance, bitpin, blubank, bybit, eitaaClient, instagram, kraken, kucoin, linkedinProvider, nobitex, okx,
+  rubikaClient, soroushClient, tabdeal, telegramClient, wallex, whatsapp, wordpress, x,
+};
